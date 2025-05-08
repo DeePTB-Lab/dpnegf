@@ -1,15 +1,15 @@
 import ase.transport
 import torch
 from dptb.utils.constants import Boltzmann, eV2J,pi
-from dptb_negf.negf.recursive_green_cal import recursive_gf
+from dpnegf.negf.recursive_green_cal import recursive_gf
 from fmm3dpy import lfmm3d
-from dptb_negf.negf.areshkin_pole_sum import pole_maker
-from dptb_negf.negf.surface_green import selfEnergy
-from dptb_negf.negf.negf_utils import finite_difference
+from dpnegf.negf.areshkin_pole_sum import pole_maker
+from dpnegf.negf.surface_green import selfEnergy
+from dpnegf.negf.negf_utils import finite_difference
 import numpy as np
 from tqdm import tqdm
 import time
-from dptb_negf.negf.negf_utils import quad
+from dpnegf.negf.negf_utils import quad
 
 
 '''

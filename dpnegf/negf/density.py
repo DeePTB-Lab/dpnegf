@@ -1,8 +1,8 @@
 import torch
-from dptb_negf.negf.ozaki_res_cal import ozaki_residues
-from dptb_negf.negf.areshkin_pole_sum import pole_maker
+from dpnegf.negf.ozaki_res_cal import ozaki_residues
+from dpnegf.negf.areshkin_pole_sum import pole_maker
 import numpy as np
-from dptb_negf.negf.negf_utils import gauss_xw
+from dpnegf.negf.negf_utils import gauss_xw
 import logging
 import matplotlib as mpl
 import matplotlib.pyplot as plt

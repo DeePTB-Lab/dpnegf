@@ -1,8 +1,8 @@
 import numpy as np 
 # import pyamg #TODO: later add it to optional dependencies,like sisl
 # from pyamg.gallery import poisson
-from dptb_negf.utils.constants import elementary_charge
-from dptb_negf.utils.constants import Boltzmann, eV2J
+from dpnegf.utils.constants import elementary_charge
+from dpnegf.utils.constants import Boltzmann, eV2J
 from scipy.constants import epsilon_0 as eps0  #TODO:later add to untils.constants.py
 from scipy.sparse import csr_matrix
 from scipy.sparse.linalg import spsolve

@@ -1,12 +1,12 @@
 import torch
 from typing import List
-from dptb_negf.negf.surface_green import selfEnergy
+from dpnegf.negf.surface_green import selfEnergy
 import logging
-from dptb_negf.negf.negf_utils import update_kmap, update_temp_file
+from dpnegf.negf.negf_utils import update_kmap, update_temp_file
 import os
-from dptb_negf.utils.constants import Boltzmann, eV2J
+from dpnegf.utils.constants import Boltzmann, eV2J
 import numpy as np
-from dptb_negf.negf.bloch import Bloch
+from dpnegf.negf.bloch import Bloch
 import torch.profiler
 import ase
 
