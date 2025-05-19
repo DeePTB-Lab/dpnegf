@@ -1,21 +1,12 @@
-from typing import List
 import torch
-from dpnegf.negf.recursive_green_cal import recursive_gf
-from dpnegf.negf.surface_green import selfEnergy
 from dpnegf.negf.negf_utils import quad, gauss_xw,leggauss,update_kmap
 from dpnegf.negf.ozaki_res_cal import ozaki_residues
 from dpnegf.negf.negf_hamiltonian_init import NEGFHamiltonianInit
 from dpnegf.negf.density import Ozaki,Fiori
-from dpnegf.negf.areshkin_pole_sum import pole_maker
 from dpnegf.negf.device_property import DeviceProperty
 from dpnegf.negf.lead_property import LeadProperty
-from ase.io import read
 import ase
-from dpnegf.negf.poisson import Density2Potential, getImg
-from dpnegf.negf.scf_method import SCFMethod
 from dpnegf.utils.constants import Boltzmann, eV2J
-import os
-from dpnegf.utils.tools import j_must_have
 import numpy as np
 from dpnegf.utils.make_kpoints import kmesh_sampling_negf
 import logging
@@ -210,8 +201,14 @@ class NEGF(object):
         # self.LDOS_integral = {}  # for electron density integral
         self.free_charge = {} # net charge: hole - electron
         # Dirichlet region for Poisson equation
-        self.Dirichlet_region = [self.poisson_options[i] for i in self.poisson_options if i.startswith("gate") or i.startswith("electrode")]
-        
+        if self.scf:
+            for lead in ["lead_L", "lead_R"]:
+                if "voltage" in self.poisson_options[lead] and self.poisson_options[lead]["voltage"]:
+                    assert self.stru_options[lead]["voltage"] == self.poisson_options[lead]["voltage"], f"{lead} voltage should be consistent"
+                else:
+                    self.poisson_options[lead]["voltage"] = self.stru_options[lead]["voltage"]
+        self.Dirichlet_region = [self.poisson_options[i] for i in self.poisson_options if i.startswith("gate")\
+                                    or i.startswith("lead")]
         self.dielectric_region = [self.poisson_options[i] for i in self.poisson_options if i.startswith("dielectric")]
         self.doped_region = [self.poisson_options[i] for i in self.poisson_options if i.startswith("doped")]
 

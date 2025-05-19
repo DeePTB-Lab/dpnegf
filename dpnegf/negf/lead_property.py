@@ -165,7 +165,7 @@ class LeadProperty(object):
                 sLL=self.SLLk,
                 hDL=HDL_reduced,
                 sDL=SDL_reduced,             #TODO: check chemiPot settiing is correct or not
-                chemiPot=self.efermi, # temmporarily change to self.efermi for the case in which applying lead bias to corresponding to Nanotcad
+                chemiPot=self.mu, # temmporarily change to self.efermi for the case in which applying lead bias to corresponding to Nanotcad
                 etaLead=eta_lead, 
                 method=method
             )
@@ -192,7 +192,7 @@ class LeadProperty(object):
                     hLL=self.HLLk,
                     sL=self.SLk,
                     sLL=self.SLLk,            #TODO: check chemiPot settiing is correct or not
-                    chemiPot=self.efermi, # temmporarily change to self.efermi for the case in which applying lead bias to corresponding to Nanotcad
+                    chemiPot=self.mu, # temmporarily change to self.efermi for the case in which applying lead bias to corresponding to Nanotcad
                     etaLead=eta_lead, 
                     method=method
                 )
@@ -216,9 +216,9 @@ class LeadProperty(object):
             HDL_reduced, SDL_reduced = self.HDL_reduced(self.HDLk, self.SDLk) 
             # HDL_reduced, SDL_reduced = self.HDL, self.SDL
             if not isinstance(energy, torch.Tensor):
-                eeshifted = torch.scalar_tensor(energy, dtype=torch.complex128) + self.efermi
+                eeshifted = torch.scalar_tensor(energy, dtype=torch.complex128) + self.mu
             else:
-                eeshifted = energy + self.efermi
+                eeshifted = energy + self.mu
             # self.se = (eeshifted*self.SDL-self.HDL) @ sgf_k[:b,:b] @ (eeshifted*self.SDL.conj().T-self.HDL.conj().T)
             self.se = (eeshifted*SDL_reduced-HDL_reduced) @ sgf_k[:b,:b] @ (eeshifted*SDL_reduced.conj().T-HDL_reduced.conj().T)
 
