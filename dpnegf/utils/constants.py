@@ -103,3 +103,13 @@ dtype_dict = {"float32": torch.float32, "float64": torch.float64}
 # k = Boltzmann # k is the Boltzmann constant in old NEGF module
 Coulomb = 6.24150974e18 # in the unit of eV*Angstrom
 eV2J = 1.6021766208e-19 # in the unit of J
+
+valence_electron = {
+        'H': 1, 'He': 2,
+        'Li': 1, 'Be': 2, 'B': 3, 'C': 4, 'N': 5, 'O': 6, 'F': 7, 'Ne': 8,
+        'Na': 1, 'Mg': 2, 'Al': 3, 'Si': 4, 'P': 5, 'S': 6, 'Cl': 7, 'Ar': 8,
+        'K': 1, 'Ca': 2,
+        'Sc': 3, 'Ti': 4, 'V': 5, 'Cr': 6, 'Mn': 7, 'Fe': 8,
+        'Co': 9, 'Ni': 10, 'Cu': 11, 'Zn': 12,
+        'Ga': 3, 'Ge': 4, 'As': 5, 'Se': 6, 'Br': 7, 'Kr': 8,
+    }

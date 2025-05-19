@@ -1053,7 +1053,7 @@ def negf():
         Argument("espacing", [int, float], optional=False, doc=doc_espacing),
         Argument("emin", [int, float], optional=False, doc=doc_emin),
         Argument("emax", [int, float], optional=False, doc=doc_emax),
-        Argument("e_fermi", [int, float], optional=False, doc=doc_e_fermi),
+        Argument("e_fermi", [int, float], optional=True, default=None ,doc=doc_e_fermi),
         Argument("density_options", dict, optional=True, default={}, sub_fields=[], sub_variants=[density_options()], doc=doc_density_options),
         Argument("eta_lead", [int, float], optional=True, default=1e-5, doc=doc_eta_lead),
         Argument("eta_device", [int, float], optional=True, default=0., doc=doc_eta_device),
@@ -1082,7 +1082,8 @@ def stru_options():
         Argument("kmesh", list, optional=True, default=[1,1,1], doc=doc_kmesh),
         Argument("pbc", list, optional=True, default=[False, False, False], doc=doc_pbc),
         Argument("gamma_center", list, optional=True, default=True, doc=doc_gamma_center),
-        Argument("time_reversal_symmetry", list, optional=True, default=True, doc=doc_time_reversal_symmetry)
+        Argument("time_reversal_symmetry", list, optional=True, default=True, doc=doc_time_reversal_symmetry),
+        Argument("e_fermi_smearing", str, optional=True, default="FD", doc="The smearing method for Fermi level. Default: FD"),
     ]
 
 def device():
@@ -1103,7 +1104,8 @@ def lead():
         Argument("id", str, optional=False, doc=doc_id),
         Argument("voltage", [int, float], optional=False, doc=doc_voltage),
         Argument("useBloch", bool, optional=True, default=False, doc=doc_useBloch),
-        Argument("bloch_factor", list, optional=True, default=[1,1,1], doc=doc_bloch_factor)
+        Argument("bloch_factor", list, optional=True, default=[1,1,1], doc=doc_bloch_factor),
+        Argument("kmesh_lead_Ef", list, optional=True, doc="The kmesh for lead Fermi level calculation."),
     ]
 
 def scf_options():

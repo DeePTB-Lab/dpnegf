@@ -1,7 +1,9 @@
 import torch
 from dpnegf.negf.negf_utils import quad, gauss_xw,leggauss,update_kmap
+from dpnegf.utils.constants import valence_electron
 from dpnegf.negf.ozaki_res_cal import ozaki_residues
 from dpnegf.negf.negf_hamiltonian_init import NEGFHamiltonianInit
+from dptb.postprocess.elec_struc_cal import ElecStruCal
 from dpnegf.negf.density import Ozaki,Fiori
 from dpnegf.negf.device_property import DeviceProperty
 from dpnegf.negf.lead_property import LeadProperty
@@ -61,6 +63,10 @@ class NEGF(object):
         self.eta_lead = eta_lead; self.eta_device = eta_device
         self.emin = emin; self.emax = emax; self.espacing = espacing
         self.stru_options = stru_options
+        if e_fermi is None:
+            for lead in ["lead_L", "lead_R"]:
+                assert self.stru_options[lead]["kmesh_lead_Ef"] is not None, f"{lead} kmesh_lead_Ef should be set if e_fermi is None"
+
 
         self.use_saved_HS = use_saved_HS
         self.saved_HS_path = saved_HS_path
@@ -124,9 +130,36 @@ class NEGF(object):
                 self.negf_hamiltonian.initialize(kpoints=self.kpoints,block_tridiagnal=self.block_tridiagonal,\
                                                  useBloch=self.useBloch,bloch_factor=self.bloch_factor,\
                                                  use_saved_HS=self.use_saved_HS, saved_HS_path=self.saved_HS_path)
-        # self.subblocks = subblocks # for not block_tridiagonal case, subblocks is [HD.shape[1]]
+        e_fermi = {}
+        if not self.e_fermi:        
+            elec_cal = ElecStruCal(model=model,device=self.torch_device)
+            if nel_atom is None:
+                log.warning(msg="nel_atom is not set, using the default value")
+                nel_atom = {}
+                for lead in ["lead_L", "lead_R"]:
+                    unique_elements = struct_leads[lead].get_chemical_symbols()
+                    for ele in unique_elements:
+                        if ele not in valence_electron:
+                            raise ValueError(f"Element {ele} is not in the valence electron dictionary")
+                        else:
+                            nel_atom[ele] = valence_electron[ele]
+            for lead in ["lead_L", "lead_R"]:
+                _, e_fermi[lead]  = elec_cal.get_fermi_level(data=struct_leads[lead], 
+                                nel_atom = nel_atom,
+                                meshgrid=self.stru_options[lead]["kmesh_lead_Ef"],
+                                AtomicData_options=AtomicData_options,
+                                smearing_method=self.stru_options["e_fermi_smearing"],
+                                temp=100.0)
+        else:
+            e_fermi["lead_L"] = self.e_fermi
+            e_fermi["lead_R"] = self.e_fermi
+        
+        self.e_fermi = e_fermi
+        log.info(msg="Fermi level for lead_L: {0}".format(e_fermi["lead_L"]))
+        log.info(msg="Fermi level for lead_R: {0}".format(e_fermi["lead_R"]))
 
-        self.deviceprop = DeviceProperty(self.negf_hamiltonian, struct_device, results_path=self.results_path, efermi=self.e_fermi)
+        self.deviceprop = DeviceProperty(self.negf_hamiltonian, struct_device, results_path=self.results_path, \
+                                         efermi=self.e_fermi)
         self.deviceprop.set_leadLR(
                 lead_L=LeadProperty(
                 hamiltonian=self.negf_hamiltonian, 
@@ -134,7 +167,7 @@ class NEGF(object):
                 structure=struct_leads["lead_L"], 
                 results_path=self.results_path,
                 e_T=self.ele_T,
-                efermi=self.e_fermi, 
+                efermi=self.e_fermi["lead_L"], 
                 voltage=self.stru_options["lead_L"]["voltage"],
                 useBloch=self.useBloch,
                 bloch_factor=self.bloch_factor,
@@ -148,7 +181,7 @@ class NEGF(object):
                 structure=struct_leads["lead_R"], 
                 results_path=self.results_path, 
                 e_T=self.ele_T,
-                efermi=self.e_fermi, 
+                efermi=self.e_fermi["lead_R"], 
                 voltage=self.stru_options["lead_R"]["voltage"],
                 useBloch=self.useBloch,
                 bloch_factor=self.bloch_factor,
