@@ -7,6 +7,7 @@ from dptb.postprocess.elec_struc_cal import ElecStruCal
 from dpnegf.negf.density import Ozaki,Fiori
 from dpnegf.negf.device_property import DeviceProperty
 from dpnegf.negf.lead_property import LeadProperty
+from dpnegf.negf.negf_utils import is_fully_covered
 import ase
 from dpnegf.utils.constants import Boltzmann, eV2J
 import numpy as np
@@ -34,7 +35,7 @@ class NEGF(object):
                 model: torch.nn.Module,
                 AtomicData_options: dict, 
                 structure: Union[AtomicData, ase.Atoms, str],
-                ele_T: float,e_fermi: float,
+                ele_T: float,
                 emin: float, emax: float, espacing: float,
                 density_options: dict,
                 unit: str,
@@ -42,6 +43,7 @@ class NEGF(object):
                 stru_options: dict,eta_lead: float,eta_device: float,
                 block_tridiagonal: bool,
                 sgf_solver: str,
+                e_fermi: float=None,
                 use_saved_HS: bool=False, saved_HS_path: str=None,
                 self_energy_save: bool=False, self_energy_save_path: str=None, se_info_display: bool=False,
                 out_tc: bool=False,out_dos: bool=False,out_density: bool=False,out_potential: bool=False,
@@ -65,7 +67,7 @@ class NEGF(object):
         self.stru_options = stru_options
         if e_fermi is None:
             for lead in ["lead_L", "lead_R"]:
-                assert self.stru_options[lead]["kmesh_lead_Ef"] is not None, f"{lead} kmesh_lead_Ef should be set if e_fermi is None"
+                assert "kmesh_lead_Ef" in self.stru_options[lead], f"{lead} must have 'kmesh_lead_Ef' set in stru_options if e_fermi is None"
 
 
         self.use_saved_HS = use_saved_HS
@@ -130,34 +132,51 @@ class NEGF(object):
                 self.negf_hamiltonian.initialize(kpoints=self.kpoints,block_tridiagnal=self.block_tridiagonal,\
                                                  useBloch=self.useBloch,bloch_factor=self.bloch_factor,\
                                                  use_saved_HS=self.use_saved_HS, saved_HS_path=self.saved_HS_path)
+
+        ## Poisson equation settings
+        self.poisson_options = poisson_options
+        # self.LDOS_integral = {}  # for electron density integral
+        self.free_charge = {} # net charge: hole - electron
+        # Dirichlet region for Poisson equation
+        if self.scf:
+            for lead_tag in ["lead_L", "lead_R"]:
+                if "voltage" in self.poisson_options[lead_tag] and self.poisson_options[lead_tag]["voltage"]:
+                    assert self.stru_options[lead_tag]["voltage"] == self.poisson_options[lead_tag]["voltage"], f"{lead_tag} voltage should be consistent"
+                else:
+                    self.poisson_options[lead_tag]["voltage"] = self.stru_options[lead_tag]["voltage"]
+        self.Dirichlet_region = [self.poisson_options[i] for i in self.poisson_options if i.startswith("gate")\
+                                    or i.startswith("lead")]
+        self.dielectric_region = [self.poisson_options[i] for i in self.poisson_options if i.startswith("dielectric")]
+        self.doped_region = [self.poisson_options[i] for i in self.poisson_options if i.startswith("doped")]
+
+
+
+        # calculate Fermi level
+        log.info(msg="-------------Fermi level calculation-------------")
         e_fermi = {}
         if not self.e_fermi:        
             elec_cal = ElecStruCal(model=model,device=self.torch_device)
-            if nel_atom is None:
-                log.warning(msg="nel_atom is not set, using the default value")
-                nel_atom = {}
-                for lead in ["lead_L", "lead_R"]:
-                    unique_elements = struct_leads[lead].get_chemical_symbols()
-                    for ele in unique_elements:
-                        if ele not in valence_electron:
-                            raise ValueError(f"Element {ele} is not in the valence electron dictionary")
-                        else:
-                            nel_atom[ele] = valence_electron[ele]
-            for lead in ["lead_L", "lead_R"]:
-                _, e_fermi[lead]  = elec_cal.get_fermi_level(data=struct_leads[lead], 
-                                nel_atom = nel_atom,
-                                meshgrid=self.stru_options[lead]["kmesh_lead_Ef"],
+            nel_atom_lead = self.get_nel_atom_lead(struct_leads, self.poisson_options, self.doped_region)
+            log.info(msg="Number of electrons in lead_L: {0}".format(nel_atom_lead["lead_L"]))
+            log.info(msg="Number of electrons in lead_R: {0}".format(nel_atom_lead["lead_R"]))
+            for lead_tag in ["lead_L", "lead_R"]:
+                _, e_fermi[lead_tag]  = elec_cal.get_fermi_level(data=struct_leads[lead_tag], 
+                                nel_atom = nel_atom_lead[lead_tag],
+                                meshgrid=self.stru_options[lead_tag]["kmesh_lead_Ef"],
                                 AtomicData_options=AtomicData_options,
-                                smearing_method=self.stru_options["e_fermi_smearing"],
+                                smearing_method=self.stru_options.get("e_fermi_smearing", "FD"),
                                 temp=100.0)
         else:
             e_fermi["lead_L"] = self.e_fermi
             e_fermi["lead_R"] = self.e_fermi
+            log.warning(msg="Fermi level is set to {0} from input file".format(self.e_fermi))
         
         self.e_fermi = e_fermi
         log.info(msg="Fermi level for lead_L: {0}".format(e_fermi["lead_L"]))
         log.info(msg="Fermi level for lead_R: {0}".format(e_fermi["lead_R"]))
+        log.info(msg="=================================================\n")
 
+        # initialize deviceprop and leadprop
         self.deviceprop = DeviceProperty(self.negf_hamiltonian, struct_device, results_path=self.results_path, \
                                          efermi=self.e_fermi)
         self.deviceprop.set_leadLR(
@@ -195,7 +214,10 @@ class NEGF(object):
         # self.density_options = j_must_have(self.jdata, "density_options")
         self.density_options = density_options
         if self.density_options["method"] == "Ozaki":
-            self.density = Ozaki(R=self.density_options["R"], M_cut=self.density_options["M_cut"], n_gauss=self.density_options["n_gauss"])
+            self.density = Ozaki(R=self.density_options["R"], 
+                                 M_cut=self.density_options["M_cut"], 
+                                 n_gauss=self.density_options["n_gauss"])
+            
         elif self.density_options["method"] == "Fiori":
             if self.density_options["integrate_way"] == "gauss":
                 assert self.density_options["n_gauss"] is not None, "n_gauss should be set for Fiori method using gauss integration"
@@ -229,21 +251,6 @@ class NEGF(object):
         self.generate_energy_grid()
         self.out = {}
 
-        ## Poisson equation settings
-        self.poisson_options = poisson_options
-        # self.LDOS_integral = {}  # for electron density integral
-        self.free_charge = {} # net charge: hole - electron
-        # Dirichlet region for Poisson equation
-        if self.scf:
-            for lead in ["lead_L", "lead_R"]:
-                if "voltage" in self.poisson_options[lead] and self.poisson_options[lead]["voltage"]:
-                    assert self.stru_options[lead]["voltage"] == self.poisson_options[lead]["voltage"], f"{lead} voltage should be consistent"
-                else:
-                    self.poisson_options[lead]["voltage"] = self.stru_options[lead]["voltage"]
-        self.Dirichlet_region = [self.poisson_options[i] for i in self.poisson_options if i.startswith("gate")\
-                                    or i.startswith("lead")]
-        self.dielectric_region = [self.poisson_options[i] for i in self.poisson_options if i.startswith("dielectric")]
-        self.doped_region = [self.poisson_options[i] for i in self.poisson_options if i.startswith("doped")]
 
 
 
@@ -658,7 +665,32 @@ class NEGF(object):
 
         # grid = Grid(xg,yg,zg,xa,ya,za)
         grid = Grid(xg,yg,za,xa,ya,za) #TODO: change back to zg
-        return grid       
+        return grid     
+
+    def get_nel_atom_lead(self, struct_leads, poisson_options, doped_region):
+        nel_atom = self.stru_options.get("nel_atom", None)
+        if nel_atom is None:
+            log.warning(msg="nel_atom is None, using valence electron number by default")
+        nel_atom_lead = {}
+        for lead_tag in ["lead_L", "lead_R"]:
+            nel_atom_lead[lead_tag] = {}
+            unique_elements = struct_leads[lead_tag].get_chemical_symbols()
+            for ele in unique_elements:
+                if nel_atom is None:
+                    if ele not in valence_electron:
+                        raise ValueError(f"Element {ele} is not in the valence electron dictionary")
+                    nel_atom_lead[lead_tag][ele] = valence_electron[ele]
+                else:
+                    if ele not in nel_atom:
+                        raise ValueError(f"Element {ele} is not in the nel_atom dictionary")
+                    nel_atom_lead[lead_tag][ele] = nel_atom[ele]
+            # subtract dope charge if the lead is fully covered by a doped region
+            lead_region = poisson_options[lead_tag]
+            for doped in doped_region:
+                if is_fully_covered(lead_region, doped):
+                    for key in nel_atom_lead[lead_tag].keys():
+                        nel_atom_lead[lead_tag][key] -= float(doped["charge"])
+        return nel_atom_lead  
     
     def fermi_dirac(self, x) -> torch.Tensor:
         return 1 / (1 + torch.exp(x / self.kBT))

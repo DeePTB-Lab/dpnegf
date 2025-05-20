@@ -1075,6 +1075,8 @@ def stru_options():
     doc_lead_R = ""
     doc_gamma_center=""
     doc_time_reversal_symmetry=""
+    doc_e_fermi_smearing="The smearing method for Fermi level."
+    doc_nel_atom = "The number of electrons in each element."
     return [
         Argument("device", dict, optional=False, sub_fields=device(), doc=doc_device),
         Argument("lead_L", dict, optional=False, sub_fields=lead(), doc=doc_lead_L),
@@ -1083,7 +1085,8 @@ def stru_options():
         Argument("pbc", list, optional=True, default=[False, False, False], doc=doc_pbc),
         Argument("gamma_center", list, optional=True, default=True, doc=doc_gamma_center),
         Argument("time_reversal_symmetry", list, optional=True, default=True, doc=doc_time_reversal_symmetry),
-        Argument("e_fermi_smearing", str, optional=True, default="FD", doc="The smearing method for Fermi level. Default: FD"),
+        Argument("e_fermi_smearing", str, optional=True, default="FD", doc=doc_e_fermi_smearing),
+        Argument("nel_atom", [dict,None], optional=True, default=None, doc=doc_nel_atom)
     ]
 
 def device():
