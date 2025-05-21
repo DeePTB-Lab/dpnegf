@@ -244,7 +244,7 @@ class Fiori(Density):
                                 device_atom_norbs,potential_at_atom,with_Dirichlet_leads,free_charge,
                                 eta_lead=1e-5, eta_device=1e-5):
         if integrate_way == "gauss":
-            assert self.n_gauss is not None, "n_gauss must be set in the Fiori class"
+            assert self.n_gauss is not None, "n_gauss must be set in the Fiori class with gauss integration"
             if self.xs is None:
                 self.xs, self.wlg = gauss_xw(xl=torch.scalar_tensor(e_grid[0]), xu=torch.scalar_tensor(e_grid[-1]), n=self.n_gauss)
                 # self.xs = self.xs.numpy();self.wlg = self.wlg.numpy()
@@ -260,7 +260,7 @@ class Fiori(Density):
             integrate_range = e_grid
             pre_factor = dE * torch.ones(len(e_grid))
         else:
-            raise ValueError("integrate_way only supports gauss and direct in this version")
+            raise ValueError("integrate_way only supports 'gauss' and 'direct' in this version")
 
 
 
@@ -278,7 +278,7 @@ class Fiori(Density):
                 deviceprop.lead_L.self_energy(kpoint=kpoint, energy=e, eta_lead=eta_lead, save=True)
                 deviceprop.lead_R.self_energy(kpoint=kpoint, energy=e, eta_lead=eta_lead, save=True)
             
-            
+             
             deviceprop.cal_green_function(energy=e, kpoint=kpoint, block_tridiagonal=block_tridiagonal,\
                                           eta_device=eta_device,Vbias = Vbias)
 
