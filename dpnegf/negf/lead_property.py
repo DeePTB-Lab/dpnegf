@@ -78,7 +78,7 @@ class LeadProperty(object):
         self.kBT = Boltzmann * e_T / eV2J
         self.e_T = e_T
         self.efermi = efermi
-        self.mu = self.efermi - self.voltage
+        self.chemiPot_lead = self.efermi - self.voltage # unit: eV
         self.kpoint = None
         self.voltage_old = None
         
@@ -158,14 +158,14 @@ class LeadProperty(object):
             HDL_reduced, SDL_reduced = self.HDL_reduced(self.HDLk, self.SDLk)
             
             self.se, _ = selfEnergy(
-                ee=energy,
+                ee=energy + self.efermi,
                 hL=self.HLk,
                 hLL=self.HLLk,
                 sL=self.SLk,
                 sLL=self.SLLk,
                 hDL=HDL_reduced,
                 sDL=SDL_reduced,             #TODO: check chemiPot settiing is correct or not
-                chemiPot=self.mu,
+                voltage=self.voltage,
                 etaLead=eta_lead, 
                 method=method
             )
@@ -187,12 +187,12 @@ class LeadProperty(object):
                     = self.hamiltonian.get_hs_lead(k_bloch, tab=self.tab, v=self.voltage)
                 
                 _, sgf = selfEnergy(
-                    ee=energy,
+                    ee=energy + self.efermi,
                     hL=self.HLk,
                     hLL=self.HLLk,
                     sL=self.SLk,
                     sLL=self.SLLk,            #TODO: check chemiPot settiing is correct or not
-                    chemiPot=self.mu, # temmporarily change to self.efermi for the case in which applying lead bias to corresponding to Nanotcad
+                    voltage=self.voltage, # temmporarily change to self.efermi for the case in which applying lead bias to corresponding to Nanotcad
                     etaLead=eta_lead, 
                     method=method
                 )
@@ -216,9 +216,9 @@ class LeadProperty(object):
             HDL_reduced, SDL_reduced = self.HDL_reduced(self.HDLk, self.SDLk) 
             # HDL_reduced, SDL_reduced = self.HDL, self.SDL
             if not isinstance(energy, torch.Tensor):
-                eeshifted = torch.scalar_tensor(energy, dtype=torch.complex128) + self.mu
+                eeshifted = torch.scalar_tensor(energy, dtype=torch.complex128) + self.efermi + self.voltage
             else:
-                eeshifted = energy + self.mu
+                eeshifted = energy + self.efermi + self.voltage
             # self.se = (eeshifted*self.SDL-self.HDL) @ sgf_k[:b,:b] @ (eeshifted*self.SDL.conj().T-self.HDL.conj().T)
             self.se = (eeshifted*SDL_reduced-HDL_reduced) @ sgf_k[:b,:b] @ (eeshifted*SDL_reduced.conj().T-HDL_reduced.conj().T)
 
@@ -292,7 +292,7 @@ class LeadProperty(object):
         return 1j * (se - se.conj().T)
     
     def fermi_dirac(self, x) -> torch.Tensor:
-        return 1 / (1 + torch.exp((x - self.mu)/ self.kBT))
+        return 1 / (1 + torch.exp((x - self.chemiPot_lead)/ self.kBT))
     
     @property
     def gamma(self):

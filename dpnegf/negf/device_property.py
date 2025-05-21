@@ -76,7 +76,8 @@ class DeviceProperty(object):
             calculate density matrix     
         
     '''    
-    def __init__(self, hamiltonian, structure, results_path, e_T=300, efermi=0.) -> None:
+    def __init__(self, hamiltonian, structure, results_path, e_T=300, 
+                 efermi: dict=None, chemiPot: dict=None, E_ref: float=None ) -> None:
         self.greenfuncs = 0
         self.hamiltonian = hamiltonian
         self.structure = structure # ase Atoms
@@ -86,7 +87,13 @@ class DeviceProperty(object):
         self.kBT = Boltzmann * e_T / eV2J
         self.e_T = e_T
         self.efermi = efermi
-        self.mu = self.efermi
+        self.chemiPot = chemiPot
+        if E_ref is None:
+            self.E_ref = efermi
+            log.info(f"Using efermi as E_ref in DeviceProperty: {self.E_ref}")
+        else:
+            self.E_ref = E_ref
+
         self.kpoint = None  # kpoint for cal_green_function
         self.newK_flag = None # whether the kpoint is new or not in cal_green_function
         self.newV_flag = None # whether the voltage is new or not in cal_green_function
@@ -158,8 +165,8 @@ class DeviceProperty(object):
         if Vbias is None:
             if os.path.exists(os.path.join(self.results_path, "POTENTIAL.pth")):
                 self.V = torch.load(os.path.join(self.results_path, "POTENTIAL.pth"))
-            elif abs(self.mu - self.efermi) > 1e-7:
-                self.V = torch.tensor(self.efermi - self.mu)
+            # elif abs([self.chemiPot[lead] - self.efermi[lead] for lead in ["lead_L","lead_R"]]).max() > 1e-7:
+            #     self.V = torch.tensor(self.efermi - self.chemiPot)
             else:
                 self.V = torch.tensor(0.)
         else:
@@ -187,10 +194,9 @@ class DeviceProperty(object):
         
         seL = self.lead_L.se
         seR = self.lead_R.se
-        # seinL = -i \Sigma_L^< = \Gamma_L f_L
         # Fluctuation-Dissipation theorem
-        seinL = 1j*(seL-seL.conj().T) * self.lead_L.fermi_dirac(energy+self.mu).reshape(-1)
-        seinR = 1j*(seR-seR.conj().T) * self.lead_R.fermi_dirac(energy+self.mu).reshape(-1)
+        seinL = 1j*(seL-seL.conj().T) * self.lead_L.fermi_dirac(energy+self.E_ref).reshape(-1)
+        seinR = 1j*(seR-seR.conj().T) * self.lead_R.fermi_dirac(energy+self.E_ref).reshape(-1)
         s01, s02 = s_in[0].shape # The shape of the first H block
         se01, se02 = seL.shape # The shape of the left self-energy
         s11, s12 = s_in[-1].shape
@@ -217,7 +223,7 @@ class DeviceProperty(object):
         ans = recursive_gf(energy, hl=self.hl, hd=self.hd, hu=self.hu,
                             sd=self.sd, su=self.su, sl=self.sl, 
                             left_se=seL, right_se=seR, seP=None, s_in=s_in,
-                            s_out=None, eta=eta_device, chemiPot=self.mu)
+                            s_out=None, eta=eta_device, E_ref = self.E_ref)
         s_in[0][:idx0,:idy0] = s_in[0][:idx0,:idy0] - seinL[:idx0,:idy0]
         s_in[-1][-idx1:,-idy1:] = s_in[-1][-idx1:,-idy1:] - seinR[-idx1:,-idy1:]
             # green shape [[g_trans, grd, grl,...],[g_trans, ...]]
@@ -236,7 +242,9 @@ class DeviceProperty(object):
         '''calculate the current based on the voltage difference 
 
         At this stage, this method only supports the calculation of the current in the 
-        non-self-consistent field (nscf) calculation. So this function is not used.
+        non-self-consistent field (nscf) calculation. 
+        
+        So this function is not used.
         
         Parameters
         ----------
@@ -258,8 +266,10 @@ class DeviceProperty(object):
         cc = leggauss(fcn=self._cal_tc_)
         
         int_grid, int_weight = gauss_xw(xl=xl, xu=xu, n=int((xu-xl)/espacing))
+        
 
-        self.__CURRENT__ = simpson((self.lead_L.fermi_dirac(self.ee+self.mu) - self.lead_R.fermi_dirac(self.ee+self.mu)) * self.tc, self.ee)
+        self.__CURRENT__ = simpson(y=(self.lead_L.fermi_dirac(self.ee+self.E_ref) 
+                                    - self.lead_R.fermi_dirac(self.ee+self.E_ref)) * self.tc, x=self.ee)
 
     def _cal_current_nscf_(self, energy_grid, tc):
         '''calculates the non self consistent field (nscf) current.
@@ -279,6 +289,8 @@ class DeviceProperty(object):
             calculated current
 
         '''
+        assert abs(self.lead_L.efermi-self.lead_R.efermi)<5e-4, "The Fermi energy of the left and right leads should be equal in nscf calculation."
+        efermi = self.lead_L.efermi
         f = lambda x,mu: 1 / (1 + torch.exp((x - mu) / self.kBT))
 
         emin = energy_grid.min()
@@ -292,16 +304,17 @@ class DeviceProperty(object):
         cc = []
 
         for dv in vv * 0.5:
-            I = simpson(y=(f(energy_grid+self.mu, self.lead_L.efermi-vm+dv) - f(energy_grid+self.mu, self.lead_R.efermi-vm-dv)) * tc, x=energy_grid)
+            I = simpson(y=(f(energy_grid+efermi, efermi-vm+dv) 
+                           -f(energy_grid+efermi, efermi-vm-dv)) * tc, x=energy_grid)
             cc.append(I)
 
         return vv, cc
     
-    def fermi_dirac(self, x) -> torch.Tensor:
-        '''
-        calculates the Fermi-Dirac distribution function for a given energy.
-        '''
-        return 1 / (1 + torch.exp((x - self.mu) / self.kBT))
+    # def fermi_dirac(self, x) -> torch.Tensor:
+    #     '''
+    #     calculates the Fermi-Dirac distribution function for a given energy.
+    #     '''
+    #     return 1 / (1 + torch.exp((x - self.chemiPot) / self.kBT))
 
 
     def _cal_tc_(self):

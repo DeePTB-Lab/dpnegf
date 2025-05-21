@@ -65,6 +65,7 @@ class NEGF(object):
         self.eta_lead = eta_lead; self.eta_device = eta_device
         self.emin = emin; self.emax = emax; self.espacing = espacing
         self.stru_options = stru_options
+        self.poisson_options = poisson_options
         if e_fermi is None:
             for lead in ["lead_L", "lead_R"]:
                 assert "kmesh_lead_Ef" in self.stru_options[lead], f"{lead} must have 'kmesh_lead_Ef' set in stru_options if e_fermi is None"
@@ -116,7 +117,16 @@ class NEGF(object):
         self.unit = unit
         self.scf = scf
         self.block_tridiagonal = block_tridiagonal
-        # computing the hamiltonian  #需要改写NEGFHamiltonianInit   
+        for lead_tag in ["lead_L", "lead_R"]:
+            if self.scf:
+                if "voltage" in self.poisson_options[lead_tag] and self.poisson_options[lead_tag]["voltage"]:
+                    assert self.stru_options[lead_tag]["voltage"] == self.poisson_options[lead_tag]["voltage"], f"{lead_tag} voltage should be consistent"
+                else:
+                    self.poisson_options[lead_tag]["voltage"] = self.stru_options[lead_tag]["voltage"]
+            else:
+                assert self.stru_options[lead_tag]["voltage"] == 0, f"{lead_tag} voltage should be 0 in non-scf calculation"
+
+        # computing the hamiltonian
         self.negf_hamiltonian = NEGFHamiltonianInit(model=model,
                                                     AtomicData_options=AtomicData_options, 
                                                     structure=structure,
@@ -134,16 +144,8 @@ class NEGF(object):
                                                  use_saved_HS=self.use_saved_HS, saved_HS_path=self.saved_HS_path)
 
         ## Poisson equation settings
-        self.poisson_options = poisson_options
-        # self.LDOS_integral = {}  # for electron density integral
         self.free_charge = {} # net charge: hole - electron
         # Dirichlet region for Poisson equation
-        if self.scf:
-            for lead_tag in ["lead_L", "lead_R"]:
-                if "voltage" in self.poisson_options[lead_tag] and self.poisson_options[lead_tag]["voltage"]:
-                    assert self.stru_options[lead_tag]["voltage"] == self.poisson_options[lead_tag]["voltage"], f"{lead_tag} voltage should be consistent"
-                else:
-                    self.poisson_options[lead_tag]["voltage"] = self.stru_options[lead_tag]["voltage"]
         self.Dirichlet_region = [self.poisson_options[i] for i in self.poisson_options if i.startswith("gate")\
                                     or i.startswith("lead")]
         self.dielectric_region = [self.poisson_options[i] for i in self.poisson_options if i.startswith("dielectric")]
@@ -169,16 +171,25 @@ class NEGF(object):
         else:
             e_fermi["lead_L"] = self.e_fermi
             e_fermi["lead_R"] = self.e_fermi
-            log.warning(msg="Fermi level is set to {0} from input file".format(self.e_fermi))
+            log.info(msg="Fermi level is set to {0} from input file".format(self.e_fermi))
         
         self.e_fermi = e_fermi
+        chemiPot = {lead: e_fermi[lead] - self.stru_options[lead]["voltage"]  for lead in ["lead_L", "lead_R"]}
+        # set the chemical potential for the leads
+        E_ref = 0.5 * (chemiPot["lead_L"] + chemiPot["lead_R"]) # Energy reference point
+
         log.info(msg="Fermi level for lead_L: {0}".format(e_fermi["lead_L"]))
         log.info(msg="Fermi level for lead_R: {0}".format(e_fermi["lead_R"]))
+        if abs(e_fermi["lead_L"]-e_fermi["lead_R"]) > 5e-4:
+            raise ValueError("This is a heterogeneous system, which is not supported in this version.")
+        # In this version, dpnegf does not support the heterogeneous case, where the Fermi level is different in the leads
+        # because left-lead and right-lead Fermi level are calculated separately, which may be erroneous due to different vaccum level
+
         log.info(msg="=================================================\n")
 
         # initialize deviceprop and leadprop
-        self.deviceprop = DeviceProperty(self.negf_hamiltonian, struct_device, results_path=self.results_path, \
-                                         efermi=self.e_fermi)
+        self.deviceprop = DeviceProperty(self.negf_hamiltonian, struct_device, results_path=self.results_path,
+                                         efermi=self.e_fermi, chemiPot=chemiPot, E_ref=E_ref)
         self.deviceprop.set_leadLR(
                 lead_L=LeadProperty(
                 hamiltonian=self.negf_hamiltonian, 
@@ -211,7 +222,6 @@ class NEGF(object):
         )
 
         # initialize density class
-        # self.density_options = j_must_have(self.jdata, "density_options")
         self.density_options = density_options
         if self.density_options["method"] == "Ozaki":
             self.density = Ozaki(R=self.density_options["R"], 
@@ -288,7 +298,7 @@ class NEGF(object):
 
         if cal_pole and  self.density_options["method"] == "Ozaki":
             self.poles, self.residues = ozaki_residues(M_cut=self.density_options["M_cut"])
-            self.poles = 1j* self.poles * self.kBT + self.deviceprop.lead_L.mu - self.deviceprop.mu
+            self.poles = 1j* self.poles * self.kBT + self.deviceprop.lead_L.chemiPot - self.deviceprop.chemiPot
 
         if cal_int_grid:
             xl = torch.tensor(min(v_list)-8*self.kBT)
@@ -453,8 +463,8 @@ class NEGF(object):
                     else:
                         # TODO: consider the case with heterogeneous Dirichlet leads
                         # In this case, the Dirichlet conditions in leads and gate are set as electrochemical potential(Fermi level + voltage)
-                        assert getattr(self.deviceprop, "lead_L").voltage == self.stru_options["lead_L"]["voltage"]
-                        assert getattr(self.deviceprop, "lead_R").voltage == self.stru_options["lead_R"]["voltage"]
+                        for lead_tag in ["lead_L", "lead_R"]:
+                            assert getattr(self.deviceprop, lead_tag).voltage == self.stru_options[lead_tag]["voltage"]
 
                     if self.negf_hamiltonian.subblocks is None:
                             self.negf_hamiltonian.subblocks = self.negf_hamiltonian.get_hs_device(only_subblocks=True)
