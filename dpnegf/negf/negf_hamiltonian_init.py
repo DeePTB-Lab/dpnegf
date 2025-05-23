@@ -384,12 +384,6 @@ class NEGFHamiltonianInit(object):
                     hL[ik][torch.abs(hL[ik])<h_lead_threshold] = 0
                     hLL[ik][torch.abs(hLL[ik])<h_lead_threshold] = 0
 
-                # update the lead HR if the leads are doped
-                # bias_shift = -1*self.stru_options[kk]["voltage"] #eV
-                # for ik in range(HK.shape[0]):
-                #     hL[ik] = hL[ik] + bias_shift * sL[ik]
-                #     hLL[ik] = hLL[ik] + bias_shift * sLL[ik]
-                #     HDL[ik] = HDL[ik] + bias_shift * SDL[ik]
 
                 HS_leads.update({
                     "HL":hL.cdouble()*self.h_factor, 
