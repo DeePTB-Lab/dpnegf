@@ -172,7 +172,7 @@ class ElecStruCal(object):
 
     def get_fermi_level(self, data: Union[AtomicData, ase.Atoms, str], nel_atom: dict, \
                         meshgrid: list = None, klist: np.ndarray=None, pbc:Union[bool,list]=None,AtomicData_options:dict=None,
-                        q_tol:float=1e-10,smearing_method:str='FD',temp:float=300,Vbias:float=None):
+                        q_tol:float=1e-10,smearing_method:str='FD',temp:float=300):
         '''This function calculates the Fermi level based on provided data with iteration method, electron counts per atom, and
         optional parameters like specific k-points and eigenvalues.
         
@@ -239,9 +239,6 @@ class ElecStruCal(object):
             log.info('The eigenvalues are already in data. will use them.')
             eigs = data[AtomicDataDict.ENERGY_EIGENVALUE_KEY][0].detach().cpu().numpy()
 
-        if Vbias is not None:
-            log.info(f'Adding vbias to the eigenvalues.')
-            eigs = eigs - Vbias # unit: eV
             
         if nel_atom is not None:
             atomtype_list = data[AtomicDataDict.ATOM_TYPE_KEY].flatten().tolist()
