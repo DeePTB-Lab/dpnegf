@@ -66,10 +66,10 @@ class LeadProperty(object):
         calculate the Gamma function from the self energy.
 
     '''
-    def __init__(self, tab, hamiltonian, structure, results_path, voltage,\
+    def __init__(self, tab, hamiltonian, structure, results_path, voltage, \
                  structure_leads_fold:ase.Atoms=None,bloch_sorted_indice:torch.Tensor=None, useBloch: bool=False, \
                     bloch_factor: List[int]=[1,1,1],bloch_R_list:List=None,\
-                    e_T=300, efermi=0.0) -> None:
+                    e_T=300, efermi:float=0.0, E_ref:float=None) -> None:
         self.hamiltonian = hamiltonian
         self.structure = structure
         self.tab = tab
@@ -78,7 +78,11 @@ class LeadProperty(object):
         self.kBT = Boltzmann * e_T / eV2J
         self.e_T = e_T
         self.efermi = efermi
-        self.chemiPot_lead = self.efermi - self.voltage # unit: eV
+        if E_ref is None:
+            self.E_ref = efermi
+        else:
+            self.E_ref = E_ref
+        self.chemiPot_lead = self.efermi # unit: eV
         self.kpoint = None
         self.voltage_old = None
         
@@ -158,14 +162,14 @@ class LeadProperty(object):
             HDL_reduced, SDL_reduced = self.HDL_reduced(self.HDLk, self.SDLk)
             
             self.se, _ = selfEnergy(
-                ee=energy + self.efermi,
+                ee=energy,
                 hL=self.HLk,
                 hLL=self.HLLk,
                 sL=self.SLk,
                 sLL=self.SLLk,
                 hDL=HDL_reduced,
                 sDL=SDL_reduced,             #TODO: check chemiPot settiing is correct or not
-                voltage=self.voltage,
+                E_ref=self.E_ref,
                 etaLead=eta_lead, 
                 method=method
             )
@@ -187,12 +191,12 @@ class LeadProperty(object):
                     = self.hamiltonian.get_hs_lead(k_bloch, tab=self.tab, v=self.voltage)
                 
                 _, sgf = selfEnergy(
-                    ee=energy + self.efermi,
+                    ee=energy,
                     hL=self.HLk,
                     hLL=self.HLLk,
                     sL=self.SLk,
                     sLL=self.SLLk,            #TODO: check chemiPot settiing is correct or not
-                    voltage=self.voltage, # temmporarily change to self.efermi for the case in which applying lead bias to corresponding to Nanotcad
+                    E_ref=self.E_ref, # temmporarily change to self.efermi for the case in which applying lead bias to corresponding to Nanotcad
                     etaLead=eta_lead, 
                     method=method
                 )
@@ -216,9 +220,9 @@ class LeadProperty(object):
             HDL_reduced, SDL_reduced = self.HDL_reduced(self.HDLk, self.SDLk) 
             # HDL_reduced, SDL_reduced = self.HDL, self.SDL
             if not isinstance(energy, torch.Tensor):
-                eeshifted = torch.scalar_tensor(energy, dtype=torch.complex128) + self.efermi + self.voltage
+                eeshifted = torch.scalar_tensor(energy, dtype=torch.complex128) + self.E_ref
             else:
-                eeshifted = energy + self.efermi + self.voltage
+                eeshifted = energy + self.E_ref
             # self.se = (eeshifted*self.SDL-self.HDL) @ sgf_k[:b,:b] @ (eeshifted*self.SDL.conj().T-self.HDL.conj().T)
             self.se = (eeshifted*SDL_reduced-HDL_reduced) @ sgf_k[:b,:b] @ (eeshifted*SDL_reduced.conj().T-HDL_reduced.conj().T)
 

@@ -3,7 +3,7 @@ from dpnegf.negf.negf_utils import quad, gauss_xw,leggauss,update_kmap
 from dpnegf.utils.constants import valence_electron
 from dpnegf.negf.ozaki_res_cal import ozaki_residues
 from dpnegf.negf.negf_hamiltonian_init import NEGFHamiltonianInit
-from dptb.postprocess.elec_struc_cal import ElecStruCal
+from dpnegf.utils.elec_struc_cal import ElecStruCal
 from dpnegf.negf.density import Ozaki,Fiori
 from dpnegf.negf.device_property import DeviceProperty
 from dpnegf.negf.lead_property import LeadProperty
@@ -162,31 +162,35 @@ class NEGF(object):
             log.info(msg="Number of electrons in lead_L: {0}".format(nel_atom_lead["lead_L"]))
             log.info(msg="Number of electrons in lead_R: {0}".format(nel_atom_lead["lead_R"]))
             for lead_tag in ["lead_L", "lead_R"]:
+                # in non-zero bias case, the voltage effect is included in the Fermi level calculation
+                # Therefore in this case the e_fermi is electrochemical potential
                 _, e_fermi[lead_tag]  = elec_cal.get_fermi_level(data=struct_leads[lead_tag], 
                                 nel_atom = nel_atom_lead[lead_tag],
                                 meshgrid=self.stru_options[lead_tag]["kmesh_lead_Ef"],
                                 AtomicData_options=AtomicData_options,
                                 smearing_method=self.stru_options.get("e_fermi_smearing", "FD"),
-                                temp=100.0)
+                                temp=100.0,Vbias=self.stru_options[lead_tag]["voltage"])
         else:
             e_fermi["lead_L"] = self.e_fermi
             e_fermi["lead_R"] = self.e_fermi
             log.info(msg="Fermi level is set to {0} from input file".format(self.e_fermi))
+            log.warning(msg="This should be zero-bias system with homogeneous leads.")
         
         self.e_fermi = e_fermi
-        chemiPot = {lead: e_fermi[lead] - self.stru_options[lead]["voltage"]  for lead in ["lead_L", "lead_R"]}
-        # set the chemical potential for the leads
-        E_ref = 0.5 * (chemiPot["lead_L"] + chemiPot["lead_R"]) # Energy reference point
-
-        log.info(msg="Fermi level for lead_L: {0}".format(e_fermi["lead_L"]))
-        log.info(msg="Fermi level for lead_R: {0}".format(e_fermi["lead_R"]))
-        if abs(e_fermi["lead_L"]-e_fermi["lead_R"]) > 5e-4:
-            raise ValueError("This is a heterogeneous system, which is not supported in this version.")
-        # In this version, dpnegf does not support the heterogeneous case, where the Fermi level is different in the leads
-        # because left-lead and right-lead Fermi level are calculated separately, which may be erroneous due to different vaccum level
-
+        chemiPot = {lead: e_fermi[lead] for lead in ["lead_L", "lead_R"]}
+        if abs(self.e_fermi["lead_L"]-self.e_fermi["lead_R"]) > 5e-4: # non-zero bias
+            assert abs(self.stru_options["lead_L"]["voltage"]-self.stru_options["lead_R"]["voltage"]) > 5e-4, "This is a heterogeneous system, which is not supported in this version."
+            E_ref = 0.5 * (chemiPot["lead_L"] + chemiPot["lead_R"]) 
+            log.info(msg="Electrochemical potential for lead_L: {0}".format(chemiPot["lead_L"]))
+            log.info(msg="Electrochemical potential for lead_R: {0}".format(chemiPot["lead_R"]))
+            # In this version, dpnegf does not support the heterogeneous case, where the Fermi level is different in the leads
+            # because left-lead and right-lead Fermi level are calculated separately, which may be erroneous due to different vaccum level
+        else: # zero bias
+            E_ref = self.e_fermi["lead_L"]
+            log.info(msg="Fermi level for lead_L: {0}".format(e_fermi["lead_L"]))
+            log.info(msg="Fermi level for lead_R: {0}".format(e_fermi["lead_R"]))
         log.info(msg="=================================================\n")
-
+        # E_ref = self.e_fermi["lead_L"]
         # initialize deviceprop and leadprop
         self.deviceprop = DeviceProperty(self.negf_hamiltonian, struct_device, results_path=self.results_path,
                                          efermi=self.e_fermi, chemiPot=chemiPot, E_ref=E_ref)
@@ -199,6 +203,7 @@ class NEGF(object):
                 e_T=self.ele_T,
                 efermi=self.e_fermi["lead_L"], 
                 voltage=self.stru_options["lead_L"]["voltage"],
+                E_ref=E_ref,
                 useBloch=self.useBloch,
                 bloch_factor=self.bloch_factor,
                 structure_leads_fold=structure_leads_fold["lead_L"],
@@ -213,6 +218,7 @@ class NEGF(object):
                 e_T=self.ele_T,
                 efermi=self.e_fermi["lead_R"], 
                 voltage=self.stru_options["lead_R"]["voltage"],
+                E_ref=E_ref,
                 useBloch=self.useBloch,
                 bloch_factor=self.bloch_factor,
                 structure_leads_fold=structure_leads_fold["lead_R"],

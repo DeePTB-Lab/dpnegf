@@ -289,7 +289,8 @@ class DeviceProperty(object):
             calculated current
 
         '''
-        assert abs(self.lead_L.efermi-self.lead_R.efermi)<5e-4, "The Fermi energy of the left and right leads should be equal in nscf calculation."
+        if abs(self.lead_L.efermi-self.lead_R.efermi)<5e-4:
+            log.warning(msg="The Fermi energy of the left and right leads should be equal in nscf current calculation.")
         efermi = self.lead_L.efermi
         f = lambda x,mu: 1 / (1 + torch.exp((x - mu) / self.kBT))
 
