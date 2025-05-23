@@ -82,7 +82,7 @@ class LeadProperty(object):
             self.E_ref = efermi
         else:
             self.E_ref = E_ref
-        self.chemiPot_lead = self.efermi # unit: eV
+        self.chemiPot_lead = efermi - voltage
         self.kpoint = None
         self.voltage_old = None
         

@@ -153,9 +153,9 @@ class NEGF(object):
 
 
 
-        # calculate Fermi level
+        # calculate Fermi level and electrochemical potential
         log.info(msg="-------------Fermi level calculation-------------")
-        e_fermi = {}
+        e_fermi = {}; chemiPot = {}
         if not self.e_fermi:        
             elec_cal = ElecStruCal(model=model,device=self.torch_device)
             nel_atom_lead = self.get_nel_atom_lead(struct_leads, self.poisson_options, self.doped_region)
@@ -169,28 +169,33 @@ class NEGF(object):
                                 meshgrid=self.stru_options[lead_tag]["kmesh_lead_Ef"],
                                 AtomicData_options=AtomicData_options,
                                 smearing_method=self.stru_options.get("e_fermi_smearing", "FD"),
-                                temp=100.0,Vbias=self.stru_options[lead_tag]["voltage"])
+                                temp=100.0)
         else:
             e_fermi["lead_L"] = self.e_fermi
             e_fermi["lead_R"] = self.e_fermi
             log.info(msg="Fermi level is set to {0} from input file".format(self.e_fermi))
             log.warning(msg="This should be zero-bias system with homogeneous leads.")
         
+        
+        for lead_tag in ["lead_L", "lead_R"]:
+            chemiPot[lead_tag] = e_fermi[lead_tag] - self.stru_options[lead_tag]["voltage"]
+        
         self.e_fermi = e_fermi
-        chemiPot = {lead: e_fermi[lead] for lead in ["lead_L", "lead_R"]}
-        if abs(self.e_fermi["lead_L"]-self.e_fermi["lead_R"]) > 5e-4: # non-zero bias
+        self.chemiPot = chemiPot
+            
+        if abs(self.chemiPot["lead_L"]-self.chemiPot["lead_R"]) > 5e-4: # non-zero bias
             assert abs(self.stru_options["lead_L"]["voltage"]-self.stru_options["lead_R"]["voltage"]) > 5e-4, "This is a heterogeneous system, which is not supported in this version."
-            E_ref = 0.5 * (chemiPot["lead_L"] + chemiPot["lead_R"]) 
-            log.info(msg="Electrochemical potential for lead_L: {0}".format(chemiPot["lead_L"]))
-            log.info(msg="Electrochemical potential for lead_R: {0}".format(chemiPot["lead_R"]))
+            E_ref = 0.5 * (self.chemiPot["lead_L"] + self.chemiPot["lead_R"]) 
+            log.info(msg="Electrochemical potential for lead_L: {0}".format(self.chemiPot["lead_L"]))
+            log.info(msg="Electrochemical potential for lead_R: {0}".format(self.chemiPot["lead_R"]))
             # In this version, dpnegf does not support the heterogeneous case, where the Fermi level is different in the leads
             # because left-lead and right-lead Fermi level are calculated separately, which may be erroneous due to different vaccum level
         else: # zero bias
             E_ref = self.e_fermi["lead_L"]
-            log.info(msg="Fermi level for lead_L: {0}".format(e_fermi["lead_L"]))
-            log.info(msg="Fermi level for lead_R: {0}".format(e_fermi["lead_R"]))
+            log.info(msg="Fermi level for lead_L: {0}".format(self.e_fermi["lead_L"]))
+            log.info(msg="Fermi level for lead_R: {0}".format(self.e_fermi["lead_R"]))
         log.info(msg="=================================================\n")
-        # E_ref = self.e_fermi["lead_L"]
+
         # initialize deviceprop and leadprop
         self.deviceprop = DeviceProperty(self.negf_hamiltonian, struct_device, results_path=self.results_path,
                                          efermi=self.e_fermi, chemiPot=chemiPot, E_ref=E_ref)

@@ -86,7 +86,7 @@ class DeviceProperty(object):
         self.device = "cpu"
         self.kBT = Boltzmann * e_T / eV2J
         self.e_T = e_T
-        self.efermi = efermi
+        # self.efermi = efermi
         self.chemiPot = chemiPot
         if E_ref is None:
             self.E_ref = efermi
