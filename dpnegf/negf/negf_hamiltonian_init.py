@@ -86,7 +86,7 @@ class NEGFHamiltonianInit(object):
             raise ValueError('structure must be ase.Atoms or str')
         
         # check the structure cell is larger than the range of device and leads
-        # In DeePTB-NEGF, the whole structure should be completely included in the cell
+        # In DPNEGF, the whole structure should be completely included in the cell
         # for correct prediction of Hamiltonian and overlap matrix.
         # TODO: Add support for non-ortho cell
         xrange,yrange,zrange = self.structase.positions[:,0].max()-self.structase.positions[:,0].min(),\
@@ -132,7 +132,7 @@ class NEGFHamiltonianInit(object):
         elif self.unit == "Ry":
             self.h_factor = 13.605662285137
         else:
-            log.error("The unit name is not correct !")
+            log.error(msg="The unit is not supported, please use Hartree, eV or Ry.")
             raise ValueError
 
         # obtain atom_norbs
