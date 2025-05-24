@@ -269,8 +269,8 @@ class Fiori(Density):
                 # Follow the NanoTCAD ViDES code:
                 #   Because the Dirichlet leads are not included, self-energy of the leads would be updated in each iteration
                 #   to ensure the Neuamnn boundary condition in the leads.
-                deviceprop.lead_L.self_energy(kpoint=kpoint, energy=e, eta_lead=eta_lead)
-                deviceprop.lead_R.self_energy(kpoint=kpoint, energy=e, eta_lead=eta_lead)
+                deviceprop.lead_L.self_energy(kpoint=kpoint, energy=e, eta_lead=eta_lead, save=False)
+                deviceprop.lead_R.self_energy(kpoint=kpoint, energy=e, eta_lead=eta_lead, save=False)
 
             else:
                 # For the Dirichlet leads, the self-energy of the leads is only calculated once and saved.

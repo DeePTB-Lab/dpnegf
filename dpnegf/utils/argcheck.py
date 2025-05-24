@@ -1103,12 +1103,15 @@ def lead():
     doc_voltage=""
     doc_useBloch=""
     doc_bloch_factor=""
+    doc_kmesh_lead_Ef = "The kmesh for lead Fermi level calculation."
+    doc_charge = "The charge of the doped lead, used for Fermi level calculation."
     return [
         Argument("id", str, optional=False, doc=doc_id),
         Argument("voltage", [int, float], optional=False, doc=doc_voltage),
         Argument("useBloch", bool, optional=True, default=False, doc=doc_useBloch),
         Argument("bloch_factor", list, optional=True, default=[1,1,1], doc=doc_bloch_factor),
-        Argument("kmesh_lead_Ef", list, optional=True, doc="The kmesh for lead Fermi level calculation."),
+        Argument("kmesh_lead_Ef", list, optional=True, doc=doc_kmesh_lead_Ef),
+        Argument("charge", [int, float], optional=True, default=0.0, doc=doc_charge)
     ]
 
 def scf_options():

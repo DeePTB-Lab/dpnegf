@@ -118,11 +118,9 @@ class NEGF(object):
         self.scf = scf
         self.block_tridiagonal = block_tridiagonal
         for lead_tag in ["lead_L", "lead_R"]:
-            if self.scf and lead_tag in self.poisson_options:
-                if "voltage" in self.poisson_options[lead_tag] and "voltage" in self.stru_options[lead_tag]:
+            if self.scf:
+                if "voltage" in self.poisson_options.get(lead_tag, {}) and "voltage" in self.stru_options[lead_tag]:
                     assert self.stru_options[lead_tag]["voltage"]==self.poisson_options[lead_tag]["voltage"], f"{lead_tag} voltage should be consistent"
-                else:
-                    self.poisson_options[lead_tag]["voltage"] = self.stru_options[lead_tag]["voltage"]
             else:
                 assert self.stru_options[lead_tag]["voltage"] == 0, f"{lead_tag} voltage should be 0 in non-scf calculation"
 
@@ -160,10 +158,14 @@ class NEGF(object):
         # calculate Fermi level
         if not self.e_fermi:        
             elec_cal = ElecStruCal(model=model,device=self.torch_device)
-            nel_atom_lead = self.get_nel_atom_lead(struct_leads, self.poisson_options, self.doped_region)
+            nel_atom_lead = self.get_nel_atom_lead(
+                                struct_leads, 
+                                charge={lead_tag: self.stru_options[lead_tag].get("charge", 0) for lead_tag in ["lead_L", "lead_R"]}
+                                )
             log.info(msg="Number of electrons in lead_L: {0}".format(nel_atom_lead["lead_L"]))
             log.info(msg="Number of electrons in lead_R: {0}".format(nel_atom_lead["lead_R"]))
             for lead_tag in ["lead_L", "lead_R"]:
+                log.info(msg="-----Calculating Fermi level for {0}-----".format(lead_tag))
                 _, e_fermi[lead_tag]  = elec_cal.get_fermi_level(data=struct_leads[lead_tag], 
                                 nel_atom = nel_atom_lead[lead_tag],
                                 meshgrid=self.stru_options[lead_tag]["kmesh_lead_Ef"],
@@ -182,7 +184,7 @@ class NEGF(object):
         
         self.e_fermi = e_fermi
         self.chemiPot = chemiPot
-        log.info(msg="-------------------------------------------------\n")
+        log.info(msg="-------------------------------------------------")
         if abs(self.chemiPot["lead_L"]-self.chemiPot["lead_R"]) > 5e-4: # non-zero bias case
             assert abs(self.stru_options["lead_L"]["voltage"]-self.stru_options["lead_R"]["voltage"]) > 5e-4, "This is a heterogeneous system, which is not supported in this version."
             E_ref = 0.5 * (self.chemiPot["lead_L"] + self.chemiPot["lead_R"]) 
@@ -690,7 +692,7 @@ class NEGF(object):
         grid = Grid(xg,yg,za,xa,ya,za) #TODO: change back to zg
         return grid     
 
-    def get_nel_atom_lead(self, struct_leads, poisson_options, doped_region):
+    def get_nel_atom_lead(self, struct_leads, charge:float=None):
         nel_atom = self.stru_options.get("nel_atom", None)
         if nel_atom is None:
             log.warning(msg="nel_atom is None, using valence electron number by default")
@@ -698,21 +700,19 @@ class NEGF(object):
         for lead_tag in ["lead_L", "lead_R"]:
             nel_atom_lead[lead_tag] = {}
             unique_elements = struct_leads[lead_tag].get_chemical_symbols()
-            for ele in unique_elements:
+            for elem in unique_elements:
                 if nel_atom is None:
-                    if ele not in valence_electron:
-                        raise ValueError(f"Element {ele} is not in the valence electron dictionary")
-                    nel_atom_lead[lead_tag][ele] = valence_electron[ele]
+                    if elem not in valence_electron:
+                        raise ValueError(f"Element {elem} is not in the valence electron dictionary")
+                    nel_atom_lead[lead_tag][elem] = valence_electron[elem]
                 else:
-                    if ele not in nel_atom:
-                        raise ValueError(f"Element {ele} is not in the nel_atom dictionary")
-                    nel_atom_lead[lead_tag][ele] = nel_atom[ele]
-            # subtract dope charge if the lead is fully covered by a doped region
-            lead_region = poisson_options[lead_tag]
-            for doped in doped_region:
-                if is_fully_covered(lead_region, doped):
-                    for key in nel_atom_lead[lead_tag].keys():
-                        nel_atom_lead[lead_tag][key] -= float(doped["charge"])
+                    if elem not in nel_atom:
+                        raise ValueError(f"Element {elem} is not in the nel_atom dictionary")
+                    nel_atom_lead[lead_tag][elem] = nel_atom[elem]
+            # subtract dope charge if the lead is doped
+            if charge is not None:
+                nel_atom_lead[lead_tag] = {elem: nel_atom_lead[lead_tag][elem] - charge[lead_tag] for elem in nel_atom_lead[lead_tag]}
+
         return nel_atom_lead  
     
     def fermi_dirac(self, x) -> torch.Tensor:
