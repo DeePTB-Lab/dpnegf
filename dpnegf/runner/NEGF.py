@@ -176,7 +176,6 @@ class NEGF(object):
             e_fermi["lead_L"] = self.e_fermi
             e_fermi["lead_R"] = self.e_fermi
             log.info(msg="Fermi level is set to {0} from input file".format(self.e_fermi))
-            log.warning(msg="This should be zero-bias system with homogeneous leads.")
         
         # calculate electrochemical potential
         for lead_tag in ["lead_L", "lead_R"]:
@@ -187,17 +186,24 @@ class NEGF(object):
         log.info(msg="-------------------------------------------------")
         if abs(self.chemiPot["lead_L"]-self.chemiPot["lead_R"]) > 5e-4: # non-zero bias case
             assert abs(self.stru_options["lead_L"]["voltage"]-self.stru_options["lead_R"]["voltage"]) > 5e-4, "This is a heterogeneous system, which is not supported in this version."
-            E_ref = 0.5 * (self.chemiPot["lead_L"] + self.chemiPot["lead_R"]) 
+            if self.poisson_options["with_Dirichlet_leads"]:
+                E_ref = 0.5 * (self.chemiPot["lead_L"] + self.chemiPot["lead_R"]) 
+            else: # NanoTCAD style NEGF-Poisson SCF
+                E_ref = self.e_fermi["lead_L"]
+                # In NanoTCAD Vides, the reference energy is set to the Fermi level of the whole system. Here we set it to the Fermi level of lead_L.
+                # In homogeneous case, the Fermi level of lead_L and lead_R are the same, so it does not matter.
             log.info(msg="Non-zero bias case detected.")
-            log.info(msg="Electrochemical potential for lead_L: {0}".format(self.chemiPot["lead_L"]))
-            log.info(msg="Electrochemical potential for lead_R: {0}".format(self.chemiPot["lead_R"]))
             # In this version, dpnegf does not support the heterogeneous case, where the Fermi level is different in the leads
             # because left-lead and right-lead Fermi level are calculated separately, which may be erroneous due to different vaccum level
         else: # zero bias case
             E_ref = self.e_fermi["lead_L"]
             log.info(msg="Zero bias case detected.")
-            log.info(msg="Fermi level for lead_L: {0}".format(self.e_fermi["lead_L"]))
-            log.info(msg="Fermi level for lead_R: {0}".format(self.e_fermi["lead_R"]))
+
+        log.info(msg="Fermi level for lead_L: {0}".format(self.e_fermi["lead_L"]))
+        log.info(msg="Fermi level for lead_R: {0}".format(self.e_fermi["lead_R"]))    
+        log.info(msg="Electrochemical potential for lead_L: {0}".format(self.chemiPot["lead_L"]))
+        log.info(msg="Electrochemical potential for lead_R: {0}".format(self.chemiPot["lead_R"]))        
+        log.info(msg="Reference energy E_ref: {0}".format(E_ref))
         log.info(msg="=================================================\n")
 
         # initialize deviceprop and leadprop
@@ -497,7 +503,8 @@ class NEGF(object):
                         with_Dirichlet_leads = self.poisson_options["with_Dirichlet_leads"],
                         free_charge = self.free_charge,
                         eta_lead = self.eta_lead,
-                        eta_device = self.eta_device
+                        eta_device = self.eta_device,
+                        E_ref = self.deviceprop.E_ref
                         )
                 else:
                     # TODO: add Ozaki support for NanoTCAD-style SCF
