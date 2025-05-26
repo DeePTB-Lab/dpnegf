@@ -241,7 +241,7 @@ class Fiori(Density):
         self.e_grid_Fiori = None
 
     def density_integrate_Fiori(self,e_grid,kpoint,Vbias,block_tridiagonal,subblocks,integrate_way,deviceprop,
-                                device_atom_norbs,potential_at_atom,with_Dirichlet_leads,free_charge,
+                                device_atom_norbs,potential_at_atom,with_Dirichlet_leads,free_charge,E_ref,
                                 eta_lead=1e-5, eta_device=1e-5):
         if integrate_way == "gauss":
             assert self.n_gauss is not None, "n_gauss must be set in the Fiori class with gauss integration"
@@ -299,9 +299,9 @@ class Fiori(Density):
                 A_Rd = [torch.mm(torch.mm(deviceprop.gr_lc[i],gammaR[-x1:, -x1:]),deviceprop.gr_lc[i].conj().T) for i in range(len(deviceprop.gr_lc))]
             
             A_Ld = [1j*(deviceprop.grd[i]-deviceprop.grd[i].conj().T)-A_Rd[i] for i in range(len(A_Rd))]
-            # the chemical potential in fermi_dirac is always set as lead_L.mu, representing the source and drain fermi level
-            gnd = [A_Ld[i]*deviceprop.lead_L.fermi_dirac(e+deviceprop.lead_L.chemiPot_lead) \
-                    +A_Rd[i]*deviceprop.lead_R.fermi_dirac(e+deviceprop.lead_R.chemiPot_lead) for i in range(len(A_Ld))]
+            # E_ref is the reference energy point in NEGF-Poisson calculations
+            gnd = [A_Ld[i]*deviceprop.lead_L.fermi_dirac(e+E_ref) \
+                    +A_Rd[i]*deviceprop.lead_R.fermi_dirac(e+E_ref) for i in range(len(A_Ld))]
             gpd = [A_Ld[i] + A_Rd[i] - gnd[i] for i in range(len(A_Ld))]
                 
 
