@@ -118,9 +118,13 @@ class NEGF(object):
         self.scf = scf
         self.block_tridiagonal = block_tridiagonal
         for lead_tag in ["lead_L", "lead_R"]:
+            assert "voltage" in self.stru_options[lead_tag], f"{lead_tag} voltage should be set in stru_options"
             if self.scf:
-                if "voltage" in self.poisson_options.get(lead_tag, {}) and "voltage" in self.stru_options[lead_tag]:
-                    assert self.stru_options[lead_tag]["voltage"]==self.poisson_options[lead_tag]["voltage"], f"{lead_tag} voltage should be consistent"
+                if lead_tag in self.poisson_options:
+                    if "voltage" in self.poisson_options.get(lead_tag, {}):
+                        assert self.stru_options[lead_tag]["voltage"]==self.poisson_options[lead_tag]["voltage"], f"{lead_tag} voltage should be consistent"
+                    else:
+                        self.poisson_options[lead_tag]["voltage"] = self.stru_options[lead_tag].get("voltage", None)
             else:
                 assert self.stru_options[lead_tag]["voltage"] == 0, f"{lead_tag} voltage should be 0 in non-scf calculation"
 
