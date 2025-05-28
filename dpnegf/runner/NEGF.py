@@ -246,21 +246,6 @@ class NEGF(object):
             )
         )
 
-        # initialize density class
-        self.density_options = density_options
-        if self.density_options["method"] == "Ozaki":
-            self.density = Ozaki(R=self.density_options["R"], 
-                                 M_cut=self.density_options["M_cut"], 
-                                 n_gauss=self.density_options["n_gauss"])
-            
-        elif self.density_options["method"] == "Fiori":
-            if self.density_options["integrate_way"] == "gauss":
-                assert self.density_options["n_gauss"] is not None, "n_gauss should be set for Fiori method using gauss integration"
-                self.density = Fiori(n_gauss=self.density_options["n_gauss"])
-            else:
-                self.density = Fiori() #calculate the density by integrating the energy window in direct way
-        else:
-            raise ValueError
 
         # number of orbitals on atoms in device region
         self.device_atom_norbs = self.negf_hamiltonian.atom_norbs[self.negf_hamiltonian.device_id[0]:self.negf_hamiltonian.device_id[1]]
@@ -283,9 +268,28 @@ class NEGF(object):
         self.out_ldos = out_ldos
         self.out_lcurrent = out_lcurrent
         assert not (self.out_lcurrent and self.block_tridiagonal)
-        self.generate_energy_grid()
         self.out = {}
-
+        # initialize density class
+        self.density_options = density_options
+        self.generate_energy_grid()
+        if self.density_options["method"] == "Ozaki":
+            self.density = Ozaki(R=self.density_options["R"], 
+                                 M_cut=self.density_options["M_cut"], 
+                                 n_gauss=self.density_options["n_gauss"])
+            
+        elif self.density_options["method"] == "Fiori":
+            if self.density_options["integrate_way"] == "gauss":
+                assert self.density_options["n_gauss"] is not None, "n_gauss should be set for Fiori method using gauss integration"
+                self.density = Fiori(n_gauss=self.density_options["n_gauss"],
+                                     integrate_way=self.density_options["integrate_way"],
+                                     e_grid=self.uni_grid)
+            elif self.density_options["integrate_way"] == "direct":
+                self.density = Fiori(integrate_way=self.density_options["integrate_way"],
+                                     e_grid=self.uni_grid) #calculate the density by integrating the energy window in direct way
+            else:
+                raise ValueError("integrate_way should be 'gauss' or 'direct' for Fiori method")
+        else:
+            raise ValueError
 
 
 
@@ -462,6 +466,20 @@ class NEGF(object):
 
         self.out['k']=[];self.out['wk']=[]
         if hasattr(self, "uni_grid"): self.out["uni_grid"] = self.uni_grid
+
+        if scf_require and self.poisson_options["with_Dirichlet_leads"]:
+            # For the Dirichlet leads, the self-energy of the leads is only calculated once and saved.
+            # In each iteration, the self-energy of the leads is not updated.
+            for ik, k in enumerate(self.kpoints):
+                for e in self.density.integrate_range:
+                    self.deviceprop.lead_L.self_energy(kpoint=k, energy=e, eta_lead=self.eta_lead, save=True)
+                    self.deviceprop.lead_R.self_energy(kpoint=k, energy=e, eta_lead=self.eta_lead, save=True)
+        elif not self.scf:
+            # In non-scf case, the self-energy of the leads is calculated for each energy point in the energy grid.
+            for ik, k in enumerate(self.kpoints): 
+                for e in self.uni_grid:
+                    self.deviceprop.lead_L.self_energy(kpoint=k, energy=e, eta_lead=self.eta_lead, save=True)
+                    self.deviceprop.lead_R.self_energy(kpoint=k, energy=e, eta_lead=self.eta_lead, save=True)
     
         for ik, k in enumerate(self.kpoints):
 

@@ -142,7 +142,7 @@ class LeadProperty(object):
                 save_path = os.path.join(save_path, \
                                         f"se_{self.tab}_k{kpoint[0]}_{kpoint[1]}_{kpoint[2]}_E{energy}.pth")
                 assert os.path.exists(save_path), f"Cannot find the self energy file {save_path}"
-            self.se = torch.load(save_path)
+            self.se = torch.load(save_path,weights_only=False)
             return
         else:
             if se_info_display:
@@ -290,7 +290,7 @@ class LeadProperty(object):
         Returns
         -------
         Gamma
-            The Gamma function, $\Gamma = 1j(se-se^\dagger)$.
+            The Gamma function, Gamma = 1j(se-se^dagger).
         
         '''
         return 1j * (se - se.conj().T)
