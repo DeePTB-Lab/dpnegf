@@ -133,5 +133,9 @@ def set_log_handles(
 
     # print version info
     logger = logging.getLogger(__name__)
-    logger.info(f"DPNEGF version: {get_version_dpnegf()}")
-    logger.info(f"DeePTB version: {get_version_dptb()}")
+    logger.info("=" * 80)
+    logger.info(f"{'Version Info':^80}")
+    logger.info("-" * 80)
+    logger.info(f"{'DPNEGF':<20} : {get_version_dpnegf()}")
+    logger.info(f"{'DeePTB':<20} : {get_version_dptb()}")
+    logger.info("=" * 80 + "\n")

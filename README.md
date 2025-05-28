@@ -17,7 +17,7 @@ Installing **DPNEGF** is straightforward. We recommend using a virtual environme
 
 - **Requirements**
   - Git
-  - DeePTB(https://github.com/deepmodeling/DeePTB) ≥ 2.2.1
+  - DeePTB(https://github.com/deepmodeling/DeePTB) ≥ 2.1.1
 
 - **From Source**
     1. Clone the repository:
