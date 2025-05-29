@@ -66,10 +66,10 @@ class LeadProperty(object):
         calculate the Gamma function from the self energy.
 
     '''
-    def __init__(self, tab, hamiltonian, structure, results_path, voltage,\
+    def __init__(self, tab, hamiltonian, structure, results_path, voltage, \
                  structure_leads_fold:ase.Atoms=None,bloch_sorted_indice:torch.Tensor=None, useBloch: bool=False, \
                     bloch_factor: List[int]=[1,1,1],bloch_R_list:List=None,\
-                    e_T=300, efermi=0.0) -> None:
+                    e_T=300, efermi:float=0.0, E_ref:float=None) -> None:
         self.hamiltonian = hamiltonian
         self.structure = structure
         self.tab = tab
@@ -78,7 +78,11 @@ class LeadProperty(object):
         self.kBT = Boltzmann * e_T / eV2J
         self.e_T = e_T
         self.efermi = efermi
-        self.mu = self.efermi - self.voltage
+        if E_ref is None:
+            self.E_ref = efermi
+        else:
+            self.E_ref = E_ref
+        self.chemiPot_lead = efermi - voltage
         self.kpoint = None
         self.voltage_old = None
         
@@ -138,7 +142,7 @@ class LeadProperty(object):
                 save_path = os.path.join(save_path, \
                                         f"se_{self.tab}_k{kpoint[0]}_{kpoint[1]}_{kpoint[2]}_E{energy}.pth")
                 assert os.path.exists(save_path), f"Cannot find the self energy file {save_path}"
-            self.se = torch.load(save_path)
+            self.se = torch.load(save_path,weights_only=False)
             return
         else:
             if se_info_display:
@@ -165,7 +169,7 @@ class LeadProperty(object):
                 sLL=self.SLLk,
                 hDL=HDL_reduced,
                 sDL=SDL_reduced,             #TODO: check chemiPot settiing is correct or not
-                chemiPot=self.efermi, # temmporarily change to self.efermi for the case in which applying lead bias to corresponding to Nanotcad
+                E_ref=self.E_ref,
                 etaLead=eta_lead, 
                 method=method
             )
@@ -192,7 +196,7 @@ class LeadProperty(object):
                     hLL=self.HLLk,
                     sL=self.SLk,
                     sLL=self.SLLk,            #TODO: check chemiPot settiing is correct or not
-                    chemiPot=self.efermi, # temmporarily change to self.efermi for the case in which applying lead bias to corresponding to Nanotcad
+                    E_ref=self.E_ref,  # temmporarily change to self.efermi for the case in which applying lead bias to corresponding to Nanotcad
                     etaLead=eta_lead, 
                     method=method
                 )
@@ -216,9 +220,9 @@ class LeadProperty(object):
             HDL_reduced, SDL_reduced = self.HDL_reduced(self.HDLk, self.SDLk) 
             # HDL_reduced, SDL_reduced = self.HDL, self.SDL
             if not isinstance(energy, torch.Tensor):
-                eeshifted = torch.scalar_tensor(energy, dtype=torch.complex128) + self.efermi
+                eeshifted = torch.scalar_tensor(energy, dtype=torch.complex128) + self.E_ref
             else:
-                eeshifted = energy + self.efermi
+                eeshifted = energy + self.E_ref
             # self.se = (eeshifted*self.SDL-self.HDL) @ sgf_k[:b,:b] @ (eeshifted*self.SDL.conj().T-self.HDL.conj().T)
             self.se = (eeshifted*SDL_reduced-HDL_reduced) @ sgf_k[:b,:b] @ (eeshifted*SDL_reduced.conj().T-HDL_reduced.conj().T)
 
@@ -286,13 +290,13 @@ class LeadProperty(object):
         Returns
         -------
         Gamma
-            The Gamma function, $\Gamma = 1j(se-se^\dagger)$.
+            The Gamma function, Gamma = 1j(se-se^dagger).
         
         '''
         return 1j * (se - se.conj().T)
     
     def fermi_dirac(self, x) -> torch.Tensor:
-        return 1 / (1 + torch.exp((x - self.mu)/ self.kBT))
+        return 1 / (1 + torch.exp((x - self.chemiPot_lead)/ self.kBT))
     
     @property
     def gamma(self):

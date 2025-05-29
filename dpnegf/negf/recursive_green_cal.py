@@ -197,7 +197,7 @@ def recursive_gf_cal(energy, mat_l_list, mat_d_list, mat_u_list, sd, su, sl, s_i
                gpd, gpl, gpu, gip_left
 
 
-def recursive_gf(energy, hl, hd, hu, sd, su, sl, left_se, right_se, seP=None, chemiPot=0.0, s_in=0, s_out=0,
+def recursive_gf(energy, hl, hd, hu, sd, su, sl, left_se, right_se, seP=None, E_ref=0.0, s_in=0, s_out=0,
                  eta=1e-5):
     
     """The recursive Green's function algorithm is taken from
@@ -253,7 +253,7 @@ def recursive_gf(energy, hl, hd, hu, sd, su, sl, left_se, right_se, seP=None, ch
         Left-conencted blocks of the retarded Green's function
     """
 
-    shift_energy = energy + chemiPot
+    shift_energy = energy + E_ref
     # shift_energy = torch.scalar_tensor(shift_energy, dtype=torch.complex128)
 
     # if isinstance(hd,torch.Tensor): # hd, hl, hu are torch.nested.nested_tensor
