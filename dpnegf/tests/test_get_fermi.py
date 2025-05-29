@@ -17,9 +17,9 @@ def test_get_fermi():
     _, efermi =elec_cal.get_fermi_level(data=stru_data, 
                     nel_atom = nel_atom,smearing_method='FD',
                 meshgrid=[30,30,30])
-    assert abs(efermi  + 3.2262574434280395) < 1e-3
+    assert abs(efermi  + 3.2257686853408813) < 1e-6
 
     _, efermi =elec_cal.get_fermi_level(data=stru_data, 
                     nel_atom = nel_atom,smearing_method='Gaussian',
                 meshgrid=[30,30,30])
-    assert abs(efermi  + 3.2262574434280395) < 1e-3
+    assert abs(efermi  + 3.2267462015151978) < 1e-6
