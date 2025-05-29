@@ -1,8 +1,8 @@
-# DeePTB-NEGF
+# DPNEGF
 
-**DeePTB-NEGF** is a Python package that integrates the Deep Learning Tight-Binding (**DeePTB**) approach with the Non-Equilibrium Green’s Function (**NEGF**) method, enabling efficient quantum transport simulations with first-principles accuracy. 
+**DPNEGF** is a Python package that integrates the Deep Learning Tight-Binding (**DeePTB**) approach with the Non-Equilibrium Green’s Function (**NEGF**) method, enabling efficient quantum transport simulations with first-principles accuracy. 
 
-By using DeePTB-SK or DeePTB-E3—both available within the DeePTB package—DeePTB-NEGF can compute quantum transport properties in open-boundary systems with either **Slater-Koster tight-binding Hamiltonian** with first-principles accuracy or **linear combination of atomic orbitals (LCAO) Kohn-Sham Hamiltonian**.
+By using DeePTB-SK or DeePTB-E3—both available within the DeePTB package—DeePTB-NEGF can compute quantum transport properties in open-boundary systems with either environment-corrected **Slater-Koster tight-binding Hamiltonian** or **linear combination of atomic orbitals (LCAO) Kohn-Sham Hamiltonian**.
 
 
 For more details, see our papers:
@@ -13,7 +13,7 @@ For more details, see our papers:
 
 ## Installation
 
-Installing **DeePTB-NEGF** is straightforward. We recommend using a virtual environment for dependency management.
+Installing **DPNEGF** is straightforward. We recommend using a virtual environment for dependency management.
 
 - **Requirements**
   - Git
@@ -22,7 +22,7 @@ Installing **DeePTB-NEGF** is straightforward. We recommend using a virtual envi
 - **From Source**
     1. Clone the repository:
         ```bash
-        git clone https://github.com/DeePTB-Lab/DeePTB-negf.git
+        git clone https://github.com/DeePTB-Lab/dpnegf.git
         ```
     2. Navigate to the root directory and install DeePTB-NEGF:
         ```bash

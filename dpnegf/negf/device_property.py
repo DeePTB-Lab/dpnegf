@@ -1,10 +1,10 @@
-from dptb_negf.negf.recursive_green_cal import recursive_gf
+from dpnegf.negf.recursive_green_cal import recursive_gf
 import logging
 import torch
 import os
-from dptb_negf.negf.negf_utils import update_kmap, update_temp_file,gauss_xw, leggauss
-from dptb_negf.negf.density import Ozaki
-from dptb_negf.utils.constants import Boltzmann, eV2J,pi
+from dpnegf.negf.negf_utils import update_kmap, update_temp_file,gauss_xw, leggauss
+from dpnegf.negf.density import Ozaki
+from dpnegf.utils.constants import Boltzmann, eV2J,pi
 import numpy  as np
 from scipy.integrate import simpson
 import matplotlib.pyplot as plt
@@ -292,7 +292,7 @@ class DeviceProperty(object):
         cc = []
 
         for dv in vv * 0.5:
-            I = simpson((f(energy_grid+self.mu, self.lead_L.efermi-vm+dv) - f(energy_grid+self.mu, self.lead_R.efermi-vm-dv)) * tc, energy_grid)
+            I = simpson(y=(f(energy_grid+self.mu, self.lead_L.efermi-vm+dv) - f(energy_grid+self.mu, self.lead_R.efermi-vm-dv)) * tc, x=energy_grid)
             cc.append(I)
 
         return vv, cc

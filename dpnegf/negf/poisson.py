@@ -1,6 +1,6 @@
 from fmm3dpy import lfmm3d
 import torch
-from dptb_negf.utils.constants import pi
+from dpnegf.utils.constants import pi
 
 
 
