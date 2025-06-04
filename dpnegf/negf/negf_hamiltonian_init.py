@@ -1,25 +1,13 @@
 from typing import List
 import torch
-from dpnegf.negf.areshkin_pole_sum import pole_maker
-from dpnegf.negf.recursive_green_cal import recursive_gf
-from dpnegf.negf.surface_green import selfEnergy
-from dpnegf.negf.negf_utils import quad, gauss_xw,update_kmap,leggauss
-from dpnegf.negf.ozaki_res_cal import ozaki_residues
-from dpnegf.negf.areshkin_pole_sum import pole_maker
 from ase.io import read,write
-from dpnegf.negf.poisson import Density2Potential, getImg
-from dpnegf.negf.scf_method import SCFMethod
 import logging
 import os
-import torch.optim as optim
-from dpnegf.utils.tools import j_must_have
 import numpy as np
 
 import ase
 from dptb.data import AtomicData, AtomicDataDict
 from typing import Optional, Union
-from dptb.nn.energy import Eigenvalues
-from dptb.nn.hamiltonian import E3Hamiltonian
 from dptb.nn.hr2hk import HR2HK
 from ase import Atoms
 from ase.build import sort
@@ -98,7 +86,7 @@ class NEGFHamiltonianInit(object):
             raise ValueError('structure must be ase.Atoms or str')
         
         # check the structure cell is larger than the range of device and leads
-        # In DeePTB-NEGF, the whole structure should be completely included in the cell
+        # In DPNEGF, the whole structure should be completely included in the cell
         # for correct prediction of Hamiltonian and overlap matrix.
         # TODO: Add support for non-ortho cell
         xrange,yrange,zrange = self.structase.positions[:,0].max()-self.structase.positions[:,0].min(),\
@@ -144,7 +132,7 @@ class NEGFHamiltonianInit(object):
         elif self.unit == "Ry":
             self.h_factor = 13.605662285137
         else:
-            log.error("The unit name is not correct !")
+            log.error(msg="The unit is not supported, please use Hartree, eV or Ry.")
             raise ValueError
 
         # obtain atom_norbs
@@ -395,6 +383,7 @@ class NEGFHamiltonianInit(object):
                 for ik in range(HK.shape[0]):
                     hL[ik][torch.abs(hL[ik])<h_lead_threshold] = 0
                     hLL[ik][torch.abs(hLL[ik])<h_lead_threshold] = 0
+
 
                 HS_leads.update({
                     "HL":hL.cdouble()*self.h_factor, 

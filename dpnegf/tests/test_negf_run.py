@@ -26,7 +26,7 @@ def test_negf_run_chain(root_directory):
     
     negf_out_path = output+"/results/negf.out.pth"
     assert os.path.exists(negf_out_path), "NEGF calculation output file not found"
-    negf_results = torch.load(negf_out_path)
+    negf_results = torch.load(negf_out_path,weights_only=False)
     trans = negf_results['T_avg']
     assert(abs(trans[int(len(trans)/2)]-1)<1e-5)  #compare with calculated transmission at efermi
 
@@ -48,7 +48,7 @@ def test_negf_run_orth(root_directory):
 
     negf_out_path = output+"/results/negf.out.pth"
     assert os.path.exists(negf_out_path), "NEGF calculation output file not found"
-    negf_results = torch.load(negf_out_path)
+    negf_results = torch.load(negf_out_path,weights_only=False)
     
     k_standard = np.array([[0. , 0. , 0.], [0. , 0.33333333, 0.]])
     k = negf_results['k']
@@ -115,7 +115,7 @@ def test_negf_run_S(root_directory):
 
     negf_out_path = output+"/results/negf.out.pth"
     assert os.path.exists(negf_out_path), "NEGF calculation output file not found"
-    negf_results = torch.load(negf_out_path)
+    negf_results = torch.load(negf_out_path,weights_only=False)
 
     k_standard = np.array([[0. , 0. , 0.], [0. , 0.33333333, 0.]])
     k = negf_results['k']
@@ -166,5 +166,5 @@ def test_negf_run_S(root_directory):
     T_avg_standard = torch.tensor(T_avg_standard)
     assert  abs(T_avg-T_avg_standard).max()<1e-4  #compare with calculated transmission at efermi
 
-    # if os.path.exists(output+"/results"):
-    #     os.system("rm -r "+output+"/results")
+    if os.path.exists(output+"/results"):
+        os.system("rm -r "+output+"/results")

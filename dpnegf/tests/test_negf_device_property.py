@@ -74,7 +74,7 @@ def test_negf_Device(root_directory):
     assert deviceprop.lead_L.structure.pbc[2]==True
     assert np.diag(np.array((deviceprop.lead_L.structure.cell-[10.0, 10.0, 6.4])<1e-4)).all()
     assert deviceprop.lead_L.tab=="lead_L"
-    assert abs(deviceprop.mu+13.638587951660156)<1e-5
+    assert abs(deviceprop.E_ref+13.638587951660156)<1e-5
     # check device.Lead_R.structure
     assert all(deviceprop.lead_R.structure.symbols=='C4')
     assert deviceprop.lead_R.structure.pbc[0]==False
