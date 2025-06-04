@@ -160,7 +160,7 @@ class NEGF(object):
         log.info(msg="-------------Fermi level calculation-------------")
         e_fermi = {}; chemiPot = {}
         # calculate Fermi level
-        if not self.e_fermi:        
+        if  self.e_fermi is None:        
             elec_cal = ElecStruCal(model=model,device=self.torch_device)
             nel_atom_lead = self.get_nel_atom_lead(
                                 struct_leads, 
@@ -740,7 +740,17 @@ class NEGF(object):
                     nel_atom_lead[lead_tag][elem] = nel_atom[elem]
             # subtract dope charge if the lead is doped
             if charge is not None:
-                nel_atom_lead[lead_tag] = {elem: nel_atom_lead[lead_tag][elem] - charge[lead_tag] for elem in nel_atom_lead[lead_tag]}
+                assert charge.get(lead_tag) is not None, f"Charge for {lead_tag} is not provided"
+                if isinstance(charge[lead_tag], (int, float)):
+                    if charge[lead_tag] < 0:
+                        log.info(msg=f"p doping detected in {lead_tag}, fixed_charge = {charge[lead_tag]}")
+                    elif charge[lead_tag] > 0:
+                        log.info(msg=f"n doping detected in {lead_tag}, fixed_charge = {charge[lead_tag]}")
+                    else:
+                        log.warning(msg=f"No doping detected in {lead_tag}, fixed_charge = {charge[lead_tag]}")
+                else:
+                    raise ValueError(f"Charge for {lead_tag} should be a number, got {type(charge[lead_tag])}")
+                nel_atom_lead[lead_tag] = {elem: nel_atom_lead[lead_tag][elem] + charge[lead_tag] for elem in nel_atom_lead[lead_tag]}
 
         return nel_atom_lead  
     
