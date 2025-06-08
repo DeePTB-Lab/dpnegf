@@ -288,8 +288,8 @@ class Fiori(Density):
                                           eta_device=eta_device,Vbias = Vbias)
 
             tx, ty = deviceprop.g_trans.shape
-            lx, ly = deviceprop.lead_L.se.shape
-            rx, ry = deviceprop.lead_R.se.shape
+            lx= deviceprop.lead_L.se.shape[0]
+            rx= deviceprop.lead_R.se.shape[0]
             x0 = min(lx, tx)
             x1 = min(rx, ty)
 

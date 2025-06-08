@@ -82,9 +82,24 @@ def test_negf_Hamiltonian(root_directory):
     print("lead_L self energy:",deviceprop.lead_L.se)
     print("lead_R self energy:",deviceprop.lead_R.se)
 
-    lead_L_se_standard = torch.tensor([[1.8103e-08-0.6096j]], dtype=torch.complex128)
+    lead_L_se_standard = torch.tensor([[1.8103e-08-0.6096j, 0.0000e+00+0.0000j, 0.0000e+00+0.0000j,
+         0.0000e+00+0.0000j],
+         [0.0000e+00+0.0000j, 0.0000e+00+0.0000j, 0.0000e+00+0.0000j,
+         0.0000e+00+0.0000j],
+        [0.0000e+00+0.0000j, 0.0000e+00+0.0000j, 0.0000e+00+0.0000j,
+         0.0000e+00+0.0000j],
+        [0.0000e+00+0.0000j, 0.0000e+00+0.0000j, 0.0000e+00+0.0000j,
+         0.0000e+00+0.0000j]], dtype=torch.complex128)
     assert abs(deviceprop.lead_L.se-lead_L_se_standard).max()<1e-5
-    lead_R_se_standard = torch.tensor([[1.8103e-08-0.6096j]], dtype=torch.complex128)
+
+    lead_R_se_standard = torch.tensor([[0.0000e+00+0.0000j, 0.0000e+00+0.0000j, 0.0000e+00+0.0000j,
+         0.0000e+00+0.0000j],
+        [0.0000e+00+0.0000j, 0.0000e+00+0.0000j, 0.0000e+00+0.0000j,
+         0.0000e+00+0.0000j],
+        [0.0000e+00+0.0000j, 0.0000e+00+0.0000j, 0.0000e+00+0.0000j,
+         0.0000e+00+0.0000j],
+        [0.0000e+00+0.0000j, 0.0000e+00+0.0000j, 0.0000e+00+0.0000j,
+        1.8103e-08-0.6096j]], dtype=torch.complex128)
     assert abs(deviceprop.lead_R.se-lead_R_se_standard).max()<1e-5
 
     #check device's Hamiltonian
