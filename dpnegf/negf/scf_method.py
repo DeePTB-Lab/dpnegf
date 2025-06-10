@@ -120,18 +120,16 @@ class PDIISMixer:
     
 class BroydenFirstMixer:
     """
-    Limited-memory Broyden's First Method ("good Broyden").
+    Accelerated Broyden's First Method ("good Broyden") with improved memory and performance.
 
-    Uses low-rank updates to approximate the Jacobian J (not its inverse).
-    Applies Sherman-Morrison-Woodbury formula for efficient inverse computations.
+    Uses low-rank updates to approximate the Jacobian J.
+    Applies Sherman-Morrison-Woodbury formula for efficient inverse Jacobian application.
 
     Attributes:
         alpha (float): Initial mixing parameter (inverse scaling of initial J).
         max_hist (int): Maximum number of stored update pairs (Δx, Δr).
         eps (float): Numerical stability threshold.
-        J0 (ndarray): Initial Jacobian approximation (scaled identity).
-        dx_hist (list): History of Δx = x_n - x_{n-1}.
-        dr_hist (list): History of Δr = r_n - r_{n-1}.
+        shape (tuple): Shape of the input vectors.
     """
 
     def __init__(self, shape, max_hist=8, alpha=0.1, eps=1e-12):
@@ -142,61 +140,54 @@ class BroydenFirstMixer:
 
     def reset(self, shape):
         self.iter = 0
-        self.x_last = np.zeros(shape)
-        self.r_last = np.zeros(shape)
-        dim = np.prod(shape)
-        self.J0 = np.eye(dim) / self.alpha  # Initial J0 ≈ I/alpha
-        self.dx_hist = []  # delta x history
-        self.dr_hist = []  # delta r history
+        self.shape = shape
+        self.size = np.prod(shape)
+        self.x_last = np.zeros(self.size)
+        self.r_last = np.zeros(self.size)
+        self.dx_hist = []
+        self.dr_hist = []
 
     def update(self, x, r):
         x = x.ravel()
         r = r.ravel()
 
         if self.iter == 0:
-            delta = np.linalg.solve(self.J0, r)
+            delta = self.alpha * r
             x_new = x - delta
-            self.x_last = x.copy()
-            self.r_last = r.copy()
-            self.iter += 1
-            return x_new.reshape(x.shape)
+        else:
+            dx = x - self.x_last
+            dr = r - self.r_last
 
-        dx = x - self.x_last
-        dr = r - self.r_last
+            if len(self.dx_hist) >= self.max_hist:
+                self.dx_hist.pop(0)
+                self.dr_hist.pop(0)
+            self.dx_hist.append(dx)
+            self.dr_hist.append(dr)
 
-        if len(self.dx_hist) >= self.max_hist:
-            self.dx_hist.pop(0)
-            self.dr_hist.pop(0)
-        self.dx_hist.append(dx)
-        self.dr_hist.append(dr)
+            dx_mat = np.column_stack(self.dx_hist)
+            dr_mat = np.column_stack(self.dr_hist)
 
-        J0_dx_list = [self.J0 @ dx for dx in self.dx_hist]
-        norm_dx_sq = [np.dot(dx, dx) for dx in self.dx_hist]
+            J0_inv_r = self.alpha * r
 
-        U = np.column_stack([
-            (dr - J0_dx) / (ndx + self.eps)
-            for dr, J0_dx, ndx in zip(self.dr_hist, J0_dx_list, norm_dx_sq)
-        ])  
-        V = np.column_stack(self.dx_hist)
+            dJ = dr_mat - self.alpha * dx_mat
+            VTJr = dx_mat.T @ J0_inv_r
+            VTdJ = dx_mat.T @ dJ
 
-        J0_inv_r = self.alpha * r
+            try:
+                y = np.linalg.solve(np.eye(len(self.dx_hist)) + VTdJ, VTJr)
+                correction = dJ @ y
+            except np.linalg.LinAlgError:
+                log.warning("Broyden's first method: Singular matrix encountered, falling back to linear mixing in this step.")
+                correction = 0.0
 
-        M = np.eye(len(self.dx_hist)) + self.alpha * (V.T @ U)
-        rhs = V.T @ J0_inv_r
-        try:
-            y = np.linalg.solve(M, rhs)
-        except np.linalg.LinAlgError:
-            y = np.zeros_like(rhs)
-
-        delta = J0_inv_r - self.alpha * (U @ y)
-
-        x_new = x - delta
+            delta = J0_inv_r - correction
+            x_new = x - delta
 
         self.x_last = x.copy()
         self.r_last = r.copy()
         self.iter += 1
 
-        return x_new.reshape(self.x_last.shape)
+        return x_new.reshape(self.shape)
 
 
 class BroydenSecondMixer:
