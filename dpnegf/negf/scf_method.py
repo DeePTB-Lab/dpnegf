@@ -1,179 +1,225 @@
-import torch
-from torch.optim import LBFGS, Adam
-from xitorch.linalg.solve import solve
-from xitorch.grad.jachess import jac
+import numpy as np
+import logging
 
-class SCFMethod(torch.autograd.Function):
-    @staticmethod
-    def forward(ctx, fcn, x0, scf_options, method='PDIIS', *params):
-        # with torch.no_grad():
-        #     x_ = fcn(x0, *params)
-        max_iter = scf_options["max_iter"]
-        abs_err = scf_options["abs_err"]
-
-        x_ = fcn(x0, *params)
-
-        if method == "default":
-            it = 0
-            old_x = x0
-            while (x_-old_x).norm() > abs_err and it < max_iter:
-                it += 1
-                old_x = x_
-                x_ = fcn(x_, *params)
-
-        elif method == 'GD':
-            x_ = x_.detach().requires_grad_()
-            temp_p = [p.detach() for p in params]
-            it = 0
-            loss = 1
-
-            def new_fcn(x_):
-
-                loss = (x_ - fcn(x_, *temp_p)).abs().sum()
-                print(loss)
-                return loss
-
-            with torch.enable_grad():
-                while it < max_iter and loss > abs_err:
-                    it += 1
-                    loss = new_fcn(x_)
-                    x_ = x_ - 1e-3 * torch.autograd.grad(loss, (x_,))[0]
-
-        elif method == 'Adam':
-            # x = torch.randn(200,1, dtype=torch.float64)
-            # x = x / x.norm()
-            # x_ = x_.unsqueeze(1) @ x.T
-            x_ = x_.detach().requires_grad_()
-            temp_p = [p.detach() for p in params]
-            optim = Adam(params=[x_], lr=1e-3)
-            def new_fcn(x_):
-                loss = (x_ - fcn(x_, *temp_p)).norm()
-                print(loss)
-                return loss
-            i = 0
-            loss = 1
-            with torch.enable_grad():
-                while i < max_iter and loss > abs_err:
-                    optim.zero_grad()
-                    loss = new_fcn(x_)
-                    loss.backward()
-                    optim.step()
-
-
-        elif method == "PDIIS":
-            with torch.no_grad():
-                x_ = PDIIS(lambda x: fcn(x, *params), p0=x_, **scf_options)
-
-        elif method == 'LBFGS':
-            x_ = x_.detach().requires_grad_()
-            temp_p = [p.detach() for p in params]
-            optim = LBFGS(params=[x_], lr=1e-2)
-
-            def new_fcn():
-                optim.zero_grad()
-                loss = (x_ - fcn(x_, *temp_p)).norm()
-                loss.backward()
-                print(loss)
-                return loss
-
-            with torch.enable_grad():
-                for i in range(max_iter):
-                    optim.step(new_fcn)
-                    print(x_)
-
-        else:
-            raise ValueError
-
-        print("Convergence achieved !")
-        x_ = x_ + 0j
-        ctx.save_for_backward(x_, *params)
-        ctx.fcn = fcn
-
-        return x_
-
-    @staticmethod
-    def backward(ctx, grad_outputs):
-        x_ = ctx.saved_tensors[0].detach().requires_grad_()
-        params = ctx.saved_tensors[1:]
-
-        idx = [i for i in range(len(params)) if params[i].requires_grad]
-
-
-        fcn = ctx.fcn
-        def new_fcn(x, *params):
-            return x - fcn(x, *params)
-
-        with torch.enable_grad():
-            grad = jac(fcn=new_fcn, params=(x_, *params), idxs=[0])[0]
-
-        # pre = solve(grad.H, -grad_outputs.reshape(-1, 1))
-        pre = solve(grad.H, -grad_outputs.reshape(-1, 1).type_as(x_))
-        pre = pre.reshape(grad_outputs.shape)
-
-
-        with torch.enable_grad():
-            params_copy = [p.detach().requires_grad_() for p in params]
-            yfcn = new_fcn(x_, *params_copy)
-
-        grad = torch.autograd.grad(yfcn, [params_copy[i] for i in idx], grad_outputs=pre,
-                                   create_graph=torch.is_grad_enabled(),
-                                   allow_unused=True)
-        grad_out = [None for _ in range(len(params))]
-        for i in range(len(idx)):
-            grad_out[idx[i]] = grad[i]
-
-
-        return None, None, None, None, None, None, *grad_out
-
-
-def PDIIS(fn, p0, step_size=0.05, n_history=6, max_iter=100, mixing_period=3, abs_err=1e-6, rel_err=1e-3, **options):
-    """The periodic pully mixing from https://doi.org/10.1016/j.cplett.2016.01.033.
-
-    Args:
-        fn (function): the iterative functions
-        p0 (_type_): the initial point
-        step_size (float, optional): the mixing beta value, or step size. Defaults to 0.05.
-        n_history (int, optional): the size of the storage of history to compute the pesuedo hessian matrix. Defaults to 6.
-        max_iter (int, optional): the maximum iteration. Defaults to 100.
-        mixing_period (int, optional): the period of conducting pully mixing. The algorithm will conduct pully mixing every k iterations. Defaults to 3.
-        abs_err (_type_, optional): the absolute err tolerance. Defaults to 1e-6.
-        rel_err (_type_, optional): the relative err tolerance. Defaults to 1e-3.
-
-    Returns:
-        p _type_: the stable point
+log = logging.getLogger(__name__)
+class PDIISMixer:
     """
-    i = 0
-    f = fn(p0) - p0
-    p = p0
-    R = [None for _ in range(n_history)]
-    F = [None for _ in range(n_history)]
-    print("SCF iter 0 abs err {0} | rel err {1}: ".format( 
-            f.abs().max().detach().numpy(), 
-            (f.abs() / p.abs()).max().detach().numpy())
-            )
-    while (f.abs().max() > abs_err or (f.abs() / p.abs()).max() > rel_err) and i < max_iter:
-        if not (i+1) % mixing_period:
-            F_ = torch.stack([t for t in F if t != None])
-            R_ = torch.stack([t for t in R if t != None])
-            p_ = p + step_size*f - (R_.T+step_size*F_.T)@(F_ @ F_.T).inverse() @ F_ @ f
+    Periodic Direct Inversion in the Iterative Subspace (PDIIS) mixer for accelerating SCF convergence.
+
+    Parameters
+    ----------
+    init_p : np.ndarray
+        Initial potential or state vector for SCF iterations.
+    mix_rate : float, optional
+        Mixing rate (step size) for linear update. Default is 0.05.
+    n_history : int, optional
+        Number of history steps to store for Pulay extrapolation. Default is 6.
+    mixing_period : int, optional
+        Frequency (in iterations) to apply DIIS mixing instead of linear mixing. Default is 3.
+    verbose : bool, optional
+        If True, print debug information. Default is False.
+    """
+    def __init__(self, init_p, mix_rate=0.05, n_history=4, mixing_period=2, verbose=True):
+        assert isinstance(init_p, np.ndarray), "init_p must be a numpy array"
+        
+        self.mix_rate = mix_rate
+        self.n_history = n_history
+        self.mixing_period = mixing_period
+        self.verbose = verbose
+        
+        self.iter_count = 0
+        self.p = init_p.copy()
+        self.f = None
+        self.R = [None for _ in range(n_history)]
+        self.F = [None for _ in range(n_history)]
+
+    def reset(self, new_init_p=None):
+        """Reset the mixer, optionally with a new initial potential."""
+        self.iter_count = 0
+        self.f = None
+        self.R = [None for _ in range(self.n_history)]
+        self.F = [None for _ in range(self.n_history)]
+        if new_init_p is not None:
+            assert isinstance(new_init_p, np.ndarray), "new_init_p must be a numpy array"
+            self.p = new_init_p.copy()
+
+    def update(self, p_new):
+        """
+        Perform one PDIIS mixing update based on the new input p_new.
+
+        Parameters
+        ----------
+        p_new : np.ndarray
+            Newly computed state (e.g., electrostatic potential).
+
+        Returns
+        -------
+        p_next : np.ndarray
+            The next mixed state.
+        """
+        assert isinstance(p_new, np.ndarray), "p_new must be a numpy array"
+        assert p_new.shape == self.p.shape, "Shape mismatch in p_new and current state"
+        
+        p_new = p_new.copy()
+        f_new = p_new - self.p
+
+        if self.f is not None:
+            idx = self.iter_count % self.n_history
+            self.R[idx] = p_new - self.p # Residual vector
+            self.F[idx] = f_new - self.f # Difference in residuals
+
+        
+
+        do_pdiis = (self.iter_count + 1) % self.mixing_period == 0
+        p_next = None
+
+        if do_pdiis and all(f is not None for f in self.F):
+            if self.verbose:
+                log.info(msg=f"[PDIIS] Performing DIIS mixing at iter {self.iter_count + 1}")
+            F_mat = np.stack(self.F, axis=1)
+            R_mat = np.stack(self.R, axis=1)
+
+            FtF = F_mat.T @ F_mat
+
+            try:
+                cond_FtF = np.linalg.cond(FtF)
+                if cond_FtF > 1e10:
+                    log.info(f"[PDIIS DEBUG] cond(FtF) = {cond_FtF:.2e}")
+                    log.info(f"[PDIIS DEBUG] Norms of F vectors: {[np.linalg.norm(f) for f in self.F]}")
+                    log.info(f"[PDIIS DEBUG] Rank of F_mat: {np.linalg.matrix_rank(F_mat)}")
+                    log.info(msg=f"[PDIIS] Warning: FtF matrix condition number too high ({cond_FtF:.2e}). Skipping DIIS.")
+                    raise RuntimeError("Ill-conditioned FtF matrix in PDIIS")
+
+                correction = (R_mat + self.mix_rate * F_mat) @ np.linalg.solve(FtF, F_mat.T @ f_new)
+                p_next = self.p + self.mix_rate * f_new - correction
+
+            except RuntimeError as e:
+                # This was manually raised due to condition number
+                if self.verbose:
+                    log.info(msg=f"[PDIIS] {e} Falling back to linear mixing.")
+                p_next = self.p + self.mix_rate * f_new
+
+            except np.linalg.LinAlgError as e:
+                # This is actual numerical failure in np.linalg.solve
+                if self.verbose:
+                    log.info(msg=f"[PDIIS] np.linalg.solve failed: {e}. Falling back to linear mixing.")
+                p_next = self.p + self.mix_rate * f_new
         else:
-            p_ = p + step_size * f
+            if self.verbose:
+                log.info(msg=f"[PDIIS] Using linear mixing at iteration {self.iter_count + 1} (not periodic time step or not enough history).")
+            p_next = self.p + self.mix_rate * f_new
 
-        f_ = fn(p_) - p_
-        F[i % n_history] = f_ - f
-        R[i % n_history] = p_ - p
 
-        p = p_.clone()
-        f = f_.clone()
-        i += 1
 
-        print("SCF iter {0} abs err {1} | rel err {2}: ".format(
-            i, 
-            f.abs().max().detach().numpy(), 
-            (f.abs() / p.abs()).max().detach().numpy())
-            )
+        # Update state
+        self.f = f_new.copy()
+        self.p = p_next.copy()
+        self.iter_count += 1
 
-    if i == max_iter:
-        print("Not Converged very well here.")
+        return p_next
+    
 
-    return p
+
+class BroydenSecondMixer:
+    """
+    Implements Broyden's Second Method (also known as "good Broyden")
+    for accelerating fixed-point iterations such as those arising
+    in SCF (self-consistent field) procedures.
+
+    This mixer constructs an approximation to the inverse Jacobian of the residual
+    using a low-rank update formula and applies it to iteratively improve convergence.
+
+    The method uses limited-memory rank-1 updates:
+        x_{n+1} = x_n - B_n * r_n
+    where B_n ≈ J^{-1} is the inverse Jacobian built from the update history.
+
+    Attributes:
+        alpha (float): Initial mixing parameter for the first step.
+        max_hist (int): Maximum number of update pairs (u, r) stored for low-rank updates.
+        eps (float): Threshold to avoid numerical instability in inner products.
+        B0 (ndarray): Initial inverse Jacobian approximation (scaled identity).
+        u_hist (list): History of update vectors u_n = s_n - B_n * delta_r_n.
+        r_hist (list): History of delta_r_n = r_n - r_{n-1}.
+    """
+
+    def __init__(self, shape, max_hist=8, alpha=0.1, eps=1e-12):
+        self.alpha = alpha        # Initial mixing factor
+        self.max_hist = max_hist  # Max number of correction terms
+        self.eps = eps            # Numerical stability threshold
+        self.reset(shape)
+
+    def reset(self, shape):
+        self.iter = 0
+        self.x_last = np.zeros(shape)
+        self.r_last = np.zeros(shape)
+        dim = np.prod(shape)
+        self.B0 = -self.alpha * np.eye(dim)  # Initial inverse Jacobian guess
+        self.u_hist = []  # History of update vectors u_n = s_n - B delta_r
+        self.r_hist = []  # Corresponding delta_r vectors
+
+    def update(self, x, r):
+        """
+        Perform one Broyden update step: x_{n+1} = x_n - B_n * r_n.
+
+        This function applies the approximate inverse Jacobian B_n
+        to the current residual r_n to compute the next guess x_{n+1}.
+        The internal approximation B_n is updated based on the history
+        of residual differences and solution updates.
+
+        Args:
+            x (np.ndarray): Current solution guess (arbitrary shape).
+            r (np.ndarray): Residual vector at the current guess.
+
+        Returns:
+            np.ndarray: Updated solution guess (same shape as input x).
+        """
+        x = x.ravel()
+        r = r.ravel()
+
+        if self.iter == 0:
+            x_new = x - self.B0 @ r
+            self.x_last = x.copy()
+            self.r_last = r.copy()
+            self.iter += 1
+            return x_new.reshape(self.x_last.shape)
+
+        # Step 1: Compute s_n = x - x_last, delta_r = r - r_last
+        s_n = x - self.x_last
+        delta_r = r - self.r_last
+
+        # Step 2: Build B * delta_r incrementally
+        B_delta_r = self.B0 @ delta_r
+        for u_j, r_j in zip(self.u_hist, self.r_hist):
+            rj_dot = np.dot(r_j, delta_r)
+            norm2 = np.dot(r_j, r_j)
+            if norm2 > self.eps:
+                B_delta_r += u_j * (rj_dot / (norm2 + self.eps))
+
+        # Step 3: u_n = s_n - B delta_r (corrected formula)
+        u_n = s_n - B_delta_r
+
+        # Step 4: Truncate history if needed
+        if len(self.u_hist) >= self.max_hist:
+            self.u_hist.pop(0)
+            self.r_hist.pop(0)
+        self.u_hist.append(u_n)
+        self.r_hist.append(delta_r)
+
+        # Step 5: Apply B_n * r using low-rank update
+        B_r = self.B0 @ r
+        for u_j, r_j in zip(self.u_hist, self.r_hist):
+            rj_dot = np.dot(r_j, r)
+            norm2 = np.dot(r_j, r_j)
+            if norm2 > self.eps:
+                B_r += u_j * (rj_dot / (norm2 + self.eps))
+
+        # Step 6: Final update
+        x_new = x - B_r
+
+        # Step 7: Cache for next iteration
+        self.x_last = x.copy()
+        self.r_last = r.copy()
+        self.iter += 1
+
+        return x_new.reshape(self.x_last.shape)
+

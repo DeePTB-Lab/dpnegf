@@ -14,6 +14,7 @@ import numpy as np
 from dpnegf.utils.make_kpoints import kmesh_sampling_negf
 import logging
 from dpnegf.negf.poisson_init import Grid,Interface3D,Dirichlet,Dielectric
+from dpnegf.negf.scf_method import PDIISMixer,BroydenSecondMixer
 from typing import Optional, Union
 # from pyinstrument import Profiler
 
@@ -387,29 +388,34 @@ class NEGF(object):
         else:
             self.negf_compute(scf_require=False,Vbias=None)
 
-    def poisson_negf_scf(self,interface_poisson,atom_gridpoint_index,err=1e-6,max_iter=1000,mix_rate=0.3,tolerance=1e-7):
+    def poisson_negf_scf(self,interface_poisson,atom_gridpoint_index,err=1e-6,max_iter=1000,
+                         mix_method:str='PDIIS', mix_rate:float=0.3, tolerance:float=1e-7):
 
         
         # profiler.start() 
-        max_diff_phi = 1e30; max_diff_list = [] 
+        max_diff_phi = 1e30
+        max_diff_list = [] 
         iter_count=0
+        if mix_method == 'PDIIS':
+            mixer = PDIISMixer(init_p=interface_poisson.phi.copy(), mix_rate=mix_rate)
+            log.info(msg="Using PDIIS mixing method for NEGF-Poisson SCF")
+        elif mix_method == 'linear':
+            log.info(msg="Using linear mixing method for NEGF-Poisson SCF")
+        elif mix_method == 'BroydenSecond':
+            mixer = BroydenSecondMixer(shape=interface_poisson.phi.shape, max_hist=10, alpha=mix_rate)
+            log.info(msg="Using Broyden's second method for NEGF-Poisson SCF")
+        else:
+            raise ValueError("mix_method should be 'linear' or 'PDIIS'")
+
         # Gummel type iteration
         while max_diff_phi > err:
             # update Hamiltonian by modifying onsite energy with potential
             self.potential_at_atom = interface_poisson.phi[atom_gridpoint_index]
             self.potential_at_orb = torch.cat([torch.full((norb,), p) for p, norb\
-                                                in zip(self.potential_at_atom, self.device_atom_norbs)])
-            
-                      
+                                                in zip(self.potential_at_atom, self.device_atom_norbs)])              
             self.negf_compute(scf_require=True,Vbias=self.potential_at_orb)
             # Vbias makes sense for orthogonal basis as in NanoTCAD
             # TODO: check if Vbias makes sense for non-orthogonal basis 
-
-            # update electron density for solving Poisson equation SCF
-            # DM_eq,DM_neq = self.out["DM_eq"], self.out["DM_neq"]
-            # elec_density = torch.diag(DM_eq+DM_neq)
-            
-
             # TODO: check the sign of free_charge
             # TODO: check the spin degenracy
             # TODO: add k summation operation
@@ -423,8 +429,12 @@ class NEGF(object):
             max_diff_phi = interface_poisson.solve_poisson_NRcycle(method=self.poisson_options['solver'],\
                                                                 tolerance=tolerance,\
                                                                 dtype=self.poisson_options['poisson_dtype'])
-            interface_poisson.phi = interface_poisson.phi + mix_rate*(interface_poisson.phi_old-interface_poisson.phi)
-            
+            if mix_method == 'linear':
+                interface_poisson.phi = interface_poisson.phi + mix_rate*(interface_poisson.phi_old-interface_poisson.phi)
+            elif mix_method == 'PDIIS':
+                interface_poisson.phi = mixer.update(interface_poisson.phi.copy())
+            elif mix_method == 'BroydenSecond':
+                interface_poisson.phi = mixer.update(interface_poisson.phi.copy(), interface_poisson.phi-interface_poisson.phi_old)
 
             iter_count += 1 # Gummel type iteration
             log.info(msg="Poisson-NEGF iteration: {}    Potential Diff Maximum: {}\n".format(iter_count,max_diff_phi))
