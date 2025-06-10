@@ -120,18 +120,14 @@ class PDIISMixer:
     
 class BroydenFirstMixer:
     """
-    Accelerated Broyden's First Method ("good Broyden") with improved memory and performance.
-
-    Uses low-rank updates to approximate the Jacobian J.
-    Applies Sherman-Morrison-Woodbury formula for efficient inverse Jacobian application.
+    Efficient Broyden's First Method (good Broyden) using low-rank updates and
+    the Sherman-Morrison-Woodbury formula. Optimized to avoid redundant computation.
 
     Attributes:
-        alpha (float): Initial mixing parameter (inverse scaling of initial J).
-        max_hist (int): Maximum number of stored update pairs (Δx, Δr).
+        alpha (float): Initial mixing parameter (J0 = I/alpha).
+        max_hist (int): Number of stored update pairs (Δx, Δr).
         eps (float): Numerical stability threshold.
-        shape (tuple): Shape of the input vectors.
     """
-
     def __init__(self, shape, max_hist=8, alpha=0.1, eps=1e-12):
         self.alpha = alpha
         self.max_hist = max_hist
@@ -140,10 +136,11 @@ class BroydenFirstMixer:
 
     def reset(self, shape):
         self.iter = 0
+        self.x_last = np.zeros(shape)
+        self.r_last = np.zeros(shape)
+        self.dim = np.prod(shape)
         self.shape = shape
-        self.size = np.prod(shape)
-        self.x_last = np.zeros(self.size)
-        self.r_last = np.zeros(self.size)
+        self.J0 = np.eye(self.dim) / self.alpha  # Jacobian approximation
         self.dx_hist = []
         self.dr_hist = []
 
@@ -152,7 +149,7 @@ class BroydenFirstMixer:
         r = r.ravel()
 
         if self.iter == 0:
-            delta = self.alpha * r
+            delta = np.linalg.solve(self.J0, r)
             x_new = x - delta
         else:
             dx = x - self.x_last
@@ -164,23 +161,25 @@ class BroydenFirstMixer:
             self.dx_hist.append(dx)
             self.dr_hist.append(dr)
 
-            dx_mat = np.column_stack(self.dx_hist)
-            dr_mat = np.column_stack(self.dr_hist)
+            dx_mat = np.column_stack(self.dx_hist)  # shape: (dim, hist)
+            dr_mat = np.column_stack(self.dr_hist)  # shape: (dim, hist)
+
+            norm_dx_sq = np.sum(dx_mat * dx_mat, axis=0)  # shape: (hist,)
+            J0_dx_mat = dx_mat / self.alpha
+            U = (dr_mat - J0_dx_mat) / (norm_dx_sq + self.eps)
+            V = dx_mat
 
             J0_inv_r = self.alpha * r
-
-            dJ = dr_mat - self.alpha * dx_mat
-            VTJr = dx_mat.T @ J0_inv_r
-            VTdJ = dx_mat.T @ dJ
+            VT_r = V.T @ J0_inv_r
+            M = np.eye(len(self.dx_hist)) + self.alpha * (V.T @ U)
 
             try:
-                y = np.linalg.solve(np.eye(len(self.dx_hist)) + VTdJ, VTJr)
-                correction = dJ @ y
+                y = np.linalg.solve(M, VT_r)
             except np.linalg.LinAlgError:
-                log.warning("Broyden's first method: Singular matrix encountered, falling back to linear mixing in this step.")
-                correction = 0.0
+                log.warning("Matrix inversion failed in Broyden's First Method. Falling back to linear mixing in this step.")
+                y = np.zeros_like(VT_r)
 
-            delta = J0_inv_r - correction
+            delta = J0_inv_r - self.alpha * (U @ y)
             x_new = x - delta
 
         self.x_last = x.copy()
