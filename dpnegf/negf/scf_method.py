@@ -118,11 +118,90 @@ class PDIISMixer:
 
         return p_next
     
+class BroydenFirstMixer:
+    """
+    Limited-memory Broyden's First Method ("good Broyden").
+
+    Uses low-rank updates to approximate the Jacobian J (not its inverse).
+    Applies Sherman-Morrison-Woodbury formula for efficient inverse computations.
+
+    Attributes:
+        alpha (float): Initial mixing parameter (inverse scaling of initial J).
+        max_hist (int): Maximum number of stored update pairs (Δx, Δr).
+        eps (float): Numerical stability threshold.
+        J0 (ndarray): Initial Jacobian approximation (scaled identity).
+        dx_hist (list): History of Δx = x_n - x_{n-1}.
+        dr_hist (list): History of Δr = r_n - r_{n-1}.
+    """
+
+    def __init__(self, shape, max_hist=8, alpha=0.1, eps=1e-12):
+        self.alpha = alpha
+        self.max_hist = max_hist
+        self.eps = eps
+        self.reset(shape)
+
+    def reset(self, shape):
+        self.iter = 0
+        self.x_last = np.zeros(shape)
+        self.r_last = np.zeros(shape)
+        dim = np.prod(shape)
+        self.J0 = np.eye(dim) / self.alpha  # Initial J0 ≈ I/alpha
+        self.dx_hist = []  # delta x history
+        self.dr_hist = []  # delta r history
+
+    def update(self, x, r):
+        x = x.ravel()
+        r = r.ravel()
+
+        if self.iter == 0:
+            delta = np.linalg.solve(self.J0, r)
+            x_new = x - delta
+            self.x_last = x.copy()
+            self.r_last = r.copy()
+            self.iter += 1
+            return x_new.reshape(x.shape)
+
+        dx = x - self.x_last
+        dr = r - self.r_last
+
+        if len(self.dx_hist) >= self.max_hist:
+            self.dx_hist.pop(0)
+            self.dr_hist.pop(0)
+        self.dx_hist.append(dx)
+        self.dr_hist.append(dr)
+
+        J0_dx_list = [self.J0 @ dx for dx in self.dx_hist]
+        norm_dx_sq = [np.dot(dx, dx) for dx in self.dx_hist]
+
+        U = np.column_stack([
+            (dr - J0_dx) / (ndx + self.eps)
+            for dr, J0_dx, ndx in zip(self.dr_hist, J0_dx_list, norm_dx_sq)
+        ])  
+        V = np.column_stack(self.dx_hist)
+
+        J0_inv_r = self.alpha * r
+
+        M = np.eye(len(self.dx_hist)) + self.alpha * (V.T @ U)
+        rhs = V.T @ J0_inv_r
+        try:
+            y = np.linalg.solve(M, rhs)
+        except np.linalg.LinAlgError:
+            y = np.zeros_like(rhs)
+
+        delta = J0_inv_r - self.alpha * (U @ y)
+
+        x_new = x - delta
+
+        self.x_last = x.copy()
+        self.r_last = r.copy()
+        self.iter += 1
+
+        return x_new.reshape(self.x_last.shape)
 
 
 class BroydenSecondMixer:
     """
-    Implements Broyden's Second Method (also known as "good Broyden")
+    Implements Broyden's Second Method (also known as "bad Broyden")
     for accelerating fixed-point iterations such as those arising
     in SCF (self-consistent field) procedures.
 
