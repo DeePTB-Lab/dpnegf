@@ -455,6 +455,10 @@ class NEGF(object):
 
             if max_diff_phi <= err:
                 log.info(msg="Poisson-NEGF SCF Converges Successfully!")
+            elif max_diff_phi > 1e5:
+                log.warning(msg="Warning! Poisson-NEGF iteration may diverge, max_diff_phi = {}".format(max_diff_phi))
+            elif np.isnan(max_diff_phi):
+                raise RuntimeError("Poisson-NEGF iteration diverges, max_diff_phi = {}".format(max_diff_phi))
                 
 
             if iter_count > max_iter:
