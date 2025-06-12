@@ -16,6 +16,7 @@ import logging
 from dpnegf.negf.poisson_init import Grid,Interface3D,Dirichlet,Dielectric
 from dpnegf.negf.scf_method import PDIISMixer,BroydenFirstMixer,BroydenSecondMixer
 from typing import Optional, Union
+from dpnegf.utils.tools import apply_gaussian_filter_3d
 # from pyinstrument import Profiler
 
 log = logging.getLogger(__name__)
@@ -389,7 +390,7 @@ class NEGF(object):
             self.negf_compute(scf_require=False,Vbias=None)
 
     def poisson_negf_scf(self,interface_poisson,atom_gridpoint_index,err=1e-6,max_iter=1000,
-                         mix_method:str='PDIIS', mix_rate:float=0.3, tolerance:float=1e-7):
+                         mix_method:str='linear', mix_rate:float=0.3, tolerance:float=1e-7,Gaussian_sigma:float=3.0):
 
         
         # profiler.start() 
@@ -402,7 +403,7 @@ class NEGF(object):
         elif mix_method == 'linear':
             log.info(msg="Using linear mixing method for NEGF-Poisson SCF")
         elif mix_method == 'BroydenFirst':
-            mixer = BroydenFirstMixer(shape=interface_poisson.phi.shape, max_hist=8, alpha=mix_rate)
+            mixer = BroydenFirstMixer(init_x=interface_poisson.phi, alpha=mix_rate)
             log.info(msg="Using Broyden's first method for NEGF-Poisson SCF")
         elif mix_method == 'BroydenSecond':
             mixer = BroydenSecondMixer(shape=interface_poisson.phi.shape, max_hist=8, alpha=mix_rate)
@@ -437,9 +438,16 @@ class NEGF(object):
             elif mix_method == 'PDIIS':
                 interface_poisson.phi = mixer.update(interface_poisson.phi.copy())
             elif mix_method == 'BroydenFirst':
-                interface_poisson.phi = mixer.update(interface_poisson.phi.copy(), interface_poisson.phi-interface_poisson.phi_old)
+                residual = interface_poisson.phi - interface_poisson.phi_old
+                # residual_filter = apply_gaussian_filter_3d(residual, 
+                #                                            shape=(interface_poisson.grid.shape[0],
+                #                                                    interface_poisson.grid.shape[1],
+                #                                                    interface_poisson.grid.shape[2]), 
+                #                                            sigma=Gaussian_sigma)
+                interface_poisson.phi = mixer.update(f = residual) # fixed point problem: f defined as F(\phi)-\phi =0
             elif mix_method == 'BroydenSecond':
-                interface_poisson.phi = mixer.update(interface_poisson.phi.copy(), interface_poisson.phi-interface_poisson.phi_old)
+                residual = interface_poisson.phi - interface_poisson.phi_old
+                interface_poisson.phi = mixer.update(interface_poisson.phi.copy(), residual)
 
             iter_count += 1 # Gummel type iteration
             log.info(msg="Poisson-NEGF iteration: {}    Potential Diff Maximum: {}\n".format(iter_count,max_diff_phi))

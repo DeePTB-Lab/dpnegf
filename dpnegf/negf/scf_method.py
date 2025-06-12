@@ -120,74 +120,73 @@ class PDIISMixer:
     
 class BroydenFirstMixer:
     """
-    Efficient Broyden's First Method (good Broyden) using low-rank updates and
-    the Sherman-Morrison-Woodbury formula. Optimized to avoid redundant computation.
+    Efficient Broyden's First Method (good Broyden) using the Sherman-Morrison-Woodbury formula.
 
     Attributes:
         alpha (float): Initial mixing parameter (J0 = I/alpha).
-        max_hist (int): Number of stored update pairs (Δx, Δr).
         eps (float): Numerical stability threshold.
     """
-    def __init__(self, shape, max_hist=8, alpha=0.1, eps=1e-12):
+    def __init__(self, init_x, alpha=0.1):
+        self.init_x = init_x
         self.alpha = alpha
-        self.max_hist = max_hist
-        self.eps = eps
-        self.reset(shape)
+        self.beta = 1 # Adaptive mixing factor
+        self.reset(init_x.shape)
+        
+        self.eps = 1e-12  # Numerical stability threshold
 
     def reset(self, shape):
         self.iter = 0
-        self.x_last = np.zeros(shape)
-        self.r_last = np.zeros(shape)
+        self.x_n = np.zeros(shape)
+        self.x_nm1 = np.zeros(shape)
         self.dim = np.prod(shape)
         self.shape = shape
-        self.J0 = np.eye(self.dim) / self.alpha  # Jacobian approximation
-        self.dx_hist = []
-        self.dr_hist = []
+        self.J0 = -np.eye(self.dim) / self.alpha  # Jacobian approximation
+        self.J_inv = np.zeros_like(self.J0)  # Inverse Jacobian
 
-    def update(self, x, r):
-        x = x.ravel()
-        r = r.ravel()
+
+    def update(self, f):
+
+        linear_warm_range = 3  # Number of iterations to use linear mixing before switching to Broyden's method
 
         if self.iter == 0:
-            delta = np.linalg.solve(self.J0, r)
-            x_new = x - delta
+            x_new = self.init_x + self.alpha * f  
+            self.J_inv = -np.eye(self.dim) * self.alpha  # Initial inverse Jacobian
+            self.x_nm1 = self.init_x.copy()
+        
+        elif self.iter < linear_warm_range:
+            x_new = self.x_n + self.alpha * f  # Linear mixing for first few iterations
+            self.J_inv = -np.eye(self.dim) * self.alpha  # Reset inverse Jacobian
+            self.x_nm1 = self.x_n.copy()  # Store previous x
+
         else:
-            dx = x - self.x_last
-            dr = r - self.r_last
+            dx = self.x_n - self.x_nm1  
+            df = f - self.f_last
 
-            if len(self.dx_hist) >= self.max_hist:
-                self.dx_hist.pop(0)
-                self.dr_hist.pop(0)
-            self.dx_hist.append(dx)
-            self.dr_hist.append(dr)
+            # df_norm = np.linalg.norm(df)
+            # if self.iter == linear_warm_range:
+            #     self.last_df_norm = df_norm
+            #     self.beta = 1.0  # Initial beta value for adaptive mixing
+            # else:
+            #     if df_norm > self.last_df_norm:
+            #         self.beta = max(0.1, self.beta * 0.5)
+            #     else:
+            #         self.beta = min(1.0, self.beta * 1.2)
+            # self.last_df_norm = df_norm
 
-            dx_mat = np.column_stack(self.dx_hist)  # shape: (dim, hist)
-            dr_mat = np.column_stack(self.dr_hist)  # shape: (dim, hist)
+            J_inv_df = self.J_inv @ df  # J^{-1} * df
+            numerator = np.outer(dx - J_inv_df, self.J_inv @ dx)  # (dim, 1) x (1, dim) = (dim, dim)
+            denominator = dx.T @ (self.J_inv @ df)  + self.eps  # (1, dim) @ (dim, 1) = (1, 1) 
+            self.J_inv = self.J_inv + numerator / denominator
 
-            norm_dx_sq = np.sum(dx_mat * dx_mat, axis=0)  # shape: (hist,)
-            J0_dx_mat = dx_mat / self.alpha
-            U = (dr_mat - J0_dx_mat) / (norm_dx_sq + self.eps)
-            V = dx_mat
+            x_new = self.x_n - self.beta*self.J_inv @ f  # Update x using the new inverse Jacobian
+            self.x_nm1 = self.x_n.copy()  # Store previous x
 
-            J0_inv_r = self.alpha * r
-            VT_r = V.T @ J0_inv_r
-            M = np.eye(len(self.dx_hist)) + self.alpha * (V.T @ U)
-
-            try:
-                y = np.linalg.solve(M, VT_r)
-            except np.linalg.LinAlgError:
-                log.warning("Matrix inversion failed in Broyden's First Method. Falling back to linear mixing in this step.")
-                y = np.zeros_like(VT_r)
-
-            delta = J0_inv_r - self.alpha * (U @ y)
-            x_new = x - delta
-
-        self.x_last = x.copy()
-        self.r_last = r.copy()
+        # Update state
+        self.x_n = x_new.copy() 
+        self.f_last = f.copy()  
         self.iter += 1
 
-        return x_new.reshape(self.shape)
-
+        return x_new
 
 class BroydenSecondMixer:
     """
