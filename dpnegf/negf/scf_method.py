@@ -162,6 +162,9 @@ class BroydenFirstMixer:
             dx = self.x_n - self.x_nm1  
             df = f - self.f_last
 
+            dx = dx.reshape(-1, 1)  # Ensure dx is a column vector
+            df = df.reshape(-1, 1)  # Ensure df is a column vector
+
             # df_norm = np.linalg.norm(df)
             # if self.iter == linear_warm_range:
             #     self.last_df_norm = df_norm
@@ -174,11 +177,10 @@ class BroydenFirstMixer:
             # self.last_df_norm = df_norm
 
             J_inv_df = self.J_inv @ df  # J^{-1} * df
-            numerator = np.outer(dx - J_inv_df, self.J_inv @ dx)  # (dim, 1) x (1, dim) = (dim, dim)
-            denominator = dx.T @ (self.J_inv @ df)  + self.eps  # (1, dim) @ (dim, 1) = (1, 1) 
+            numerator = (dx - J_inv_df) @ (dx.T @ self.J_inv)  # (dim,1) @ (1, dim) = (dim, dim)
+            denominator = dx.T @ J_inv_df  + self.eps  # (1, dim) @ (dim, 1) = (1, 1) 
             self.J_inv = self.J_inv + numerator / denominator
-
-            x_new = self.x_n - self.beta*self.J_inv @ f  # Update x using the new inverse Jacobian
+            x_new = self.x_n -self.J_inv @ f  # Update x using the new inverse Jacobian
             self.x_nm1 = self.x_n.copy()  # Store previous x
 
         # Update state
