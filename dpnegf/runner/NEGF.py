@@ -408,6 +408,9 @@ class NEGF(object):
         elif mix_method == 'BroydenSecond':
             mixer = BroydenSecondMixer(shape=interface_poisson.phi.shape, max_hist=8, alpha=mix_rate)
             log.info(msg="Using Broyden's second method for NEGF-Poisson SCF")
+        # elif mix_method == 'Block_BroydenFirst':
+        #     mixer = Block_BroydenFirstMixer(init_x=interface_poisson.phi, alpha=mix_rate)
+        #     log.info(msg="Using Block Broyden's first method for NEGF-Poisson SCF")
         else:
             raise ValueError("mix_method should be 'linear' or 'PDIIS'")
 
@@ -448,6 +451,9 @@ class NEGF(object):
             elif mix_method == 'BroydenSecond':
                 residual = interface_poisson.phi - interface_poisson.phi_old
                 interface_poisson.phi = mixer.update(interface_poisson.phi.copy(), residual)
+            # elif mix_method == 'Block_BroydenFirst':
+            #     residual = interface_poisson.phi - interface_poisson.phi_old
+            #     interface_poisson.phi = mixer.update(f = residual)
 
             iter_count += 1 # Gummel type iteration
             log.info(msg="Poisson-NEGF iteration: {}    Potential Diff Maximum: {}\n".format(iter_count,max_diff_phi))
@@ -455,9 +461,9 @@ class NEGF(object):
 
             if max_diff_phi <= err:
                 log.info(msg="Poisson-NEGF SCF Converges Successfully!")
-            elif max_diff_phi > 1e5:
-                log.warning(msg="Warning! Poisson-NEGF iteration may diverge, max_diff_phi = {}".format(max_diff_phi))
-            elif np.isnan(max_diff_phi):
+            if max_diff_phi > 1e8:
+                raise RuntimeError("Poisson-NEGF iteration diverges, max_diff_phi = {}".format(max_diff_phi))
+            if np.isnan(max_diff_phi):
                 raise RuntimeError("Poisson-NEGF iteration diverges, max_diff_phi = {}".format(max_diff_phi))
                 
 

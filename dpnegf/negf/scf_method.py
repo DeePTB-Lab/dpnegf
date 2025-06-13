@@ -190,6 +190,96 @@ class BroydenFirstMixer:
 
         return x_new
 
+# class Block_BroydenFirstMixer:
+#     """
+#     Efficient Broyden's First Method (good Broyden) using the Sherman-Morrison-Woodbury formula.
+
+#     Attributes:
+#         alpha (float): Initial mixing parameter (J0 = I/alpha).
+#         eps (float): Numerical stability threshold.
+#     """
+#     def __init__(self, init_x, alpha:float=0.1, k:int=None):
+        
+#         assert init_x.ndim == 1, "init_x must be a 1D array"
+#         self.init_x = init_x
+#         self.alpha = alpha
+#         self.beta = 1 # Adaptive mixing factor
+#         self.eps = 1e-12  # Numerical stability threshold
+
+#         if k is None:
+#             self.k = int(len(init_x)/10)
+#         else:
+#             assert k > 0, "k must be a positive integer"
+#             assert k <= len(init_x), "k must be less than or equal to the length of init_x"
+#             self.k = k
+
+        
+#         self.reset(init_x.shape)
+        
+#     def reset(self, shape):
+#         self.iter = 0
+#         self.x_n = np.zeros(shape)
+#         self.x_nm1 = np.zeros(shape)
+#         self.dim = np.prod(shape)
+#         self.shape = shape
+#         self.J0 = -np.eye(self.dim) / self.alpha  # Jacobian approximation
+#         self.Bm = np.zeros_like(self.J0)  # Inverse Jacobian
+
+#     @staticmethod
+#     def get_partial_jacobian(df, dx, column_indices, eps=1e-12):
+    
+#         assert df.ndim == 1, "df must be a 1D array"
+#         assert dx.ndim == 1, "dx must be a 1D array"
+#         assert df.shape == dx.shape, "df and dx must have the same shape"
+
+#         dx_norm_sq = np.dot(dx, dx) + eps  # scalar
+#         d_outer = np.outer(df, dx) / dx_norm_sq  # full rank-1 Jacobian approx (d x d)
+
+#         # Select only the desired columns
+#         return d_outer[:, column_indices]
+
+
+#     def update(self, f):
+    
+#         linear_warm_range = 3  # Number of iterations to use linear mixing before switching to Broyden's method
+
+#         if self.iter == 0:
+#             x_new = self.init_x + self.alpha * f  
+#             self.Bm = -np.eye(self.dim) * self.alpha  # Initial inverse Jacobian
+#             self.x_nm1 = self.init_x.copy()
+        
+#         elif self.iter < linear_warm_range:
+#             x_new = self.x_n + self.alpha * f  # Linear mixing for first few iterations
+#             self.Bm = -np.eye(self.dim) * self.alpha  # Reset inverse Jacobian
+#             self.x_nm1 = self.x_n.copy()  # Store previous x
+
+#         else:
+#             dx = self.x_n - self.x_nm1  
+#             df = f - self.f_last
+
+#             x_new = self.x_n -self.Bm @ f 
+
+#             # Randomly select k directions
+#             rng = np.random.default_rng()
+#             idx_seq = rng.choice(len(self.init_x), size=self.k, replace=False)
+#             U = np.eye(len(self.init_x))[:, idx_seq] # Randomly select k directions
+
+#             # Compute the partial Jacobian using finite differences
+#             J_U = self.get_partial_jacobian(df, dx, idx_seq, eps=self.eps)  # Compute partial Jacobian
+#             Bm_J_U = self.Bm @ J_U  # Apply the current inverse Jacobian to the partial Jacobian
+#             UT_Bm_J_U = U.T @ Bm_J_U  # Compute U^T * B_m * J_U
+#             M = np.linalg.solve(UT_Bm_J_U, U.T @ self.Bm) 
+#             # Update the inverse Jacobian using the Sherman-Morrison-Woodbury formula
+#             self.Bm = self.Bm - (Bm_J_U - U) @ M
+
+#             self.x_nm1 = self.x_n.copy()  # Store previous x
+
+#         # Update state
+#         self.x_n = x_new.copy() 
+#         self.f_last = f.copy()  
+#         self.iter += 1
+
+#         return x_new
 class BroydenSecondMixer:
     """
     Implements Broyden's Second Method (also known as "bad Broyden")
