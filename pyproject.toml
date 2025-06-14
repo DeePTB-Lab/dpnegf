@@ -62,6 +62,8 @@ optional = true
 [tool.poetry.group.pybinding.dependencies]
 pybinding = "*"
 
+[tool.poetry.scripts]
+dpnegf = "dpnegf.__main__:main"
 
 [build-system]
 requires = ["poetry-core", "poetry-dynamic-versioning"]

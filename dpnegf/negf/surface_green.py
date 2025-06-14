@@ -140,7 +140,8 @@ class SurfaceGreen(torch.autograd.Function):
 
             return torch.mean(out, dim=0)
 
-def selfEnergy(hL, hLL, sL, sLL, ee, hDL=None, sDL=None, etaLead=1e-8, Bulk=False, chemiPot=0.0, dtype=torch.complex128, device='cpu', method='Lopez-Sancho'):
+def selfEnergy(hL, hLL, sL, sLL, ee, hDL=None, sDL=None, etaLead=1e-8, Bulk=False, 
+               E_ref=0.0, dtype=torch.complex128, device='cpu', method='Lopez-Sancho'):
     '''calculates the self-energy and surface Green's function for a given  Hamiltonian and overlap matrix.
     
     Parameters
@@ -185,9 +186,9 @@ def selfEnergy(hL, hLL, sL, sLL, ee, hDL=None, sDL=None, etaLead=1e-8, Bulk=Fals
     #     eeshifted = ee - voltage
 
     if not isinstance(ee, torch.Tensor):
-        eeshifted = torch.scalar_tensor(ee, dtype=dtype) + chemiPot
+        eeshifted = torch.scalar_tensor(ee, dtype=dtype) + E_ref
     else:
-        eeshifted = ee + chemiPot
+        eeshifted = ee + E_ref
         
 
     if hDL == None:

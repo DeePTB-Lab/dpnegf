@@ -17,6 +17,7 @@
         "stru_options":{
             "gamma_center": true,
             "time_reversal_symmetry": true,
+            "nel_atom": {"C": 1.0},
             "kmesh":[1,1,1],
             "pbc":[false, false, false],
             "device":{
@@ -26,11 +27,13 @@
             "lead_L":{
                 "id":"0-4",
                 "voltage":0.0,
+                "kmesh_lead_Ef":[1,1,20],
                 "useBloch": false
             },
             "lead_R":{
                 "id":"8-12",
                 "voltage":0.0,
+                "kmesh_lead_Ef":[1,1,20],
                 "useBloch": false
             }
         },
@@ -42,7 +45,6 @@
         "espacing": 0.01,
         "emin": -2,
         "emax": 2,
-        "e_fermi": -13.638587951660156,
         "density_options": {
             "method": "Fiori",
             "integrate_way": "direct"

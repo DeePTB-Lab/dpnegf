@@ -1,25 +1,13 @@
 from typing import List
 import torch
-from dpnegf.negf.areshkin_pole_sum import pole_maker
-from dpnegf.negf.recursive_green_cal import recursive_gf
-from dpnegf.negf.surface_green import selfEnergy
-from dpnegf.negf.negf_utils import quad, gauss_xw,update_kmap,leggauss
-from dpnegf.negf.ozaki_res_cal import ozaki_residues
-from dpnegf.negf.areshkin_pole_sum import pole_maker
 from ase.io import read,write
-from dpnegf.negf.poisson import Density2Potential, getImg
-from dpnegf.negf.scf_method import SCFMethod
 import logging
 import os
-import torch.optim as optim
-from dpnegf.utils.tools import j_must_have
 import numpy as np
 
 import ase
 from dptb.data import AtomicData, AtomicDataDict
 from typing import Optional, Union
-from dptb.nn.energy import Eigenvalues
-from dptb.nn.hamiltonian import E3Hamiltonian
 from dptb.nn.hr2hk import HR2HK
 from ase import Atoms
 from ase.build import sort
@@ -98,7 +86,7 @@ class NEGFHamiltonianInit(object):
             raise ValueError('structure must be ase.Atoms or str')
         
         # check the structure cell is larger than the range of device and leads
-        # In DeePTB-NEGF, the whole structure should be completely included in the cell
+        # In DPNEGF, the whole structure should be completely included in the cell
         # for correct prediction of Hamiltonian and overlap matrix.
         # TODO: Add support for non-ortho cell
         xrange,yrange,zrange = self.structase.positions[:,0].max()-self.structase.positions[:,0].min(),\
@@ -144,7 +132,7 @@ class NEGFHamiltonianInit(object):
         elif self.unit == "Ry":
             self.h_factor = 13.605662285137
         else:
-            log.error("The unit name is not correct !")
+            log.error(msg="The unit is not supported, please use Hartree, eV or Ry.")
             raise ValueError
 
         # obtain atom_norbs
@@ -396,6 +384,7 @@ class NEGFHamiltonianInit(object):
                     hL[ik][torch.abs(hL[ik])<h_lead_threshold] = 0
                     hLL[ik][torch.abs(hLL[ik])<h_lead_threshold] = 0
 
+
                 HS_leads.update({
                     "HL":hL.cdouble()*self.h_factor, 
                     "SL":sL.cdouble(), 
@@ -582,6 +571,45 @@ class NEGFHamiltonianInit(object):
         return stru_lead, stru_lead_fold, bloch_sorted_indice, bloch_R_list
 
     def get_block_tridiagonal(self,HK,SK,structase:ase.Atoms,leftmost_size:int,rightmost_size:int):
+        """
+        Block-tridiagonalizes the Hamiltonian (HK) and overlap (SK) matrices for a given atomic structure.
+        This method splits the input matrices into block tridiagonal form based on the atomic structure along the z-axis.
+        Note that the splitting process is performed on HK[0] and SK[0], which are the matrices for Gamma k-point.
+        The function returns the diagonal, upper-diagonal, and lower-diagonal blocks for both HK and SK, as well as the subblock sizes.
+        Parameters
+        ----------
+        HK : np.ndarray
+            The Hamiltonian matrix (k-point resolved), shape (nk, n_orb, n_orb).
+        SK : np.ndarray
+            The overlap matrix (k-point resolved), shape (nk, n_orb, n_orb).
+        structase : ase.Atoms
+            The atomic structure, used to determine block boundaries along the z-axis.
+        leftmost_size : int or None
+            Number of orbitals in the leftmost block. If None, it is determined from the structure.
+        rightmost_size : int or None
+            Number of orbitals in the rightmost block. If None, it is determined from the structure.
+        Returns
+        -------
+        hd : list
+            List of diagonal blocks of HK for each k-point.
+        hu : list
+            List of upper-diagonal blocks of HK for each k-point.
+        hl : list
+            List of lower-diagonal blocks of HK for each k-point.
+        sd : list
+            List of diagonal blocks of SK for each k-point.
+        su : list
+            List of upper-diagonal blocks of SK for each k-point.
+        sl : list
+            List of lower-diagonal blocks of SK for each k-point.
+        subblocks : list
+            List of subblock sizes (number of orbitals in each block).
+        Notes
+        -----
+        - Uses optimized or fallback block splitting depending on the structure.
+        - Logs information about the block structure and occupation.
+        - Calls `show_blocks` to visualize the block structure.
+        """
 
 
         # return hd in format: (k_index,block_index, orb, orb)
@@ -710,8 +738,10 @@ class NEGFHamiltonianInit(object):
             # log.info(msg="The HS_device.pth exists in the saved path {}.".format(self.saved_HS_path))
             HS_device_path = HS_device_path_pth
             HS_device = torch.load(HS_device_path)
-        
-
+        else:
+            raise FileNotFoundError(f"Neither HS_device.pth nor HS_device.h5 found in {self.saved_HS_path}. " )
+                  
+                
         if only_subblocks:
             if "subblocks" not in HS_device:
                 log.warning(msg=" 'subblocks' might not be saved in the HS_device.pth for old version.")
@@ -850,13 +880,7 @@ class NEGFHamiltonianInit(object):
                                HS_leads["SL"][ik_bloch], HS_leads["SLL"][ik_bloch]
             hDL,sDL = HS_leads["HDL"][ik], HS_leads["SDL"][ik]
 
-        return hL-v*sL, hLL-v*sLL, hDL, sL, sLL, sDL 
-
-    def attach_potential():
-        pass
-
-    def write(self):
-        pass
+        return hL-v*sL, hLL-v*sLL, hDL, sL, sLL, sDL         
 
     @property
     def device_norbs(self):

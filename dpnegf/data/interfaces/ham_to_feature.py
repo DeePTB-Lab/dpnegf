@@ -3,7 +3,7 @@ import ase
 import numpy as np
 import re
 import logging
-from ...constants import anglrMId
+from dpnegf.utils.constants import anglrMId
 from .. import AtomicData, AtomicDataDict
 
 log = logging.getLogger(__name__)

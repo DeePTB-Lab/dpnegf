@@ -256,11 +256,11 @@ class Interface3D(object):
             Jacobian,B = self.to_scipy_Jac_B(dtype=dtype)
             norm_B = np.linalg.norm(B)
            
-            if method == 'scipy':   
+            if method == 'scipy':   #TODO: rename to 'Direct
                 if NR_cycle_step == 0:
                     log.info(msg="Solve Poisson equation by scipy")
                 delta_phi = spsolve(Jacobian,B)
-            elif method == 'pyamg':
+            elif method == 'pyamg': #TODO: rename to 'AMG'
                 if NR_cycle_step == 0:
                     log.info(msg="Solve Poisson equation by pyamg")
                 delta_phi = self.solver_pyamg(Jacobian,B,tolerance=1e-5)
