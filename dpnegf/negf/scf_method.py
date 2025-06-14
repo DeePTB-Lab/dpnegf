@@ -385,12 +385,38 @@ class BroydenSecondMixer:
 
 
 class AndersonMixer:
+    """
+    AndersonMixer implements Anderson mixing for accelerating fixed-point iterations,
+    commonly used in self-consistent field (SCF) calculations.
+    Attributes:
+        m (int): Number of history steps to retain for mixing.
+        alpha (float): Mixing parameter for linear mixing (0 < alpha <= 1).
+        verbose (bool): If True, prints internal details for debugging.
+        dx_hist (list): History of differences in input vectors (xk - x_{k-1}).
+        df_hist (list): History of differences in function outputs (f(xk) - f(x_{k-1})).
+        first_three (bool): Flag to handle the first three iterations with linear mixing.
+        iter (int): Iteration counter.
+        xkm1 (np.ndarray or None): Previous input vector x_{k-1}.
+        fkm1 (np.ndarray or None): Previous function output f(x_{k-1}).
+        beta (float): Damping factor for the Anderson update.
+    """
     def __init__(self, m=5, alpha=0.1, verbose=False):
         """
-        Parameters:
-        - m: number of history steps to retain
-        - alpha: mixing parameter (0 < alpha <= 1)
-        - verbose: if True, print internal details for debugging
+        Initializes the SCF method parameters.
+
+        Args:
+            m (int, optional): Number of previous iterations to store for history-based methods. Defaults to 5.
+            alpha (float, optional): Mixing parameter or step size for the update. Defaults to 0.1.
+            verbose (bool, optional): If True, enables verbose output for debugging or logging. Defaults to False.
+
+        Attributes:
+            dx_hist (list): History of differences between consecutive x values (x_k - x_{k-1}).
+            df_hist (list): History of differences between consecutive function values (f(x_k) - f(x_{k-1})).
+            first_three (bool): Flag to handle the first three iterations separately.
+            iter (int): Iteration counter.
+            xkm1: Previous x value (x_{k-1}).
+            fkm1: Previous function value (f(x_{k-1})).
+            beta (float): Damping factor for the update, initialized to 1.
         """
         self.m = m
         self.alpha = alpha
@@ -405,7 +431,13 @@ class AndersonMixer:
         self.beta = 1 # damping factor
 
     def reset(self):
-        """Clear history (e.g. after SCF reset)."""
+        """
+        Resets the internal state of the SCF method.
+        This method clears the history of variable and function differences,
+        resets iteration counters, and sets previous step variables to None,
+        preparing the object for a fresh SCF cycle.
+        """
+        
         self.dx_hist.clear()
         self.df_hist.clear()
         self.first_three = True
@@ -415,16 +447,28 @@ class AndersonMixer:
 
     def update(self, fk, xk):
         """
-        Perform Anderson mixing.
-
-        Parameters:
-        - fk: output f(x_k) from fixed-point iteration
-        - xk: input x_k
-
-        Returns:
-        - xkp1: new guess using Anderson mixing
+        Update the current estimate using Anderson mixing or linear mixing.
+        Parameters
+        ----------
+        fk : np.ndarray
+            The current function value (e.g., residual or fixed-point map at xk).
+        xk : np.ndarray
+            The current estimate of the solution.
+        Returns
+        -------
+        np.ndarray
+            The updated estimate after applying Anderson or linear mixing.
+        Raises
+        ------
+        AssertionError
+            If `fk` or `xk` are not numpy arrays or if their shapes do not match.
+        Notes
+        -----
+        - For the first three iterations, linear mixing is used.
+        - After the first three iterations, Anderson mixing is applied using the history of previous steps.
+        - If the Anderson mixing matrix is rank-deficient, falls back to linear mixing.
         """
-
+        # Ensure fk and xk are numpy arrays and have the same shape
         assert isinstance(fk, np.ndarray), "fk must be a numpy array"
         assert isinstance(xk, np.ndarray), "xk must be a numpy array"
         assert fk.shape == xk.shape, "fk and xk must have the same shape"
