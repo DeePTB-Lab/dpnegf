@@ -14,7 +14,7 @@ import numpy as np
 from dpnegf.utils.make_kpoints import kmesh_sampling_negf
 import logging
 from dpnegf.negf.poisson_init import Grid,Interface3D,Dirichlet,Dielectric
-from dpnegf.negf.scf_method import PDIISMixer,BroydenFirstMixer,BroydenSecondMixer
+from dpnegf.negf.scf_method import PDIISMixer,BroydenFirstMixer,BroydenSecondMixer,AndersonMixer
 from typing import Optional, Union
 from dpnegf.utils.tools import apply_gaussian_filter_3d
 # from pyinstrument import Profiler
@@ -411,6 +411,9 @@ class NEGF(object):
         # elif mix_method == 'Block_BroydenFirst':
         #     mixer = Block_BroydenFirstMixer(init_x=interface_poisson.phi, alpha=mix_rate)
         #     log.info(msg="Using Block Broyden's first method for NEGF-Poisson SCF")
+        elif mix_method == 'Anderson':
+            mixer = AndersonMixer(m=5, alpha=0.2)
+            log.info(msg="Using Anderson mixing method for NEGF-Poisson SCF")
         else:
             raise ValueError("mix_method should be 'linear' or 'PDIIS'")
 
@@ -454,6 +457,8 @@ class NEGF(object):
             # elif mix_method == 'Block_BroydenFirst':
             #     residual = interface_poisson.phi - interface_poisson.phi_old
             #     interface_poisson.phi = mixer.update(f = residual)
+            elif mix_method == 'Anderson':
+                interface_poisson.phi = mixer.update(interface_poisson.phi.copy(), interface_poisson.phi_old.copy())
 
             iter_count += 1 # Gummel type iteration
             log.info(msg="Poisson-NEGF iteration: {}    Potential Diff Maximum: {}\n".format(iter_count,max_diff_phi))

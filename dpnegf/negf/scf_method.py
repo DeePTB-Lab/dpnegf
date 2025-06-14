@@ -383,3 +383,91 @@ class BroydenSecondMixer:
 
         return x_new.reshape(self.x_last.shape)
 
+
+class AndersonMixer:
+    def __init__(self, m=5, alpha=0.1, verbose=False):
+        """
+        Parameters:
+        - m: number of history steps to retain
+        - alpha: mixing parameter (0 < alpha <= 1)
+        - verbose: if True, print internal details for debugging
+        """
+        self.m = m
+        self.alpha = alpha
+        self.verbose = verbose
+        self.dx_hist = []  #  xk - x_{k-1}
+        self.df_hist = []  #  f(x_k) - f(x_{k-1})
+        self.first_three = True  # Flag to handle first three iterations separately
+        self.iter = 0  # Iteration counter
+        self.xkm1 = None  # x_{k-1}
+        self.fkm1 = None  # f(x_{k-1})
+
+        self.beta = 1 # damping factor
+
+    def reset(self):
+        """Clear history (e.g. after SCF reset)."""
+        self.dx_hist.clear()
+        self.df_hist.clear()
+        self.first_three = True
+        self.iter = 0
+        self.xkm1 = None  # Reset previous x_{k-1}
+        self.fkm1 = None  # Reset previous f(x_{k-1})
+
+    def update(self, fk, xk):
+        """
+        Perform Anderson mixing.
+
+        Parameters:
+        - fk: output f(x_k) from fixed-point iteration
+        - xk: input x_k
+
+        Returns:
+        - xkp1: new guess using Anderson mixing
+        """
+
+        assert isinstance(fk, np.ndarray), "fk must be a numpy array"
+        assert isinstance(xk, np.ndarray), "xk must be a numpy array"
+        assert fk.shape == xk.shape, "fk and xk must have the same shape"
+
+        if self.first_three:
+            if self.iter < 3:
+                # self.dx_list.append(dx.copy())
+                # self.df_hist.append(df.copy())
+                self.iter += 1
+                x_new = xk + self.alpha * (fk - xk)  # Linear mixing for first three iterations
+                self.xkm1 = xk.copy()  # Store x_k for next iteration
+                self.fkm1 = fk.copy()
+                return x_new  # linear mixing
+            else:
+                self.first_three = False
+            
+
+        dx = xk - self.xkm1  # dx = x_k - x_{k-1}
+        df = fk - self.fkm1  # df = f(x_k) - f(x_{k-1})
+        self.xkm1 = xk.copy()  # Store x_k for next iteration
+        self.fkm1 = fk.copy()  # Store f_k for next iteration            
+
+        # Keep only last m entries
+        if len(self.dx_hist) >= self.m:
+            self.dx_hist.pop(0)
+            self.df_hist.pop(0)
+
+        self.dx_hist.append(dx.copy())
+        self.df_hist.append(df.copy())
+
+        # Construct matrix R = [r1, r2, ..., rn]
+        
+        try:
+            Gk = np.column_stack([df_i - dx_i for df_i, dx_i in zip(self.df_hist, self.dx_hist)])# [... gk-1 - gk-2, gk - gk-1 ]
+            c = np.linalg.lstsq(Gk, (fk-xk), rcond=None)[0] # Solve least squares: min ||Gk @ c - (fk-xk)||
+            correction = sum(c_i * df_i for c_i, df_i in zip(c, self.df_hist))
+            xkp1 =  xk + self.beta * ((fk - xk) - correction) # Update x_k+1
+
+        except np.linalg.LinAlgError:
+            # Fallback to linear mixing if R is rank-deficient
+            log.info("[Anderson] Linear algebra error, fallback to linear mixing.")
+            xkp1 = xk + self.alpha * (fk - xk)
+
+        self.iter += 1
+        return xkp1.reshape(fk.shape)
+
