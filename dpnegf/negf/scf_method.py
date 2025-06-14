@@ -366,15 +366,15 @@ class BroydenSecondMixer:
         self.r_hist.append(delta_r)
 
         # Step 5: Apply B_n * r using low-rank update
-        B_r = self.B0 @ r
+        H_r = self.B0 @ r
         for u_j, r_j in zip(self.u_hist, self.r_hist):
             rj_dot = np.dot(r_j, r)
             norm2 = np.dot(r_j, r_j)
             if norm2 > self.eps:
-                B_r += u_j * (rj_dot / (norm2 + self.eps))
+                H_r += u_j * (rj_dot / (norm2 + self.eps))
 
         # Step 6: Final update
-        x_new = x - B_r
+        x_new = x - H_r
 
         # Step 7: Cache for next iteration
         self.x_last = x.copy()
@@ -400,7 +400,7 @@ class AndersonMixer:
         fkm1 (np.ndarray or None): Previous function output f(x_{k-1}).
         beta (float): Damping factor for the Anderson update.
     """
-    def __init__(self, m=5, alpha=0.1, verbose=False):
+    def __init__(self, m:int=5, alpha:float=0.2, beta:float=1, verbose=False):
         """
         Initializes the SCF method parameters.
 
@@ -428,7 +428,7 @@ class AndersonMixer:
         self.xkm1 = None  # x_{k-1}
         self.fkm1 = None  # f(x_{k-1})
 
-        self.beta = 1 # damping factor
+        self.beta = beta # damping factor (0 < beta <= 1) for the Anderson update, default is 1 (no damping)
 
     def reset(self):
         """
