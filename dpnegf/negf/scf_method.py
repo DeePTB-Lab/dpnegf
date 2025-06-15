@@ -400,7 +400,7 @@ class AndersonMixer:
         fkm1 (np.ndarray or None): Previous function output f(x_{k-1}).
         beta (float): Damping factor for the Anderson update.
     """
-    def __init__(self, m:int=5, alpha:float=0.2, beta:float=1, verbose=False):
+    def __init__(self, m:int=5, alpha:float=0.2, beta:float=1, num_linear_warmup:int=3 , verbose=False):
         """
         Initializes the SCF method parameters.
 
@@ -412,7 +412,8 @@ class AndersonMixer:
         Attributes:
             dx_hist (list): History of differences between consecutive x values (x_k - x_{k-1}).
             df_hist (list): History of differences between consecutive function values (f(x_k) - f(x_{k-1})).
-            first_three (bool): Flag to handle the first three iterations separately.
+            first_linear (bool): Flag to handle the first linear mixing iterations separately.
+            num_linear_warmup (int): Number of iterations to use linear mixing before switching to Anderson mixing.
             iter (int): Iteration counter.
             xkm1: Previous x value (x_{k-1}).
             fkm1: Previous function value (f(x_{k-1})).
@@ -423,7 +424,8 @@ class AndersonMixer:
         self.verbose = verbose
         self.dx_hist = []  #  xk - x_{k-1}
         self.df_hist = []  #  f(x_k) - f(x_{k-1})
-        self.first_three = True  # Flag to handle first three iterations separately
+        self.first_linear = True  # Flag to handle first three iterations separately
+        self.num_linear_warmup = num_linear_warmup  # Number of iterations to use linear mixing before switching to Anderson mixing
         self.iter = 0  # Iteration counter
         self.xkm1 = None  # x_{k-1}
         self.fkm1 = None  # f(x_{k-1})
@@ -440,7 +442,7 @@ class AndersonMixer:
         
         self.dx_hist.clear()
         self.df_hist.clear()
-        self.first_three = True
+        self.first_linear = True
         self.iter = 0
         self.xkm1 = None  # Reset previous x_{k-1}
         self.fkm1 = None  # Reset previous f(x_{k-1})
@@ -473,17 +475,20 @@ class AndersonMixer:
         assert isinstance(xk, np.ndarray), "xk must be a numpy array"
         assert fk.shape == xk.shape, "fk and xk must have the same shape"
 
-        if self.first_three:
-            if self.iter < 3:
-                # self.dx_list.append(dx.copy())
-                # self.df_hist.append(df.copy())
-                self.iter += 1
-                x_new = xk + self.alpha * (fk - xk)  # Linear mixing for first three iterations
+        if self.first_linear:
+            if self.iter < self.num_linear_warmup:
+                xkp1 = xk + self.alpha * (fk - xk)  # Linear mixing for first three iterations
+                if self.iter > 0:
+                    dx = xk - self.xkm1
+                    df = fk - self.fkm1
+                    self.dx_hist.append(dx.copy())
+                    self.df_hist.append(df.copy())
                 self.xkm1 = xk.copy()  # Store x_k for next iteration
                 self.fkm1 = fk.copy()
-                return x_new  # linear mixing
+                self.iter += 1
+                return xkp1  # linear mixing
             else:
-                self.first_three = False
+                self.first_linear = False
             
 
         dx = xk - self.xkm1  # dx = x_k - x_{k-1}
