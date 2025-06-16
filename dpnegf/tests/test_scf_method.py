@@ -4,6 +4,7 @@ from dpnegf.negf.scf_method import AndersonMixer
 from dpnegf.negf.scf_method import BroydenSecondMixer
 from dpnegf.negf.scf_method import BroydenFirstMixer
 from dpnegf.negf.scf_method import DIISMixer
+from dpnegf.negf.scf_method import PDIISMixer
 
 def test_anderson_mixer_linear_mixing_behavior():
     mixer = AndersonMixer(m=3, alpha=0.5, num_linear_warmup=2)
@@ -257,6 +258,87 @@ def test_diis_mixer_shape_and_type():
     out = mixer.update(x, r)
     assert isinstance(out, np.ndarray)
     assert out.shape == x.shape
+
+def test_pdiis_mixer_linear_warmup_behavior():
+    init_x = np.array([1.0, 2.0])
+    mixer = PDIISMixer(init_x, mix_rate=0.5, max_hist=3, mixing_period=2)
+    g0 = np.array([2.0, 4.0])
+    # First update: linear mixing
+    x1 = mixer.update(g0)
+    expected_x1 = init_x + 0.5 * (g0 - init_x)
+    np.testing.assert_allclose(x1, expected_x1)
+    # Second update: still linear mixing
+    g1 = np.array([3.0, 6.0])
+    x2 = mixer.update(g1)
+    expected_x2 = x1 + 0.5 * (g1 - x1)
+    np.testing.assert_allclose(x2, expected_x2)
+
+def test_pdiis_mixer_switches_to_pdiis_and_periodic():
+    init_x = np.array([0.0, 0.0])
+    mixer = PDIISMixer(init_x, mix_rate=0.2, max_hist=2, mixing_period=2)
+    g0 = np.array([1.0, 1.0])
+    x1 = mixer.update(g0)  # linear mixing
+    g1 = np.array([0.5, 0.5])
+    x2 = mixer.update(g1)  # linear mixing
+    g2 = np.array([0.2, 0.4])
+    x3 = mixer.update(g2)  # should use PDIIS (since iter_count == 3)
+    # Should return a numpy array of correct shape
+    assert isinstance(x3, np.ndarray)
+    assert x3.shape == init_x.shape
+
+def test_pdiis_mixer_history_limit():
+    init_x = np.array([1.0, 2.0])
+    mixer = PDIISMixer(init_x, mix_rate=0.3, max_hist=2, mixing_period=2)
+    g = np.array([2.0, 3.0])
+    # Fill up history
+    mixer.update(g)
+    mixer.update(g)
+    mixer.update(g)
+    mixer.update(g)
+    # Should not exceed max_hist
+    assert len(mixer.F) <= 2
+    assert len(mixer.R) <= 2
+
+def test_pdiis_mixer_reset():
+    init_x = np.array([1.0, 2.0])
+    mixer = PDIISMixer(init_x, mix_rate=0.3, max_hist=2, mixing_period=2)
+    g = np.array([2.0, 3.0])
+    mixer.update(g)
+    mixer.reset()
+    assert mixer.iter_count == 1
+    assert mixer.x is None or isinstance(mixer.x, np.ndarray)
+    assert mixer.f is None
+    assert mixer.R == []
+    assert mixer.F == []
+
+def test_pdiis_mixer_shape_assertion():
+    init_x = np.array([1.0, 2.0])
+    mixer = PDIISMixer(init_x)
+    g = np.array([1.0, 2.0, 3.0])
+    with pytest.raises(AssertionError):
+        mixer.update(g)
+
+def test_pdiis_mixer_fallback_on_singular_matrix(monkeypatch):
+    init_x = np.array([1.0, 2.0])
+    mixer = PDIISMixer(init_x, mix_rate=0.1, max_hist=2, mixing_period=3)
+    g = np.array([2.0, 3.0])
+    x1 = mixer.update(g)
+    x2 = mixer.update(g)
+    # Monkeypatch np.linalg.solve to raise LinAlgError
+    monkeypatch.setattr(np.linalg, "solve", lambda *a, **k: (_ for _ in ()).throw(np.linalg.LinAlgError))
+    # Third update triggers PDIIS and should fallback to linear mixing
+    x_new = mixer.update(g)
+    expected = mixer.x_last.ravel() + 0.1 * (g - mixer.x_last.ravel())
+    np.testing.assert_allclose(x_new, expected.ravel())
+
+def test_pdiis_mixer_output_shape_and_type():
+    init_x = np.array([1.0, 2.0, 3.0])
+    mixer = PDIISMixer(init_x, mix_rate=0.2, max_hist=2, mixing_period=2)
+    g = np.array([2.0, 3.0, 4.0])
+    out = mixer.update(g)
+    assert isinstance(out, np.ndarray)
+    assert out.shape == init_x.shape
+
 
 
 

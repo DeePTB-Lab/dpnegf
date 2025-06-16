@@ -180,16 +180,16 @@ class PDIISMixer:
         self.R = []
         self.F = []
         if new_init_x is not None:
-            assert isinstance(new_init_x, np.ndarray), "new_init_f must be a numpy array"
+            assert isinstance(new_init_x, np.ndarray), "new_init_x must be a numpy array"
             self.x = new_init_x.copy().reshape(-1,1)
 
     def update(self, g_new):
         """
-        Perform one PDIIS mixing update based on the new input f_new.
+        Perform one PDIIS mixing update based on the new input g_new.
 
         Parameters
         ----------
-        f_new : np.ndarray
+        g_new : np.ndarray
             Newly computed state (e.g., electrostatic potential).
 
         Returns
@@ -201,6 +201,7 @@ class PDIISMixer:
         
         g_new = g_new.copy()
         g_new = g_new.reshape(-1, 1)  # Ensure f_new is a column vector
+        assert g_new.shape == self.x.shape, "Shape mismatch in g_new and current state"
 
 
         if self.iter_count <= 2:
