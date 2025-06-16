@@ -3,6 +3,7 @@ import pytest
 from dpnegf.negf.scf_method import AndersonMixer
 from dpnegf.negf.scf_method import BroydenSecondMixer
 from dpnegf.negf.scf_method import BroydenFirstMixer
+from dpnegf.negf.scf_method import DIISMixer
 
 def test_anderson_mixer_linear_mixing_behavior():
     mixer = AndersonMixer(m=3, alpha=0.5, num_linear_warmup=2)
@@ -186,6 +187,77 @@ def test_broyden_first_mixer_handles_zero_residual():
     x3 = mixer.update(f)
     x4 = mixer.update(f)
     np.testing.assert_allclose(x4, x3)
+
+
+def test_diis_mixer_linear_mixing_warmup():
+    mixer = DIISMixer(max_hist=3, alpha=0.5, linear_warmup=2)
+    x0 = np.array([1.0, 2.0])
+    r0 = np.array([0.5, 1.0])
+    # First update: should use linear mixing
+    x1 = mixer.update(x0, r0)
+    expected_x1 = (x0 - r0) + 0.5 * r0
+    np.testing.assert_allclose(x1, expected_x1)
+    # Second update: still linear mixing
+    x2 = mixer.update(x1, r0)
+    expected_x2 = (x1 - r0) + 0.5 * r0
+    np.testing.assert_allclose(x2, expected_x2)
+
+def test_diis_mixer_switches_to_diis():
+    mixer = DIISMixer(max_hist=3, alpha=0.2, linear_warmup=1)
+    x0 = np.array([1.0, 2.0])
+    r0 = np.array([0.5, 1.0])
+    x1 = mixer.update(x0, r0)  # linear mixing
+    x2 = mixer.update(x1, r0)  # should switch to DIIS
+    # Should return a numpy array of correct shape
+    assert isinstance(x2, np.ndarray)
+    assert x2.shape == x0.shape
+    x2_ = np.array([0.2, 0.4])  # Expected value after DIIS mixing
+    assert abs(x2 - x2_).max() < 1e-8
+
+def test_diis_mixer_history_limit():
+    mixer = DIISMixer(max_hist=2, alpha=0.3, linear_warmup=1)
+    x = np.array([1.0, 2.0])
+    r = np.array([0.5, 1.0])
+    # Fill up history
+    mixer.update(x, r)
+    mixer.update(x, r)
+    mixer.update(x, r)
+    # Should not exceed max_hist
+    assert len(mixer.x_hist) <= 2
+    assert len(mixer.r_hist) <= 2
+
+def test_diis_mixer_reset():
+    mixer = DIISMixer(max_hist=2, alpha=0.3, linear_warmup=1)
+    x = np.array([1.0, 2.0])
+    r = np.array([0.5, 1.0])
+    mixer.update(x, r)
+    mixer.reset()
+    assert mixer.iter == 0
+    assert mixer.x_hist == []
+    assert mixer.r_hist == []
+
+def test_diis_mixer_fallback_on_singular_matrix(monkeypatch):
+    mixer = DIISMixer(max_hist=2, alpha=0.1, linear_warmup=0)
+    x = np.array([1.0, 2.0])
+    r = np.array([0.5, 1.0])
+    # Fill up history so that B will be singular
+    mixer.update(x, r)
+    mixer.update(x, r)
+    # Monkeypatch np.linalg.solve to raise LinAlgError
+    monkeypatch.setattr(np.linalg, "solve", lambda *a, **k: (_ for _ in ()).throw(np.linalg.LinAlgError))
+    x_new = mixer.update(x, r)
+    # Should fall back to linear mixing
+    expected = (x - r) + 0.1 * r
+    np.testing.assert_allclose(x_new, expected)
+
+def test_diis_mixer_shape_and_type():
+    mixer = DIISMixer(max_hist=3, alpha=0.2, linear_warmup=1)
+    x = np.array([1.0, 2.0, 3.0])
+    r = np.array([0.1, 0.2, 0.3])
+    out = mixer.update(x, r)
+    assert isinstance(out, np.ndarray)
+    assert out.shape == x.shape
+
 
 
 

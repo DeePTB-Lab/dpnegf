@@ -94,7 +94,7 @@ class DIISMixer:
         B[-1, -1] = 0
         for i in range(n):
             for j in range(n):
-                B[i, j] = np.dot(self.r_hist[i].T, self.r_hist[j])
+                B[i, j] = np.dot(self.r_hist[i].ravel(), self.r_hist[j].ravel())
 
         # Right-hand side of linear system
         rhs = np.zeros(n + 1)
