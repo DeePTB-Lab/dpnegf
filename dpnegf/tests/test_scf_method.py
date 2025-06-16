@@ -2,6 +2,7 @@ import numpy as np
 import pytest
 from dpnegf.negf.scf_method import AndersonMixer
 from dpnegf.negf.scf_method import BroydenSecondMixer
+from dpnegf.negf.scf_method import BroydenFirstMixer
 
 def test_anderson_mixer_linear_mixing_behavior():
     mixer = AndersonMixer(m=3, alpha=0.5, num_linear_warmup=2)
@@ -106,4 +107,86 @@ def test_broyden_second_mixer_multiple_iterations():
         x = mixer.update(x, f)
         assert x.shape == (2,)
         assert np.allclose(x, xlist_[i])
+
+
+def test_broyden_first_mixer_linear_warmup():
+    # Test that the first three updates use linear mixing
+    init_x = np.array([1.0, 2.0])
+    alpha = 0.2
+    mixer = BroydenFirstMixer(init_x, alpha=alpha)
+    f0 = np.array([0.5, -1.0])
+    # First update: should use init_x + alpha * f
+    x1 = mixer.update(f0)
+    np.testing.assert_allclose(x1, init_x + alpha * f0)
+    # Second update: should use x_n + alpha * f
+    f1 = np.array([1.0, 1.0])
+    x2 = mixer.update(f1)
+    np.testing.assert_allclose(x2, x1 + alpha * f1)
+    # Third update: should use x_n + alpha * f
+    f2 = np.array([-0.5, 0.5])
+    x3 = mixer.update(f2)
+    np.testing.assert_allclose(x3, x2 + alpha * f2)
+
+def test_broyden_first_mixer_switches_to_broyden():
+    # After three iterations, should use Broyden's update
+    init_x = np.array([0.0, 0.0])
+    alpha = 0.1
+    mixer = BroydenFirstMixer(init_x, alpha=alpha)
+    f0 = np.array([1.0, 2.0])
+    x1 = mixer.update(f0)
+    np.testing.assert_allclose(x1, init_x + alpha * f0)
+    f1 = np.array([0.5, 1.5])
+    x2 = mixer.update(f1)
+    np.testing.assert_allclose(x2, x1 + alpha * f1)
+    f2 = np.array([0.2, 1.0])
+    x3 = mixer.update(f2)
+    np.testing.assert_allclose(x3, x2 + alpha * f2)
+    # Now, Broyden's update should be used
+    f3 = np.array([0.1, 0.5])
+    x4 = mixer.update(f3)
+    x4_ = np.array([0.19, 0.55])
+    # Check that the shape is correct and no error is raised
+    assert isinstance(x4, np.ndarray)
+    assert x4.shape == init_x.shape
+    np.testing.assert_allclose(x4, x4_)
+
+def test_broyden_first_mixer_reset():
+    init_x = np.array([1.0, 2.0, 3.0])
+    mixer = BroydenFirstMixer(init_x, alpha=0.3)
+    f = np.array([0.1, 0.2, 0.3])
+    mixer.update(f)
+    mixer.reset(init_x.shape)
+    assert mixer.iter == 0
+    np.testing.assert_array_equal(mixer.x_n, np.zeros(init_x.shape))
+    np.testing.assert_array_equal(mixer.x_nm1, np.zeros(init_x.shape))
+    assert mixer.J0.shape == (3, 3)
+    assert mixer.J_inv.shape == (3, 3)
+
+def test_broyden_first_mixer_multiple_iterations():
+    # Run several iterations and check for shape and no errors
+    init_x = np.array([0.0, 0.0])
+    mixer = BroydenFirstMixer(init_x, alpha=0.15)
+    x = init_x.copy()
+    x_last = np.array([ 1644.28499959, -1644.28499959])
+    for i in range(10):
+        f = np.array([1.0 - 0.1 * i, -1.0 + 0.1 * i])
+        x = mixer.update(f)
+        assert x.shape == (2,)
+        if i == 9:
+            np.testing.assert_allclose(x, x_last)
+ 
+
+def test_broyden_first_mixer_handles_zero_residual():
+    # Should not crash if residual is zero
+    init_x = np.array([1.0, 2.0])
+    mixer = BroydenFirstMixer(init_x, alpha=0.2)
+    f = np.zeros_like(init_x)
+    x1 = mixer.update(f)
+    x2 = mixer.update(f)
+    x3 = mixer.update(f)
+    x4 = mixer.update(f)
+    np.testing.assert_allclose(x4, x3)
+
+
+
 
