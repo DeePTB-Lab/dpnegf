@@ -6,14 +6,29 @@ log = logging.getLogger(__name__)
 
 class DIISMixer:
     """
-    DIIS (Pulay mixing) for SCF acceleration.
-
+    DIISMixer implements the Direct Inversion in the Iterative Subspace (DIIS) method 
+    for accelerating self-consistent field (SCF) convergence.
+    max_hist : int, optional
+        Maximum number of history vectors to store for DIIS extrapolation (default: 6).
+    alpha : float, optional
+        Mixing parameter for linear mixing during warmup (default: 0.2).
+    linear_warmup : int, optional
+        Number of initial iterations to use linear mixing before switching to DIIS (default: 1).
     Attributes
-    ----------
+    x_hist : list of ndarray
+        History of previous input vectors (e.g., potentials).
+    r_hist : list of ndarray
+        History of previous residual vectors.
+    iter : int
+        Iteration counter.
     max_hist : int
-        Maximum number of previous iterations to store.
+        Maximum number of history vectors.
+    alpha : float
+        Linear mixing parameter.
+    linear_warmup : int
+        Number of linear mixing iterations before DIIS.
     """
-    def __init__(self, max_hist=6, alpha=0.2, linear_warmup=1):
+    def __init__(self, max_hist:int=6, alpha:float=0.2, linear_warmup:int=1):
         self.max_hist = max_hist
         self.alpha = alpha
         self.linear_warmup = linear_warmup  # Number of iterations to use linear mixing before DIIS
@@ -24,31 +39,36 @@ class DIISMixer:
 
     def reset(self):
         """
-        Reset the DIIS mixer state.
-        Clears the history of x and r.
+        Reset the internal state of the mixer by clearing the history of x and r,
+        setting the iteration counter to zero, and logging the reset action.
         """
         self.x_hist.clear()
         self.r_hist.clear()
         self.iter = 0
         log.info("[DIIS] Mixer state reset.")
 
-    def update(self, x_new, r_new):
+    def update(self, x_new:np.ndarray, r_new:np.ndarray):
         """
-        Apply DIIS to improve the estimate.
+        Update the current solution vector using DIIS (Direct Inversion in the Iterative Subspace) or linear mixing.
+
+        This method manages the iterative update of a solution vector `x_new` and its corresponding residual `r_new`.
+        It stores a history of previous solution and residual vectors up to `max_hist` entries. During the initial
+        `linear_warmup` iterations, it applies linear mixing. After that, it constructs the DIIS B matrix and solves
+        for optimal mixing coefficients to accelerate convergence. If the B matrix is singular, it falls back to 
+        linear mixing.
 
         Parameters
         ----------
-        x_new : ndarray
-            Current input (e.g., electrostatic potential).
-        r_new : ndarray
-            Current residual (e.g., phi_poisson - phi)
+        x_new : np.ndarray
+            The new solution vector to be mixed.
+        r_new : np.ndarray
+            The new residual vector.
 
         Returns
         -------
-        x_mixed : ndarray
-            Mixed input for next iteration.
+        np.ndarray
+            The updated (mixed) solution vector.
         """
-
         self.iter += 1
 
         x_new = x_new.copy().reshape(-1,1)
@@ -96,119 +116,152 @@ class DIISMixer:
 
 class PDIISMixer:
     """
-    Periodic Direct Inversion in the Iterative Subspace (PDIIS) mixer for accelerating SCF convergence.
+    PDIISMixer implements the Periodic Direct Inversion in the Iterative Subspace (PDIIS) 
+    mixing scheme for accelerating self-consistent field (SCF) convergence.
 
-    Parameters
-    ----------
-    init_p : np.ndarray
-        Initial potential or state vector for SCF iterations.
+    init_f : np.ndarray
+        Initial state (e.g., potential or density) for the mixer.
     mix_rate : float, optional
-        Mixing rate (step size) for linear update. Default is 0.05.
-    n_history : int, optional
-        Number of history steps to store for Pulay extrapolation. Default is 6.
+        Linear mixing rate (default: 0.2).
+    max_hist : int, optional
+        Maximum number of history vectors to store for DIIS extrapolation (default: 4).
     mixing_period : int, optional
-        Frequency (in iterations) to apply DIIS mixing instead of linear mixing. Default is 3.
-    verbose : bool, optional
-        If True, print debug information. Default is False.
+        Number of iterations between DIIS mixing steps (default: 2).
+    Attributes
+    mix_rate : float
+        Linear mixing rate.
+    max_hist : int
+        Maximum number of history vectors.
+    mixing_period : int
+        Number of iterations between DIIS mixing steps.
+    iter_count : int
+        Current iteration count.
+    x : np.ndarray or None
+        Current mixed state.
+    x_last : np.ndarray or None
+        Previous mixed state.
+    f : np.ndarray or None
+        Current input state.
+    R : list of np.ndarray
+        History of differences in mixed states.
+    F : list of np.ndarray
+        History of differences in input states.
+    Methods
+    reset(new_init_f=None)
+        Reset the mixer, optionally with a new initial state.
+    update(f_new)
+        Perform one PDIIS mixing update based on the new input state.
+    Notes
+    -----
+    - The mixer alternates between linear mixing and DIIS mixing according to `mixing_period`.
+    - If the DIIS matrix is ill-conditioned or a numerical error occurs, the mixer falls back to linear mixing.
     """
-    def __init__(self, init_p, mix_rate=0.05, n_history=4, mixing_period=2, verbose=True):
-        assert isinstance(init_p, np.ndarray), "init_p must be a numpy array"
+    def __init__(self, init_x, mix_rate=0.2, max_hist=4, mixing_period=2):
+        assert isinstance(init_x, np.ndarray), "init_x must be a numpy array"
         
         self.mix_rate = mix_rate
-        self.n_history = n_history
+        self.max_hist = max_hist
         self.mixing_period = mixing_period
-        self.verbose = verbose
         
-        self.iter_count = 0
-        self.p = init_p.copy()
+        self.iter_count = 1
+        self.x = init_x.copy() # x_i
+        self.x_last = None  # x_{i-1}
         self.f = None
-        self.R = [None for _ in range(n_history)]
-        self.F = [None for _ in range(n_history)]
+        self.R = []
+        self.F = []
 
-    def reset(self, new_init_p=None):
+    def reset(self, new_init_f=None):
         """Reset the mixer, optionally with a new initial potential."""
-        self.iter_count = 0
+        self.iter_count = 1
+        self.x = None
         self.f = None
-        self.R = [None for _ in range(self.n_history)]
-        self.F = [None for _ in range(self.n_history)]
-        if new_init_p is not None:
-            assert isinstance(new_init_p, np.ndarray), "new_init_p must be a numpy array"
-            self.p = new_init_p.copy()
+        self.R = []
+        self.F = []
+        if new_init_f is not None:
+            assert isinstance(new_init_f, np.ndarray), "new_init_f must be a numpy array"
+            self.f = new_init_f.copy()
 
-    def update(self, p_new):
+    def update(self, f_new):
         """
-        Perform one PDIIS mixing update based on the new input p_new.
+        Perform one PDIIS mixing update based on the new input f_new.
 
         Parameters
         ----------
-        p_new : np.ndarray
+        f_new : np.ndarray
             Newly computed state (e.g., electrostatic potential).
 
         Returns
         -------
-        p_next : np.ndarray
+        x_next : np.ndarray
             The next mixed state.
         """
-        assert isinstance(p_new, np.ndarray), "p_new must be a numpy array"
-        assert p_new.shape == self.p.shape, "Shape mismatch in p_new and current state"
+        assert isinstance(f_new, np.ndarray), "f_new must be a numpy array"
         
-        p_new = p_new.copy()
-        f_new = p_new - self.p
-
-        if self.f is not None:
-            idx = self.iter_count % self.n_history
-            self.R[idx] = p_new - self.p # Residual vector
-            self.F[idx] = f_new - self.f # Difference in residuals
-
-        
-
-        do_pdiis = (self.iter_count + 1) % self.mixing_period == 0
-        p_next = None
-
-        if do_pdiis and all(f is not None for f in self.F):
-            if self.verbose:
-                log.info(msg=f"[PDIIS] Performing DIIS mixing at iter {self.iter_count + 1}")
-            F_mat = np.stack(self.F, axis=1)
-            R_mat = np.stack(self.R, axis=1)
-
-            FtF = F_mat.T @ F_mat
-
-            try:
-                cond_FtF = np.linalg.cond(FtF)
-                if cond_FtF > 1e10:
-                    log.info(f"[PDIIS DEBUG] cond(FtF) = {cond_FtF:.2e}")
-                    log.info(f"[PDIIS DEBUG] Norms of F vectors: {[np.linalg.norm(f) for f in self.F]}")
-                    log.info(f"[PDIIS DEBUG] Rank of F_mat: {np.linalg.matrix_rank(F_mat)}")
-                    log.info(msg=f"[PDIIS] Warning: FtF matrix condition number too high ({cond_FtF:.2e}). Skipping DIIS.")
-                    raise RuntimeError("Ill-conditioned FtF matrix in PDIIS")
-
-                correction = (R_mat + self.mix_rate * F_mat) @ np.linalg.solve(FtF, F_mat.T @ f_new)
-                p_next = self.p + self.mix_rate * f_new - correction
-
-            except RuntimeError as e:
-                # This was manually raised due to condition number
-                if self.verbose:
-                    log.info(msg=f"[PDIIS] {e} Falling back to linear mixing.")
-                p_next = self.p + self.mix_rate * f_new
-
-            except np.linalg.LinAlgError as e:
-                # This is actual numerical failure in np.linalg.solve
-                if self.verbose:
-                    log.info(msg=f"[PDIIS] np.linalg.solve failed: {e}. Falling back to linear mixing.")
-                p_next = self.p + self.mix_rate * f_new
-        else:
-            if self.verbose:
-                log.info(msg=f"[PDIIS] Using linear mixing at iteration {self.iter_count + 1} (not periodic time step or not enough history).")
-            p_next = self.p + self.mix_rate * f_new
+        f_new = f_new.copy()
 
 
+        if self.iter_count <= 2:
+            # First two iteration
+            x_next = self.x + self.mix_rate * (f_new - self.x)  # Linear mixing
+            if self.iter_count == 2:
+                self.x_last = self.x.copy()
+            self.x = x_next.copy()
+            self.f = f_new.copy()  # Update current state
+            self.iter_count += 1
+            return x_next  # Return the mixed state
 
-        # Update state
-        self.f = f_new.copy()
-        self.p = p_next.copy()
-        self.iter_count += 1
+        else: # After the first two iterations, PDIIS can be used
+            assert f_new.shape == self.f.shape, "Shape mismatch in x_new and current state"
+            dx_i = self.x - self.x_last # dx_i = x_i - x_{i-1}
+            df_i = f_new - self.f  # df_i = f_i - f_{i-1}
 
-        return p_next
+            # Store new history
+            if len(self.F) >= self.max_hist:
+                self.R.pop(0)
+                self.F.pop(0)
+            self.R.append(dx_i)  # Store the difference in potentials
+            self.F.append(df_i)
+
+            do_pdiis = self.iter_count  % self.mixing_period == 0
+            x_next = None # x_{i+1}
+            if do_pdiis:
+                log.info(msg=f"[PDIIS] Performing DIIS mixing at iter {self.iter_count}")
+                F_mat = np.column_stack(self.F)
+                R_mat = np.column_stack(self.R)
+                FtF = F_mat.T @ F_mat
+
+                try:
+                    cond_FtF = np.linalg.cond(FtF)
+                    if cond_FtF > 1e10:
+                        log.warning(msg=f"[PDIIS] Warning: FtF matrix condition number ({cond_FtF:.2e}) is too high. Skipping DIIS.")
+                        log.warning(f"[PDIIS DEBUG] cond(FtF) = {cond_FtF:.2e}")
+                        log.warning(f"[PDIIS DEBUG] Norms of F vectors: {[np.linalg.norm(f) for f in self.F]}")
+                        log.warning(f"[PDIIS DEBUG] Rank of F_mat: {np.linalg.matrix_rank(F_mat)}")
+                        raise RuntimeError("Ill-conditioned FtF matrix in PDIIS")
+
+                    correction = (R_mat + self.mix_rate * F_mat) @ np.linalg.solve(FtF, F_mat.T @ f_new)
+                    x_next = self.x + self.mix_rate * f_new - correction
+                except RuntimeError as e:
+                    # This was manually raised due to condition number
+                    log.warning(msg=f"[PDIIS] {e} Falling back to linear mixing.")
+                    x_next = self.x + self.mix_rate * (f_new - self.x) 
+
+                except np.linalg.LinAlgError as e:
+                    # Numerical failure in np.linalg.solve
+                    log.warning(msg=f"[PDIIS] np.linalg.solve failed: {e}. Falling back to linear mixing.")
+                    x_next = self.x + self.mix_rate * (f_new - self.x) 
+
+            else:
+                log.info(msg=f"[PDIIS] Using linear mixing at iteration {self.iter_count} (not periodic time step).")
+                x_next = self.x + self.mix_rate * (f_new - self.x)  # Linear mixing
+
+            # Update state
+            self.f = f_new.copy()
+            self.x_last = self.x.copy()
+            self.x = x_next.copy()
+            self.iter_count += 1
+
+            return x_next
     
 
 

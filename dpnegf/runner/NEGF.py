@@ -397,28 +397,26 @@ class NEGF(object):
         max_diff_phi = 1e30
         max_diff_list = [] 
         iter_count=0
-        if mix_method == 'PDIIS':
-            mixer = PDIISMixer(init_p=interface_poisson.phi.copy(), mix_rate=mix_rate)
-            log.info(msg="Using PDIIS mixing method for NEGF-Poisson SCF")
-        elif mix_method == 'linear':
-            log.info(msg="Using linear mixing method for NEGF-Poisson SCF")
-        elif mix_method == 'DIIS':
-            mixer = DIISMixer(max_hist=6, alpha=0.2)
-            log.info(msg="Using DIIS mixing method for NEGF-Poisson SCF")
-        elif mix_method == 'BroydenFirst':
-            mixer = BroydenFirstMixer(init_x=interface_poisson.phi, alpha=mix_rate)
-            log.info(msg="Using Broyden's first method for NEGF-Poisson SCF")
-        elif mix_method == 'BroydenSecond':
-            mixer = BroydenSecondMixer(shape=interface_poisson.phi.shape, max_hist=8, alpha=mix_rate)
-            log.info(msg="Using Broyden's second method for NEGF-Poisson SCF")
-        # elif mix_method == 'Block_BroydenFirst':
-        #     mixer = Block_BroydenFirstMixer(init_x=interface_poisson.phi, alpha=mix_rate)
-        #     log.info(msg="Using Block Broyden's first method for NEGF-Poisson SCF")
-        elif mix_method == 'Anderson':
-            mixer = AndersonMixer(m=5, alpha=0.2)
-            log.info(msg="Using Anderson mixing method for NEGF-Poisson SCF")
+        mix_method_list = ['linear', 'PDIIS', 'DIIS', 'BroydenFirst', 'BroydenSecond', 'Anderson']
+        if mix_method not in mix_method_list:
+            raise ValueError("mix_method should be one of {}".format(mix_method_list))
         else:
-            raise ValueError("mix_method should be 'linear' or 'PDIIS'")
+        # initialize the mixer
+            log.info(msg="Using {} mixing method for NEGF-Poisson SCF".format(mix_method))
+            if mix_method == 'PDIIS':
+                mixer = PDIISMixer(init_x=interface_poisson.phi.copy(), mix_rate=mix_rate)
+            elif mix_method == 'DIIS':
+                mixer = DIISMixer(max_hist=6, alpha=0.2)
+            elif mix_method == 'BroydenFirst':
+                mixer = BroydenFirstMixer(init_x=interface_poisson.phi, alpha=mix_rate)
+            elif mix_method == 'BroydenSecond':
+                mixer = BroydenSecondMixer(shape=interface_poisson.phi.shape, max_hist=8, alpha=mix_rate)
+            elif mix_method == 'Anderson':
+                mixer = AndersonMixer(m=5, alpha=0.2)
+            elif mix_method == 'linear':
+                mixer = None
+
+   
 
         # Gummel type iteration
         while max_diff_phi > err:
@@ -451,18 +449,10 @@ class NEGF(object):
                 interface_poisson.phi = mixer.update(interface_poisson.phi.copy())
             elif mix_method == 'BroydenFirst':
                 residual = interface_poisson.phi - interface_poisson.phi_old
-                # residual_filter = apply_gaussian_filter_3d(residual, 
-                #                                            shape=(interface_poisson.grid.shape[0],
-                #                                                    interface_poisson.grid.shape[1],
-                #                                                    interface_poisson.grid.shape[2]), 
-                #                                            sigma=Gaussian_sigma)
                 interface_poisson.phi = mixer.update(f = residual) # fixed point problem: f defined as F(\phi)-\phi =0
             elif mix_method == 'BroydenSecond':
                 residual = interface_poisson.phi - interface_poisson.phi_old
                 interface_poisson.phi = mixer.update(interface_poisson.phi.copy(), residual)
-            # elif mix_method == 'Block_BroydenFirst':
-            #     residual = interface_poisson.phi - interface_poisson.phi_old
-            #     interface_poisson.phi = mixer.update(f = residual)
             elif mix_method == 'Anderson':
                 interface_poisson.phi = mixer.update(interface_poisson.phi.copy(), interface_poisson.phi_old.copy())
 
