@@ -2,6 +2,98 @@ import numpy as np
 import logging
 
 log = logging.getLogger(__name__)
+
+
+class DIISMixer:
+    """
+    DIIS (Pulay mixing) for SCF acceleration.
+
+    Attributes
+    ----------
+    max_hist : int
+        Maximum number of previous iterations to store.
+    """
+    def __init__(self, max_hist=6, alpha=0.2, linear_warmup=1):
+        self.max_hist = max_hist
+        self.alpha = alpha
+        self.linear_warmup = linear_warmup  # Number of iterations to use linear mixing before DIIS
+        
+        self.x_hist = []
+        self.r_hist = []
+        self.iter = 0  # Iteration counter
+
+    def reset(self):
+        """
+        Reset the DIIS mixer state.
+        Clears the history of x and r.
+        """
+        self.x_hist.clear()
+        self.r_hist.clear()
+        self.iter = 0
+        log.info("[DIIS] Mixer state reset.")
+
+    def update(self, x_new, r_new):
+        """
+        Apply DIIS to improve the estimate.
+
+        Parameters
+        ----------
+        x_new : ndarray
+            Current input (e.g., electrostatic potential).
+        r_new : ndarray
+            Current residual (e.g., phi_poisson - phi)
+
+        Returns
+        -------
+        x_mixed : ndarray
+            Mixed input for next iteration.
+        """
+
+        self.iter += 1
+
+        x_new = x_new.copy().reshape(-1,1)
+        r_new = r_new.copy().reshape(-1,1)
+
+        # Store new history
+        if len(self.x_hist) >= self.max_hist:
+            self.x_hist.pop(0)
+            self.r_hist.pop(0)
+
+        self.x_hist.append(x_new)
+        self.r_hist.append(r_new)
+
+        if self.iter <= self.linear_warmup : # The first iteration
+            x_new = (x_new - r_new) + self.alpha * r_new  # Linear mixing
+            return x_new.ravel() # Not enough history yet
+
+        # Construct B matrix (r_i · r_j)
+        n = len(self.r_hist)
+        B = np.empty((n + 1, n + 1))
+        B[-1, :] = 1
+        B[:, -1] = -1
+        B[-1, -1] = 0
+        for i in range(n):
+            for j in range(n):
+                B[i, j] = np.dot(self.r_hist[i].T, self.r_hist[j])
+
+        # Right-hand side of linear system
+        rhs = np.zeros(n + 1)
+        rhs[-1] = 1
+        rhs = rhs.reshape(-1, 1)
+
+        try:
+            coeffs = np.linalg.solve(B, rhs)[:-1]  # drop Lagrange multiplier
+        except np.linalg.LinAlgError:
+            log.warning("[DIIS] Singular matrix in DIIS mixing. Falling back to lienar mixing.")
+            # Fallback to linear mixing if B is singular
+            x_new = (x_new - r_new) + self.alpha * r_new  # Linear mixing
+            return x_new.ravel()
+
+        # Construct mixed x
+        x_mixed = sum(c * x for c, x in zip(coeffs, self.x_hist))
+        return x_mixed.ravel()  # Return as 1D array
+
+
 class PDIISMixer:
     """
     Periodic Direct Inversion in the Iterative Subspace (PDIIS) mixer for accelerating SCF convergence.
@@ -118,6 +210,9 @@ class PDIISMixer:
 
         return p_next
     
+
+
+
 class BroydenFirstMixer:
     """
     Implements the first Broyden mixing method for accelerating self-consistent field (SCF) iterations.

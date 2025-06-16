@@ -14,7 +14,7 @@ import numpy as np
 from dpnegf.utils.make_kpoints import kmesh_sampling_negf
 import logging
 from dpnegf.negf.poisson_init import Grid,Interface3D,Dirichlet,Dielectric
-from dpnegf.negf.scf_method import PDIISMixer,BroydenFirstMixer,BroydenSecondMixer,AndersonMixer
+from dpnegf.negf.scf_method import PDIISMixer,DIISMixer,BroydenFirstMixer,BroydenSecondMixer,AndersonMixer
 from typing import Optional, Union
 from dpnegf.utils.tools import apply_gaussian_filter_3d
 # from pyinstrument import Profiler
@@ -402,6 +402,9 @@ class NEGF(object):
             log.info(msg="Using PDIIS mixing method for NEGF-Poisson SCF")
         elif mix_method == 'linear':
             log.info(msg="Using linear mixing method for NEGF-Poisson SCF")
+        elif mix_method == 'DIIS':
+            mixer = DIISMixer(max_hist=6, alpha=0.2)
+            log.info(msg="Using DIIS mixing method for NEGF-Poisson SCF")
         elif mix_method == 'BroydenFirst':
             mixer = BroydenFirstMixer(init_x=interface_poisson.phi, alpha=mix_rate)
             log.info(msg="Using Broyden's first method for NEGF-Poisson SCF")
@@ -441,6 +444,9 @@ class NEGF(object):
                                                                 dtype=self.poisson_options['poisson_dtype'])
             if mix_method == 'linear':
                 interface_poisson.phi = interface_poisson.phi + mix_rate*(interface_poisson.phi_old-interface_poisson.phi)
+            elif mix_method == 'DIIS':
+                residual = interface_poisson.phi - interface_poisson.phi_old
+                interface_poisson.phi = mixer.update(interface_poisson.phi.copy(), residual)
             elif mix_method == 'PDIIS':
                 interface_poisson.phi = mixer.update(interface_poisson.phi.copy())
             elif mix_method == 'BroydenFirst':
