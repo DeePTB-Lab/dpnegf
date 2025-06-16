@@ -119,6 +119,8 @@ class PDIISMixer:
     PDIISMixer implements the Periodic Direct Inversion in the Iterative Subspace (PDIIS) 
     mixing scheme for accelerating self-consistent field (SCF) convergence.
 
+    This PDIIS method is from https://doi.org/10.1016/j.cplett.2016.01.033.
+    
     init_f : np.ndarray
         Initial state (e.g., potential or density) for the mixer.
     mix_rate : float, optional
@@ -156,7 +158,7 @@ class PDIISMixer:
     - The mixer alternates between linear mixing and DIIS mixing according to `mixing_period`.
     - If the DIIS matrix is ill-conditioned or a numerical error occurs, the mixer falls back to linear mixing.
     """
-    def __init__(self, init_x, mix_rate=0.2, max_hist=4, mixing_period=2):
+    def __init__(self, init_x, mix_rate=0.2, max_hist=5, mixing_period=3):
         assert isinstance(init_x, np.ndarray), "init_x must be a numpy array"
         
         self.mix_rate = mix_rate
@@ -164,24 +166,24 @@ class PDIISMixer:
         self.mixing_period = mixing_period
         
         self.iter_count = 1
-        self.x = init_x.copy() # x_i
+        self.x = init_x.copy().reshape(-1,1)  # x_i
         self.x_last = None  # x_{i-1}
         self.f = None
         self.R = []
         self.F = []
 
-    def reset(self, new_init_f=None):
+    def reset(self, new_init_x=None):
         """Reset the mixer, optionally with a new initial potential."""
         self.iter_count = 1
         self.x = None
         self.f = None
         self.R = []
         self.F = []
-        if new_init_f is not None:
-            assert isinstance(new_init_f, np.ndarray), "new_init_f must be a numpy array"
-            self.f = new_init_f.copy()
+        if new_init_x is not None:
+            assert isinstance(new_init_x, np.ndarray), "new_init_f must be a numpy array"
+            self.x = new_init_x.copy().reshape(-1,1)
 
-    def update(self, f_new):
+    def update(self, g_new):
         """
         Perform one PDIIS mixing update based on the new input f_new.
 
@@ -195,25 +197,28 @@ class PDIISMixer:
         x_next : np.ndarray
             The next mixed state.
         """
-        assert isinstance(f_new, np.ndarray), "f_new must be a numpy array"
+        assert isinstance(g_new, np.ndarray), "f_new must be a numpy array"
         
-        f_new = f_new.copy()
+        g_new = g_new.copy()
+        g_new = g_new.reshape(-1, 1)  # Ensure f_new is a column vector
 
 
         if self.iter_count <= 2:
             # First two iteration
-            x_next = self.x + self.mix_rate * (f_new - self.x)  # Linear mixing
+            x_next = self.x + self.mix_rate * (g_new - self.x)  # Linear mixing
             if self.iter_count == 2:
                 self.x_last = self.x.copy()
+            self.f = g_new - self.x
             self.x = x_next.copy()
-            self.f = f_new.copy()  # Update current state
             self.iter_count += 1
-            return x_next  # Return the mixed state
+            log.info(msg=f"[PDIIS] Using linear mixing warm up at iteration {self.iter_count}.")
+            return x_next.ravel()  # Return the mixed state
 
         else: # After the first two iterations, PDIIS can be used
-            assert f_new.shape == self.f.shape, "Shape mismatch in x_new and current state"
+            assert g_new.shape == self.f.shape, "Shape mismatch in f_new and current state"
+            f_new = g_new - self.x # f_i = g_i - x_i
             dx_i = self.x - self.x_last # dx_i = x_i - x_{i-1}
-            df_i = f_new - self.f  # df_i = f_i - f_{i-1}
+            df_i = f_new - self.f       # df_i = f_i - f_{i-1}
 
             # Store new history
             if len(self.F) >= self.max_hist:
@@ -244,24 +249,24 @@ class PDIISMixer:
                 except RuntimeError as e:
                     # This was manually raised due to condition number
                     log.warning(msg=f"[PDIIS] {e} Falling back to linear mixing.")
-                    x_next = self.x + self.mix_rate * (f_new - self.x) 
+                    x_next = self.x + self.mix_rate * (g_new - self.x) 
 
                 except np.linalg.LinAlgError as e:
                     # Numerical failure in np.linalg.solve
                     log.warning(msg=f"[PDIIS] np.linalg.solve failed: {e}. Falling back to linear mixing.")
-                    x_next = self.x + self.mix_rate * (f_new - self.x) 
+                    x_next = self.x + self.mix_rate * (g_new - self.x) 
 
             else:
                 log.info(msg=f"[PDIIS] Using linear mixing at iteration {self.iter_count} (not periodic time step).")
-                x_next = self.x + self.mix_rate * (f_new - self.x)  # Linear mixing
+                x_next = self.x + self.mix_rate * (g_new - self.x)  # Linear mixing
 
             # Update state
-            self.f = f_new.copy()
+            self.f = g_new.copy()
             self.x_last = self.x.copy()
             self.x = x_next.copy()
             self.iter_count += 1
 
-            return x_next
+            return x_next.ravel()
     
 
 
