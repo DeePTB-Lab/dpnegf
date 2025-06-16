@@ -290,98 +290,72 @@ class BroydenSecondMixer:
     using a low-rank update formula and applies it to iteratively improve convergence.
 
     The method uses limited-memory rank-1 updates:
-        x_{n+1} = x_n - B_n * r_n
-    where B_n ≈ J^{-1} is the inverse Jacobian built from the update history.
+        x_{n+1} = x_n - H_n * f_n
+    where H_n ≈ J^{-1} is the inverse Jacobian.
 
     Attributes:
         alpha (float): Initial mixing parameter for the first step.
-        max_hist (int): Maximum number of update pairs (u, r) stored for low-rank updates.
         eps (float): Threshold to avoid numerical instability in inner products.
-        B0 (ndarray): Initial inverse Jacobian approximation (scaled identity).
-        u_hist (list): History of update vectors u_n = s_n - B_n * delta_r_n.
-        r_hist (list): History of delta_r_n = r_n - r_{n-1}.
+        H0 (ndarray): Initial inverse Jacobian approximation (scaled identity).
+        df_hist (list): History of delta_df_n = f_n - f_{n-1}.
     """
 
-    def __init__(self, shape, max_hist=8, alpha=0.1, eps=1e-12):
+    def __init__(self, shape, alpha=0.1, eps=1e-12):
         self.alpha = alpha        # Initial mixing factor
-        self.max_hist = max_hist  # Max number of correction terms
         self.eps = eps            # Numerical stability threshold
         self.reset(shape)
 
     def reset(self, shape):
         self.iter = 0
         self.x_last = np.zeros(shape)
-        self.r_last = np.zeros(shape)
+        self.f_last = np.zeros(shape)
         dim = np.prod(shape)
-        self.B0 = -self.alpha * np.eye(dim)  # Initial inverse Jacobian guess
-        self.u_hist = []  # History of update vectors u_n = s_n - B delta_r
-        self.r_hist = []  # Corresponding delta_r vectors
+        self.H0 = -self.alpha * np.eye(dim)  # Initial inverse Jacobian guess
+        self.df_hist = []  # Corresponding delta_r vectors
 
-    def update(self, x, r):
+    def update(self, x, f):
         """
-        Perform one Broyden update step: x_{n+1} = x_n - B_n * r_n.
+        Perform one Broyden update step: x_{n+1} = x_n - H_n * f_n.
 
-        This function applies the approximate inverse Jacobian B_n
-        to the current residual r_n to compute the next guess x_{n+1}.
+        This function applies the approximate inverse Jacobian H_n
+        to the current residual f_n to compute the next guess x_{n+1}.
         The internal approximation B_n is updated based on the history
         of residual differences and solution updates.
 
         Args:
             x (np.ndarray): Current solution guess (arbitrary shape).
-            r (np.ndarray): Residual vector at the current guess.
+            f (np.ndarray): Residual vector at the current guess.
 
         Returns:
             np.ndarray: Updated solution guess (same shape as input x).
         """
-        x = x.ravel()
-        r = r.ravel()
+        x = x.reshape(-1,1)
+        f = f.reshape(-1,1)
 
         if self.iter == 0:
-            x_new = x - self.B0 @ r
+            x_new = x - self.H0 @ f
             self.x_last = x.copy()
-            self.r_last = r.copy()
+            self.f_last = f.copy()
+            self.Hnm1 = self.H0.copy()  # Initial inverse Jacobian
             self.iter += 1
-            return x_new.reshape(self.x_last.shape)
+            return x_new.ravel()
 
         # Step 1: Compute s_n = x - x_last, delta_r = r - r_last
-        s_n = x - self.x_last
-        delta_r = r - self.r_last
+        dx = x - self.x_last
+        df = f - self.f_last
 
-        # Step 2: Build B * delta_r incrementally
-        B_delta_r = self.B0 @ delta_r
-        for u_j, r_j in zip(self.u_hist, self.r_hist):
-            rj_dot = np.dot(r_j, delta_r)
-            norm2 = np.dot(r_j, r_j)
-            if norm2 > self.eps:
-                B_delta_r += u_j * (rj_dot / (norm2 + self.eps))
-
-        # Step 3: u_n = s_n - B delta_r (corrected formula)
-        u_n = s_n - B_delta_r
-
-        # Step 4: Truncate history if needed
-        if len(self.u_hist) >= self.max_hist:
-            self.u_hist.pop(0)
-            self.r_hist.pop(0)
-        self.u_hist.append(u_n)
-        self.r_hist.append(delta_r)
-
-        # Step 5: Apply B_n * r using low-rank update
-        H_r = self.B0 @ r
-        for u_j, r_j in zip(self.u_hist, self.r_hist):
-            rj_dot = np.dot(r_j, r)
-            norm2 = np.dot(r_j, r_j)
-            if norm2 > self.eps:
-                H_r += u_j * (rj_dot / (norm2 + self.eps))
-
-        # Step 6: Final update
-        x_new = x - H_r
+        u_n = dx - self.Hnm1 @ df  # Update vector
+        norm_df = np.dot(df.T, df)
+        Hn = self.Hnm1 + np.outer(u_n, df) / (norm_df + self.eps)  # Update inverse Jacobian
+        x_new = x - Hn @ f  # Compute new solution guess
+        self.Hnm1 = Hn  # Update the last inverse Jacobian
 
         # Step 7: Cache for next iteration
         self.x_last = x.copy()
-        self.r_last = r.copy()
+        self.f_last = f.copy()
         self.iter += 1
 
-        return x_new.reshape(self.x_last.shape)
+        return x_new.ravel()
 
 
 class AndersonMixer:
@@ -514,7 +488,7 @@ class AndersonMixer:
 
         except np.linalg.LinAlgError:
             # Fallback to linear mixing if R is rank-deficient
-            log.info("[Anderson] Linear algebra error, fallback to linear mixing.")
+            log.warning("[Anderson] Linear algebra error, fallback to linear mixing.")
             xkp1 = xk + self.alpha * (fk - xk)
 
         self.iter += 1
