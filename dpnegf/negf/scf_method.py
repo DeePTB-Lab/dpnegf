@@ -120,12 +120,23 @@ class PDIISMixer:
     
 class BroydenFirstMixer:
     """
-    Efficient Broyden's First Method (good Broyden) using the Sherman-Morrison-Woodbury formula.
+    Implements the first Broyden mixing method for accelerating self-consistent field (SCF) iterations.
 
     Attributes:
-        alpha (float): Initial mixing parameter (J0 = I/alpha).
-        eps (float): Numerical stability threshold.
+        init_x (np.ndarray): Initial guess for the variable to be mixed.
+        alpha (float): Linear mixing parameter (default: 0.1).
+        beta (float): Adaptive mixing factor (currently unused, default: 1).
+        eps (float): Numerical stability threshold for denominator (default: 1e-12).
+        iter (int): Current iteration count.
+        x_n (np.ndarray): Current value of the variable.
+        x_nm1 (np.ndarray): Previous value of the variable.
+        dim (int): Flattened dimension of the variable.
+        shape (tuple): Shape of the variable.
+        J0 (np.ndarray): Initial Jacobian approximation.
+        J_inv (np.ndarray): Current inverse Jacobian approximation.
+        f_last (np.ndarray): Last residual vector.
     """
+
     def __init__(self, init_x, alpha=0.1):
         self.init_x = init_x
         self.alpha = alpha
@@ -145,6 +156,16 @@ class BroydenFirstMixer:
 
 
     def update(self, f):
+        """
+        Update the solution vector using a combination of linear mixing and Broyden's method.
+        For the first few iterations(warm up), it uses simple linear mixing to stabilize convergence.
+        After a specified number of iterations, it switches to Broyden's first method to accelerate convergence 
+        by approximating the inverse Jacobian.
+        Args:
+            f (np.ndarray): The current residual or function value at the current solution vector.
+        Returns:
+            np.ndarray: The updated solution vector after applying the mixing or Broyden's update.
+        """
 
         linear_warm_range = 3  # Number of iterations to use linear mixing before switching to Broyden's method
 
@@ -161,20 +182,8 @@ class BroydenFirstMixer:
         else:
             dx = self.x_n - self.x_nm1  
             df = f - self.f_last
-
             dx = dx.reshape(-1, 1)  # Ensure dx is a column vector
             df = df.reshape(-1, 1)  # Ensure df is a column vector
-
-            # df_norm = np.linalg.norm(df)
-            # if self.iter == linear_warm_range:
-            #     self.last_df_norm = df_norm
-            #     self.beta = 1.0  # Initial beta value for adaptive mixing
-            # else:
-            #     if df_norm > self.last_df_norm:
-            #         self.beta = max(0.1, self.beta * 0.5)
-            #     else:
-            #         self.beta = min(1.0, self.beta * 1.2)
-            # self.last_df_norm = df_norm
 
             J_inv_df = self.J_inv @ df  # J^{-1} * df
             numerator = (dx - J_inv_df) @ (dx.T @ self.J_inv)  # (dim,1) @ (1, dim) = (dim, dim)
