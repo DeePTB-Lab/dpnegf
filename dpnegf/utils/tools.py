@@ -29,6 +29,7 @@ import os.path as osp
 import urllib
 import zipfile
 import sys
+from scipy.ndimage import gaussian_filter
 
 
 log = logging.getLogger(__name__)
@@ -779,5 +780,25 @@ def extract_zip(path, folder, log=True):
     with zipfile.ZipFile(path, "r") as f:
         f.extractall(folder)
 
-if __name__ == '__main__':
-    print(get_neuron_config(nl=[0,1,2,3,4,5,6,7]))
+
+
+def apply_gaussian_filter_3d(phi_vector, shape, sigma):
+    """
+    Apply a 3D Gaussian filter to flattened phi_vector stored in (Nx, Ny, Nz) order.
+
+    Parameters:
+        phi_vector : 1D numpy array of shape (Nx*Ny*Nz,)
+        shape      : tuple (Nx, Ny, Nz)
+        sigma      : float or tuple of floats in grid units
+
+    Returns:
+        Filtered phi_vector (1D array of same shape)
+    """
+    # Reshape from 1D to 3D (x-major order)
+    phi_3d = phi_vector.reshape(shape)  # shape = (Nx, Ny, Nz)
+
+    # Apply 3D Gaussian filter
+    phi_3d_filtered = gaussian_filter(phi_3d, sigma=sigma)
+
+    # Flatten back to 1D
+    return phi_3d_filtered.ravel()

@@ -66,10 +66,10 @@ class LeadProperty(object):
         calculate the Gamma function from the self energy.
 
     '''
-    def __init__(self, tab, hamiltonian, structure, results_path, voltage,\
+    def __init__(self, tab, hamiltonian, structure, results_path, voltage, \
                  structure_leads_fold:ase.Atoms=None,bloch_sorted_indice:torch.Tensor=None, useBloch: bool=False, \
                     bloch_factor: List[int]=[1,1,1],bloch_R_list:List=None,\
-                    e_T=300, efermi=0.0) -> None:
+                    e_T=300, efermi:float=0.0, E_ref:float=None) -> None:
         self.hamiltonian = hamiltonian
         self.structure = structure
         self.tab = tab
@@ -78,7 +78,11 @@ class LeadProperty(object):
         self.kBT = Boltzmann * e_T / eV2J
         self.e_T = e_T
         self.efermi = efermi
-        self.mu = self.efermi - self.voltage
+        if E_ref is None:
+            self.E_ref = efermi
+        else:
+            self.E_ref = E_ref
+        self.chemiPot_lead = efermi - voltage
         self.kpoint = None
         self.voltage_old = None
         
@@ -138,7 +142,7 @@ class LeadProperty(object):
                 save_path = os.path.join(save_path, \
                                         f"se_{self.tab}_k{kpoint[0]}_{kpoint[1]}_{kpoint[2]}_E{energy}.pth")
                 assert os.path.exists(save_path), f"Cannot find the self energy file {save_path}"
-            self.se = torch.load(save_path)
+            self.se = torch.load(save_path,weights_only=False)
             return
         else:
             if se_info_display:
@@ -146,7 +150,7 @@ class LeadProperty(object):
                 log.info(f"Not find stored {self.tab} self energy. Calculating it at kpoint {kpoint} and energy {energy}.")
                 log.info("-"*50)
 
-
+        subblocks = self.hamiltonian.get_hs_device(kpoint, only_subblocks=True)
         # calculate self energy
         if not self.useBloch:
             if not hasattr(self, "HL") or abs(self.voltage_old-self.voltage)>1e-6 or max(abs(self.kpoint-torch.tensor(kpoint)))>1e-6:
@@ -155,7 +159,8 @@ class LeadProperty(object):
                 self.voltage_old = self.voltage
                 self.kpoint = torch.tensor(kpoint)
 
-            HDL_reduced, SDL_reduced = self.HDL_reduced(self.HDLk, self.SDLk)
+            
+            HDL_reduced, SDL_reduced = self.HDL_reduced(self.HDLk, self.SDLk,subblocks)
             
             self.se, _ = selfEnergy(
                 ee=energy,
@@ -165,7 +170,7 @@ class LeadProperty(object):
                 sLL=self.SLLk,
                 hDL=HDL_reduced,
                 sDL=SDL_reduced,             #TODO: check chemiPot settiing is correct or not
-                chemiPot=self.efermi, # temmporarily change to self.efermi for the case in which applying lead bias to corresponding to Nanotcad
+                E_ref=self.E_ref,
                 etaLead=eta_lead, 
                 method=method
             )
@@ -173,7 +178,9 @@ class LeadProperty(object):
             # torch.save(self.se, os.path.join(self.results_path, f"se_nobloch_k{kpoint[0]}_{kpoint[1]}_{kpoint[2]}_{energy}.pth"))
         
         else:
-            if not hasattr(self, "HL") or abs(self.voltage_old-self.voltage)>1e-6 or max(abs(self.kpoint-torch.tensor(kpoint)))>1e-6:
+            if not hasattr(self, "HL") \
+                or abs(self.voltage_old-self.voltage)>1e-6 \
+                or max(abs(self.kpoint-torch.tensor(kpoint)))>1e-6:
                 self.kpoint = torch.tensor(kpoint)
                 self.voltage_old = self.voltage
 
@@ -192,7 +199,7 @@ class LeadProperty(object):
                     hLL=self.HLLk,
                     sL=self.SLk,
                     sLL=self.SLLk,            #TODO: check chemiPot settiing is correct or not
-                    chemiPot=self.efermi, # temmporarily change to self.efermi for the case in which applying lead bias to corresponding to Nanotcad
+                    E_ref=self.E_ref,  # temmporarily change to self.efermi for the case in which applying lead bias to corresponding to Nanotcad
                     etaLead=eta_lead, 
                     method=method
                 )
@@ -213,17 +220,16 @@ class LeadProperty(object):
             b = self.HDLk.shape[1] # size of lead hamiltonian
 
             # reduce the Hamiltonian and overlap matrix based on the non-zero range of HDL
-            HDL_reduced, SDL_reduced = self.HDL_reduced(self.HDLk, self.SDLk) 
-            # HDL_reduced, SDL_reduced = self.HDL, self.SDL
+            HDL_reduced, SDL_reduced = self.HDL_reduced(self.HDLk, self.SDLk,subblocks) 
             if not isinstance(energy, torch.Tensor):
-                eeshifted = torch.scalar_tensor(energy, dtype=torch.complex128) + self.efermi
+                eeshifted = torch.scalar_tensor(energy, dtype=torch.complex128) + self.E_ref
             else:
-                eeshifted = energy + self.efermi
-            # self.se = (eeshifted*self.SDL-self.HDL) @ sgf_k[:b,:b] @ (eeshifted*self.SDL.conj().T-self.HDL.conj().T)
+                eeshifted = energy + self.E_ref
             self.se = (eeshifted*SDL_reduced-HDL_reduced) @ sgf_k[:b,:b] @ (eeshifted*SDL_reduced.conj().T-HDL_reduced.conj().T)
-
+            # In subblocks case, the self energy shape of left/right lead should be consistent with subblocks[0] and subblocks[-1]
         if not HS_inmem:
             del self.HLk, self.HLLk, self.HDLk, self.SLk, self.SLLk, self.SDLk
+
 
         if save:
             assert save_path is not None, "Please specify the path to save the self energy."
@@ -235,9 +241,9 @@ class LeadProperty(object):
             #     torch.save(self.se, os.path.join(self.results_path, f"se_nobloch_k{kpoint[0]}_{kpoint[1]}_{kpoint[2]}_{energy}.pth"))
 
     @staticmethod
-    def HDL_reduced(HDL: torch.Tensor, SDL: torch.Tensor) -> torch.Tensor:
+    def HDL_reduced(HDL: torch.Tensor, SDL: torch.Tensor, subblocks: np.ndarray) -> torch.Tensor:
         '''This function takes in Hamiltonian/Overlap matrix between lead and device and reduces 
-        it based on the non-zero range of the Hamiltonian matrix.
+        it based on the subblocks results or non-zero range of the Hamiltonian matrix.
 
             When the device part has only one orbital, the Hamiltonian matrix is not reduced.
         
@@ -259,16 +265,28 @@ class LeadProperty(object):
         assert HDL.shape == SDL.shape, "The shape of HDL and SDL should be the same."
 
         HDL_nonzero_range = (HDL.nonzero().min(dim=0).values, HDL.nonzero().max(dim=0).values)
+        if subblocks is None:
+            cut_range = HDL_nonzero_range
+        else:
+            cut_range = ((subblocks[-1],subblocks[-1]), (subblocks[0],subblocks[0]))
         # HDL_nonzero_range is a tuple((min_row,min_col),(max_row,max_col))
         if HDL.shape[0] == 1: # Only 1 orbital in the device
             HDL_reduced = HDL
             SDL_reduced = SDL
         elif HDL_nonzero_range[0][0] > 0: # Right lead
-            HDL_reduced = HDL[HDL_nonzero_range[0][0]:, :]
-            SDL_reduced = SDL[HDL_nonzero_range[0][0]:, :]
+            if subblocks is None:
+                HDL_reduced = HDL[cut_range[0][0]:, :]
+                SDL_reduced = SDL[cut_range[0][0]:, :]
+            else:
+                HDL_reduced = HDL[-1*cut_range[0][0]:, :]
+                SDL_reduced = SDL[-1*cut_range[0][0]:, :]
         else: # Left lead
-            HDL_reduced = HDL[:HDL_nonzero_range[1][0]+1, :]
-            SDL_reduced = SDL[:HDL_nonzero_range[1][0]+1, :]
+            if subblocks is None:
+                HDL_reduced = HDL[:cut_range[1][0]+1, :]
+                SDL_reduced = SDL[:cut_range[1][0]+1, :]
+            else:
+                HDL_reduced = HDL[:cut_range[1][0], :]
+                SDL_reduced = SDL[:cut_range[1][0], :]
 
         return HDL_reduced, SDL_reduced
 
@@ -286,13 +304,13 @@ class LeadProperty(object):
         Returns
         -------
         Gamma
-            The Gamma function, $\Gamma = 1j(se-se^\dagger)$.
+            The Gamma function, Gamma = 1j(se-se^dagger).
         
         '''
         return 1j * (se - se.conj().T)
     
     def fermi_dirac(self, x) -> torch.Tensor:
-        return 1 / (1 + torch.exp((x - self.mu)/ self.kBT))
+        return 1 / (1 + torch.exp((x - self.chemiPot_lead)/ self.kBT))
     
     @property
     def gamma(self):

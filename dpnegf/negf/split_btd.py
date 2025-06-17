@@ -1316,7 +1316,7 @@ def show_blocks(subblocks, input_mat, results_path):
     plt.xlim(input_mat.shape[0] - 0.5, -1.0)
     plt.ylim(-1.0, input_mat.shape[0] - 0.5)
     plt.axis('off')
-    plt.savefig(results_path +'/subblocks.png', dpi=300)
+    plt.savefig(results_path +'/subblocks_HK0.png', dpi=300)
 
 
 # if __name__ == "__main__":

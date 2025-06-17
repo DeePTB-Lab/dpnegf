@@ -746,3 +746,12 @@ def write_vesta_lcurrent(positions, vesta_file, lcurrent, current, outpath):
 
     with open(outpath, "w") as f:
         f.write(data)
+
+def is_fully_covered(lead_region, doped_region):
+    '''Check if the lead region is fully covered by the doped region.'''
+    for dim in ['x_range', 'y_range', 'z_range']:
+        lead_start, lead_end = map(float, lead_region.get(dim, None).split(':'))
+        dope_start, dope_end = map(float, doped_region.get(dim, None).split(':'))
+        if lead_start < dope_start or lead_end > dope_end:
+            return False
+    return True

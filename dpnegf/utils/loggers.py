@@ -4,6 +4,24 @@ import logging
 import os
 from typing import TYPE_CHECKING, Optional
 
+# Get version info (synchronized with pyproject.toml)
+try:
+    from importlib.metadata import version, PackageNotFoundError
+except ImportError:
+    from importlib_metadata import version, PackageNotFoundError  # For Python <3.8
+
+def get_version_dpnegf():
+    try:
+        return version("dpnegf")
+    except PackageNotFoundError:
+        return "unknown"
+
+def get_version_dptb():
+    try:
+        return version("dptb")
+    except PackageNotFoundError:
+        return "unknown"
+
 if TYPE_CHECKING:
     from pathlib import Path
 logging.getLogger(__name__)
@@ -112,3 +130,12 @@ def set_log_handles(
             fh.setLevel(level)
             fh.addFilter(_AppFilter())
             root_log.addHandler(fh)
+
+    # print version info
+    logger = logging.getLogger(__name__)
+    logger.info("=" * 80)
+    logger.info(f"{'Version Info':^80}")
+    logger.info("-" * 80)
+    logger.info(f"{'DPNEGF':<20} : {get_version_dpnegf()}")
+    logger.info(f"{'DeePTB':<20} : {get_version_dptb()}")
+    logger.info("=" * 80 + "\n")

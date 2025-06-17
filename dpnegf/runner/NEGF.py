@@ -1,26 +1,22 @@
-from typing import List
 import torch
-from dpnegf.negf.recursive_green_cal import recursive_gf
-from dpnegf.negf.surface_green import selfEnergy
 from dpnegf.negf.negf_utils import quad, gauss_xw,leggauss,update_kmap
+from dpnegf.utils.constants import valence_electron
 from dpnegf.negf.ozaki_res_cal import ozaki_residues
 from dpnegf.negf.negf_hamiltonian_init import NEGFHamiltonianInit
+from dpnegf.utils.elec_struc_cal import ElecStruCal
 from dpnegf.negf.density import Ozaki,Fiori
-from dpnegf.negf.areshkin_pole_sum import pole_maker
 from dpnegf.negf.device_property import DeviceProperty
 from dpnegf.negf.lead_property import LeadProperty
-from ase.io import read
+from dpnegf.negf.negf_utils import is_fully_covered
 import ase
-from dpnegf.negf.poisson import Density2Potential, getImg
-from dpnegf.negf.scf_method import SCFMethod
 from dpnegf.utils.constants import Boltzmann, eV2J
-import os
-from dpnegf.utils.tools import j_must_have
 import numpy as np
 from dpnegf.utils.make_kpoints import kmesh_sampling_negf
 import logging
 from dpnegf.negf.poisson_init import Grid,Interface3D,Dirichlet,Dielectric
+from dpnegf.negf.scf_method import PDIISMixer,DIISMixer,BroydenFirstMixer,BroydenSecondMixer,AndersonMixer
 from typing import Optional, Union
+from dpnegf.utils.tools import apply_gaussian_filter_3d
 # from pyinstrument import Profiler
 
 log = logging.getLogger(__name__)
@@ -41,7 +37,7 @@ class NEGF(object):
                 model: torch.nn.Module,
                 AtomicData_options: dict, 
                 structure: Union[AtomicData, ase.Atoms, str],
-                ele_T: float,e_fermi: float,
+                ele_T: float,
                 emin: float, emax: float, espacing: float,
                 density_options: dict,
                 unit: str,
@@ -49,6 +45,7 @@ class NEGF(object):
                 stru_options: dict,eta_lead: float,eta_device: float,
                 block_tridiagonal: bool,
                 sgf_solver: str,
+                e_fermi: float=None,
                 use_saved_HS: bool=False, saved_HS_path: str=None,
                 self_energy_save: bool=False, self_energy_save_path: str=None, se_info_display: bool=False,
                 out_tc: bool=False,out_dos: bool=False,out_density: bool=False,out_potential: bool=False,
@@ -70,6 +67,11 @@ class NEGF(object):
         self.eta_lead = eta_lead; self.eta_device = eta_device
         self.emin = emin; self.emax = emax; self.espacing = espacing
         self.stru_options = stru_options
+        self.poisson_options = poisson_options
+        if e_fermi is None:
+            for lead in ["lead_L", "lead_R"]:
+                assert "kmesh_lead_Ef" in self.stru_options[lead], f"{lead} must have 'kmesh_lead_Ef' set in stru_options if e_fermi is None"
+
 
         self.use_saved_HS = use_saved_HS
         self.saved_HS_path = saved_HS_path
@@ -117,7 +119,18 @@ class NEGF(object):
         self.unit = unit
         self.scf = scf
         self.block_tridiagonal = block_tridiagonal
-        # computing the hamiltonian  #需要改写NEGFHamiltonianInit   
+        for lead_tag in ["lead_L", "lead_R"]:
+            assert "voltage" in self.stru_options[lead_tag], f"{lead_tag} voltage should be set in stru_options"
+            if self.scf:
+                if lead_tag in self.poisson_options:
+                    if "voltage" in self.poisson_options.get(lead_tag, {}):
+                        assert self.stru_options[lead_tag]["voltage"]==self.poisson_options[lead_tag]["voltage"], f"{lead_tag} voltage should be consistent"
+                    else:
+                        self.poisson_options[lead_tag]["voltage"] = self.stru_options[lead_tag].get("voltage", None)
+            else:
+                assert self.stru_options[lead_tag]["voltage"] == 0, f"{lead_tag} voltage should be 0 in non-scf calculation"
+
+        # computing the hamiltonian
         self.negf_hamiltonian = NEGFHamiltonianInit(model=model,
                                                     AtomicData_options=AtomicData_options, 
                                                     structure=structure,
@@ -133,9 +146,75 @@ class NEGF(object):
                 self.negf_hamiltonian.initialize(kpoints=self.kpoints,block_tridiagnal=self.block_tridiagonal,\
                                                  useBloch=self.useBloch,bloch_factor=self.bloch_factor,\
                                                  use_saved_HS=self.use_saved_HS, saved_HS_path=self.saved_HS_path)
-        # self.subblocks = subblocks # for not block_tridiagonal case, subblocks is [HD.shape[1]]
 
-        self.deviceprop = DeviceProperty(self.negf_hamiltonian, struct_device, results_path=self.results_path, efermi=self.e_fermi)
+        self.free_charge = {} # net charge: hole - electron
+        #  Regions for Poisson equation
+        ## Dirichlet region: gate and leads
+        ## Dielectric region: dielectrics
+        ## Doped region: doped atomic sites, usually in leads region
+        self.Dirichlet_region = [self.poisson_options[i] for i in self.poisson_options if i.startswith("gate")\
+                                    or i.startswith("lead")]
+        self.dielectric_region = [self.poisson_options[i] for i in self.poisson_options if i.startswith("dielectric")]
+        self.doped_region = [self.poisson_options[i] for i in self.poisson_options if i.startswith("doped")]
+
+
+
+        log.info(msg="-------------Fermi level calculation-------------")
+        e_fermi = {}; chemiPot = {}
+        # calculate Fermi level
+        if  self.e_fermi is None:        
+            elec_cal = ElecStruCal(model=model,device=self.torch_device)
+            nel_atom_lead = self.get_nel_atom_lead(
+                                struct_leads, 
+                                charge={lead_tag: self.stru_options[lead_tag].get("charge", 0) for lead_tag in ["lead_L", "lead_R"]}
+                                )
+            log.info(msg="Number of electrons in lead_L: {0}".format(nel_atom_lead["lead_L"]))
+            log.info(msg="Number of electrons in lead_R: {0}".format(nel_atom_lead["lead_R"]))
+            for lead_tag in ["lead_L", "lead_R"]:
+                log.info(msg="-----Calculating Fermi level for {0}-----".format(lead_tag))
+                _, e_fermi[lead_tag]  = elec_cal.get_fermi_level(data=struct_leads[lead_tag], 
+                                nel_atom = nel_atom_lead[lead_tag],
+                                meshgrid=self.stru_options[lead_tag]["kmesh_lead_Ef"],
+                                AtomicData_options=AtomicData_options,
+                                smearing_method=self.stru_options.get("e_fermi_smearing", "FD"),
+                                temp=100.0)
+        else:
+            e_fermi["lead_L"] = self.e_fermi
+            e_fermi["lead_R"] = self.e_fermi
+            log.info(msg="Fermi level is set to {0} from input file".format(self.e_fermi))
+        
+        # calculate electrochemical potential
+        for lead_tag in ["lead_L", "lead_R"]:
+            chemiPot[lead_tag] = e_fermi[lead_tag] - self.stru_options[lead_tag]["voltage"]
+        
+        self.e_fermi = e_fermi
+        self.chemiPot = chemiPot
+        log.info(msg="-------------------------------------------------")
+        if abs(self.chemiPot["lead_L"]-self.chemiPot["lead_R"]) > 5e-4: # non-zero bias case
+            assert abs(self.stru_options["lead_L"]["voltage"]-self.stru_options["lead_R"]["voltage"]) > 5e-4, "This is a heterogeneous system, which is not supported in this version."
+            if self.poisson_options["with_Dirichlet_leads"]:
+                E_ref = 0.5 * (self.chemiPot["lead_L"] + self.chemiPot["lead_R"]) 
+            else: # NanoTCAD style NEGF-Poisson SCF
+                E_ref = self.e_fermi["lead_L"]
+                # In NanoTCAD Vides, the reference energy is set to the Fermi level of the whole system. Here we set it to the Fermi level of lead_L.
+                # In homogeneous case, the Fermi level of lead_L and lead_R are the same, so it does not matter.
+            log.info(msg="Non-zero bias case detected.")
+            # In this version, dpnegf does not support the heterogeneous case, where the Fermi level is different in the leads
+            # because left-lead and right-lead Fermi level are calculated separately, which may be erroneous due to different vaccum level
+        else: # zero bias case
+            E_ref = self.e_fermi["lead_L"]
+            log.info(msg="Zero bias case detected.")
+
+        log.info(msg="Fermi level for lead_L: {0}".format(self.e_fermi["lead_L"]))
+        log.info(msg="Fermi level for lead_R: {0}".format(self.e_fermi["lead_R"]))    
+        log.info(msg="Electrochemical potential for lead_L: {0}".format(self.chemiPot["lead_L"]))
+        log.info(msg="Electrochemical potential for lead_R: {0}".format(self.chemiPot["lead_R"]))        
+        log.info(msg="Reference energy E_ref: {0}".format(E_ref))
+        log.info(msg="=================================================\n")
+
+        # initialize deviceprop and leadprop
+        self.deviceprop = DeviceProperty(self.negf_hamiltonian, struct_device, results_path=self.results_path,
+                                         efermi=self.e_fermi, chemiPot=chemiPot, E_ref=E_ref)
         self.deviceprop.set_leadLR(
                 lead_L=LeadProperty(
                 hamiltonian=self.negf_hamiltonian, 
@@ -143,8 +222,9 @@ class NEGF(object):
                 structure=struct_leads["lead_L"], 
                 results_path=self.results_path,
                 e_T=self.ele_T,
-                efermi=self.e_fermi, 
+                efermi=self.e_fermi["lead_L"], 
                 voltage=self.stru_options["lead_L"]["voltage"],
+                E_ref=E_ref,
                 useBloch=self.useBloch,
                 bloch_factor=self.bloch_factor,
                 structure_leads_fold=structure_leads_fold["lead_L"],
@@ -157,8 +237,9 @@ class NEGF(object):
                 structure=struct_leads["lead_R"], 
                 results_path=self.results_path, 
                 e_T=self.ele_T,
-                efermi=self.e_fermi, 
+                efermi=self.e_fermi["lead_R"], 
                 voltage=self.stru_options["lead_R"]["voltage"],
+                E_ref=E_ref,
                 useBloch=self.useBloch,
                 bloch_factor=self.bloch_factor,
                 structure_leads_fold=structure_leads_fold["lead_R"],
@@ -167,19 +248,6 @@ class NEGF(object):
             )
         )
 
-        # initialize density class
-        # self.density_options = j_must_have(self.jdata, "density_options")
-        self.density_options = density_options
-        if self.density_options["method"] == "Ozaki":
-            self.density = Ozaki(R=self.density_options["R"], M_cut=self.density_options["M_cut"], n_gauss=self.density_options["n_gauss"])
-        elif self.density_options["method"] == "Fiori":
-            if self.density_options["integrate_way"] == "gauss":
-                assert self.density_options["n_gauss"] is not None, "n_gauss should be set for Fiori method using gauss integration"
-                self.density = Fiori(n_gauss=self.density_options["n_gauss"])
-            else:
-                self.density = Fiori() #calculate the density by integrating the energy window in direct way
-        else:
-            raise ValueError
 
         # number of orbitals on atoms in device region
         self.device_atom_norbs = self.negf_hamiltonian.atom_norbs[self.negf_hamiltonian.device_id[0]:self.negf_hamiltonian.device_id[1]]
@@ -202,18 +270,28 @@ class NEGF(object):
         self.out_ldos = out_ldos
         self.out_lcurrent = out_lcurrent
         assert not (self.out_lcurrent and self.block_tridiagonal)
-        self.generate_energy_grid()
         self.out = {}
-
-        ## Poisson equation settings
-        self.poisson_options = poisson_options
-        # self.LDOS_integral = {}  # for electron density integral
-        self.free_charge = {} # net charge: hole - electron
-        # Dirichlet region for Poisson equation
-        self.Dirichlet_region = [self.poisson_options[i] for i in self.poisson_options if i.startswith("gate") or i.startswith("electrode")]
-        
-        self.dielectric_region = [self.poisson_options[i] for i in self.poisson_options if i.startswith("dielectric")]
-        self.doped_region = [self.poisson_options[i] for i in self.poisson_options if i.startswith("doped")]
+        # initialize density class
+        self.density_options = density_options
+        self.generate_energy_grid()
+        if self.density_options["method"] == "Ozaki":
+            self.density = Ozaki(R=self.density_options["R"], 
+                                 M_cut=self.density_options["M_cut"], 
+                                 n_gauss=self.density_options["n_gauss"])
+            
+        elif self.density_options["method"] == "Fiori":
+            if self.density_options["integrate_way"] == "gauss":
+                assert self.density_options["n_gauss"] is not None, "n_gauss should be set for Fiori method using gauss integration"
+                self.density = Fiori(n_gauss=self.density_options["n_gauss"],
+                                     integrate_way=self.density_options["integrate_way"],
+                                     e_grid=self.uni_grid)
+            elif self.density_options["integrate_way"] == "direct":
+                self.density = Fiori(integrate_way=self.density_options["integrate_way"],
+                                     e_grid=self.uni_grid) #calculate the density by integrating the energy window in direct way
+            else:
+                raise ValueError("integrate_way should be 'gauss' or 'direct' for Fiori method")
+        else:
+            raise ValueError
 
 
 
@@ -251,7 +329,7 @@ class NEGF(object):
 
         if cal_pole and  self.density_options["method"] == "Ozaki":
             self.poles, self.residues = ozaki_residues(M_cut=self.density_options["M_cut"])
-            self.poles = 1j* self.poles * self.kBT + self.deviceprop.lead_L.mu - self.deviceprop.mu
+            self.poles = 1j* self.poles * self.kBT + self.deviceprop.lead_L.chemiPot - self.deviceprop.chemiPot
 
         if cal_int_grid:
             xl = torch.tensor(min(v_list)-8*self.kBT)
@@ -311,29 +389,44 @@ class NEGF(object):
         else:
             self.negf_compute(scf_require=False,Vbias=None)
 
-    def poisson_negf_scf(self,interface_poisson,atom_gridpoint_index,err=1e-6,max_iter=1000,mix_rate=0.3,tolerance=1e-7):
+    def poisson_negf_scf(self,interface_poisson,atom_gridpoint_index,err=1e-6,max_iter=1000,
+                         mix_method:str='linear', mix_rate:float=0.3, tolerance:float=1e-7,Gaussian_sigma:float=3.0):
 
         
         # profiler.start() 
-        max_diff_phi = 1e30; max_diff_list = [] 
+        max_diff_phi = 1e30
+        max_diff_list = [] 
         iter_count=0
+        mix_method_list = ['linear', 'PDIIS', 'DIIS', 'BroydenFirst', 'BroydenSecond', 'Anderson']
+        if mix_method not in mix_method_list:
+            raise ValueError("mix_method should be one of {}".format(mix_method_list))
+        else:
+        # initialize the mixer
+            log.info(msg="Using {} mixing method for NEGF-Poisson SCF".format(mix_method))
+            if mix_method == 'PDIIS':
+                mixer = PDIISMixer(init_x=interface_poisson.phi.copy(), mix_rate=mix_rate)
+            elif mix_method == 'DIIS':
+                mixer = DIISMixer(max_hist=6, alpha=0.2)
+            elif mix_method == 'BroydenFirst':
+                mixer = BroydenFirstMixer(init_x=interface_poisson.phi, alpha=mix_rate)
+            elif mix_method == 'BroydenSecond':
+                mixer = BroydenSecondMixer(shape=interface_poisson.phi.shape, max_hist=8, alpha=mix_rate)
+            elif mix_method == 'Anderson':
+                mixer = AndersonMixer(m=5, alpha=0.2)
+            elif mix_method == 'linear':
+                mixer = None
+
+   
+
         # Gummel type iteration
         while max_diff_phi > err:
             # update Hamiltonian by modifying onsite energy with potential
             self.potential_at_atom = interface_poisson.phi[atom_gridpoint_index]
             self.potential_at_orb = torch.cat([torch.full((norb,), p) for p, norb\
-                                                in zip(self.potential_at_atom, self.device_atom_norbs)])
-            
-                      
+                                                in zip(self.potential_at_atom, self.device_atom_norbs)])              
             self.negf_compute(scf_require=True,Vbias=self.potential_at_orb)
             # Vbias makes sense for orthogonal basis as in NanoTCAD
             # TODO: check if Vbias makes sense for non-orthogonal basis 
-
-            # update electron density for solving Poisson equation SCF
-            # DM_eq,DM_neq = self.out["DM_eq"], self.out["DM_neq"]
-            # elec_density = torch.diag(DM_eq+DM_neq)
-            
-
             # TODO: check the sign of free_charge
             # TODO: check the spin degenracy
             # TODO: add k summation operation
@@ -347,8 +440,21 @@ class NEGF(object):
             max_diff_phi = interface_poisson.solve_poisson_NRcycle(method=self.poisson_options['solver'],\
                                                                 tolerance=tolerance,\
                                                                 dtype=self.poisson_options['poisson_dtype'])
-            interface_poisson.phi = interface_poisson.phi + mix_rate*(interface_poisson.phi_old-interface_poisson.phi)
-            
+            if mix_method == 'linear':
+                interface_poisson.phi = interface_poisson.phi + mix_rate*(interface_poisson.phi_old-interface_poisson.phi)
+            elif mix_method == 'DIIS':
+                residual = interface_poisson.phi - interface_poisson.phi_old
+                interface_poisson.phi = mixer.update(interface_poisson.phi.copy(), residual)
+            elif mix_method == 'PDIIS':
+                interface_poisson.phi = mixer.update(interface_poisson.phi.copy())
+            elif mix_method == 'BroydenFirst':
+                residual = interface_poisson.phi - interface_poisson.phi_old
+                interface_poisson.phi = mixer.update(f = residual) # fixed point problem: f defined as F(\phi)-\phi =0
+            elif mix_method == 'BroydenSecond':
+                residual = interface_poisson.phi - interface_poisson.phi_old
+                interface_poisson.phi = mixer.update(interface_poisson.phi.copy(), residual)
+            elif mix_method == 'Anderson':
+                interface_poisson.phi = mixer.update(interface_poisson.phi.copy(), interface_poisson.phi_old.copy())
 
             iter_count += 1 # Gummel type iteration
             log.info(msg="Poisson-NEGF iteration: {}    Potential Diff Maximum: {}\n".format(iter_count,max_diff_phi))
@@ -356,6 +462,10 @@ class NEGF(object):
 
             if max_diff_phi <= err:
                 log.info(msg="Poisson-NEGF SCF Converges Successfully!")
+            if max_diff_phi > 1e8:
+                raise RuntimeError("Poisson-NEGF iteration diverges, max_diff_phi = {}".format(max_diff_phi))
+            if np.isnan(max_diff_phi):
+                raise RuntimeError("Poisson-NEGF iteration diverges, max_diff_phi = {}".format(max_diff_phi))
                 
 
             if iter_count > max_iter:
@@ -390,6 +500,20 @@ class NEGF(object):
 
         self.out['k']=[];self.out['wk']=[]
         if hasattr(self, "uni_grid"): self.out["uni_grid"] = self.uni_grid
+
+        if scf_require and self.poisson_options["with_Dirichlet_leads"]:
+            # For the Dirichlet leads, the self-energy of the leads is only calculated once and saved.
+            # In each iteration, the self-energy of the leads is not updated.
+            for ik, k in enumerate(self.kpoints):
+                for e in self.density.integrate_range:
+                    self.deviceprop.lead_L.self_energy(kpoint=k, energy=e, eta_lead=self.eta_lead, save=True)
+                    self.deviceprop.lead_R.self_energy(kpoint=k, energy=e, eta_lead=self.eta_lead, save=True)
+        elif not self.scf:
+            # In non-scf case, the self-energy of the leads is calculated for each energy point in the energy grid.
+            for ik, k in enumerate(self.kpoints): 
+                for e in self.uni_grid:
+                    self.deviceprop.lead_L.self_energy(kpoint=k, energy=e, eta_lead=self.eta_lead, save=True)
+                    self.deviceprop.lead_R.self_energy(kpoint=k, energy=e, eta_lead=self.eta_lead, save=True)
     
         for ik, k in enumerate(self.kpoints):
 
@@ -416,8 +540,8 @@ class NEGF(object):
                     else:
                         # TODO: consider the case with heterogeneous Dirichlet leads
                         # In this case, the Dirichlet conditions in leads and gate are set as electrochemical potential(Fermi level + voltage)
-                        assert getattr(self.deviceprop, "lead_L").voltage == self.stru_options["lead_L"]["voltage"]
-                        assert getattr(self.deviceprop, "lead_R").voltage == self.stru_options["lead_R"]["voltage"]
+                        for lead_tag in ["lead_L", "lead_R"]:
+                            assert getattr(self.deviceprop, lead_tag).voltage == self.stru_options[lead_tag]["voltage"]
 
                     if self.negf_hamiltonian.subblocks is None:
                             self.negf_hamiltonian.subblocks = self.negf_hamiltonian.get_hs_device(only_subblocks=True)
@@ -435,7 +559,8 @@ class NEGF(object):
                         with_Dirichlet_leads = self.poisson_options["with_Dirichlet_leads"],
                         free_charge = self.free_charge,
                         eta_lead = self.eta_lead,
-                        eta_device = self.eta_device
+                        eta_device = self.eta_device,
+                        E_ref = self.deviceprop.E_ref
                         )
                 else:
                     # TODO: add Ozaki support for NanoTCAD-style SCF
@@ -628,7 +753,40 @@ class NEGF(object):
 
         # grid = Grid(xg,yg,zg,xa,ya,za)
         grid = Grid(xg,yg,za,xa,ya,za) #TODO: change back to zg
-        return grid       
+        return grid     
+
+    def get_nel_atom_lead(self, struct_leads, charge:float=None):
+        nel_atom = self.stru_options.get("nel_atom", None)
+        if nel_atom is None:
+            log.warning(msg="nel_atom is None, using valence electron number by default")
+        nel_atom_lead = {}
+        for lead_tag in ["lead_L", "lead_R"]:
+            nel_atom_lead[lead_tag] = {}
+            unique_elements = struct_leads[lead_tag].get_chemical_symbols()
+            for elem in unique_elements:
+                if nel_atom is None:
+                    if elem not in valence_electron:
+                        raise ValueError(f"Element {elem} is not in the valence electron dictionary")
+                    nel_atom_lead[lead_tag][elem] = valence_electron[elem]
+                else:
+                    if elem not in nel_atom:
+                        raise ValueError(f"Element {elem} is not in the nel_atom dictionary")
+                    nel_atom_lead[lead_tag][elem] = nel_atom[elem]
+            # subtract dope charge if the lead is doped
+            if charge is not None:
+                assert charge.get(lead_tag) is not None, f"Charge for {lead_tag} is not provided"
+                if isinstance(charge[lead_tag], (int, float)):
+                    if charge[lead_tag] < 0:
+                        log.info(msg=f"p doping detected in {lead_tag}, fixed_charge = {charge[lead_tag]}")
+                    elif charge[lead_tag] > 0:
+                        log.info(msg=f"n doping detected in {lead_tag}, fixed_charge = {charge[lead_tag]}")
+                    else:
+                        log.warning(msg=f"No doping detected in {lead_tag}, fixed_charge = {charge[lead_tag]}")
+                else:
+                    raise ValueError(f"Charge for {lead_tag} should be a number, got {type(charge[lead_tag])}")
+                nel_atom_lead[lead_tag] = {elem: nel_atom_lead[lead_tag][elem] + charge[lead_tag] for elem in nel_atom_lead[lead_tag]}
+
+        return nel_atom_lead  
     
     def fermi_dirac(self, x) -> torch.Tensor:
         return 1 / (1 + torch.exp(x / self.kBT))
