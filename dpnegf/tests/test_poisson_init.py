@@ -1,6 +1,9 @@
 import numpy as np
 import pytest
 from dpnegf.negf.poisson_init import Grid
+from dpnegf.negf.poisson_init import region
+from dpnegf.negf.poisson_init import Dirichlet
+from dpnegf.negf.poisson_init import Dielectric
 
 def test_grid_basic_properties():
     # Define a simple 2x2x2 grid and 2 atoms inside the grid
@@ -82,3 +85,96 @@ def test_grid_atom_outside_raises():
     za = np.array([0.5])
     with pytest.raises(AssertionError):
         Grid(xg, yg, zg, xa, ya, za)
+
+def test_region_attributes():
+    x_range = (0, 10)
+    y_range = (1, 5)
+    z_range = (-2, 2)
+    r = region(x_range, y_range, z_range)
+    assert r.xmin == 0.0
+    assert r.xmax == 10.0
+    assert r.ymin == 1.0
+    assert r.ymax == 5.0
+    assert r.zmin == -2.0
+    assert r.zmax == 2.0
+
+def test_region_float_input():
+    x_range = (0.5, 2.5)
+    y_range = (1.1, 3.3)
+    z_range = (4.4, 5.5)
+    r = region(x_range, y_range, z_range)
+    assert r.xmin == 0.5
+    assert r.xmax == 2.5
+    assert r.ymin == 1.1
+    assert r.ymax == 3.3
+    assert r.zmin == 4.4
+    assert r.zmax == 5.5
+
+def test_region_list_input():
+    x_range = [1, 2]
+    y_range = [3, 4]
+    z_range = [5, 6]
+    r = region(x_range, y_range, z_range)
+    assert r.xmin == 1.0
+    assert r.xmax == 2.0
+    assert r.ymin == 3.0
+    assert r.ymax == 4.0
+    assert r.zmin == 5.0
+    assert r.zmax == 6.0
+
+def test_dirichlet_inherits_region():
+    x_range = (0, 1)
+    y_range = (2, 3)
+    z_range = (4, 5)
+    d = Dirichlet(x_range, y_range, z_range)
+    # Check region attributes
+    assert d.xmin == 0.0
+    assert d.xmax == 1.0
+    assert d.ymin == 2.0
+    assert d.ymax == 3.0
+    assert d.zmin == 4.0
+    assert d.zmax == 5.0
+
+def test_dirichlet_default_ef():
+    d = Dirichlet((0, 1), (0, 1), (0, 1))
+    assert hasattr(d, "Ef")
+    assert d.Ef == 0.0
+
+def test_dirichlet_accepts_list_input():
+    d = Dirichlet([1, 2], [3, 4], [5, 6])
+    assert d.xmin == 1.0
+    assert d.xmax == 2.0
+    assert d.ymin == 3.0
+    assert d.ymax == 4.0
+    assert d.zmin == 5.0
+    assert d.zmax == 6.0
+
+def test_dielectric_inherits_region():
+    x_range = (0, 2)
+    y_range = (1, 3)
+    z_range = (4, 5)
+    d = Dielectric(x_range, y_range, z_range)
+    assert d.xmin == 0.0
+    assert d.xmax == 2.0
+    assert d.ymin == 1.0
+    assert d.ymax == 3.0
+    assert d.zmin == 4.0
+    assert d.zmax == 5.0
+
+def test_dielectric_default_eps():
+    d = Dielectric((0, 1), (0, 1), (0, 1))
+    assert hasattr(d, "eps")
+    assert d.eps == 1.0
+
+def test_dielectric_accepts_list_input():
+    d = Dielectric([1, 2], [3, 4], [5, 6])
+    assert d.xmin == 1.0
+    assert d.xmax == 2.0
+    assert d.ymin == 3.0
+    assert d.ymax == 4.0
+    assert d.zmin == 5.0
+    assert d.zmax == 6.0
+
+
+
+
