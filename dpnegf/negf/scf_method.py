@@ -4,7 +4,7 @@ import logging
 log = logging.getLogger(__name__)
 
 
-class DIISMixer:
+class DIISMixer(object):
     """
     DIISMixer implements the Direct Inversion in the Iterative Subspace (DIIS) method 
     for accelerating self-consistent field (SCF) convergence.
@@ -114,7 +114,7 @@ class DIISMixer:
         return x_mixed.ravel()  # Return as 1D array
 
 
-class PDIISMixer:
+class PDIISMixer(object):
     """
     PDIISMixer implements the Periodic Direct Inversion in the Iterative Subspace (PDIIS) 
     mixing scheme for accelerating self-consistent field (SCF) convergence.
@@ -272,7 +272,7 @@ class PDIISMixer:
 
 
 
-class BroydenFirstMixer:
+class BroydenFirstMixer(object):
     """
     Implements the first Broyden mixing method for accelerating self-consistent field (SCF) iterations.
 
@@ -443,7 +443,7 @@ class BroydenFirstMixer:
 #         self.iter += 1
 
 #         return x_new
-class BroydenSecondMixer:
+class BroydenSecondMixer(object):
     """
     Implements Broyden's Second Method (also known as "bad Broyden")
     for accelerating fixed-point iterations such as those arising
@@ -521,7 +521,7 @@ class BroydenSecondMixer:
         return x_new.ravel()
 
 
-class AndersonMixer:
+class AndersonMixer(object):
     """
     AndersonMixer implements Anderson mixing for accelerating fixed-point iterations,
     commonly used in self-consistent field (SCF) calculations.
