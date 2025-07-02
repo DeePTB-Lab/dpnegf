@@ -797,7 +797,7 @@ class NEGF(object):
         #     ik = update_kmap(self.results_path, kpoint=k)
         for p in properties:
             # log.info(msg="Computing {0} at k = {1}".format(p, k))
-            prop = self.out.setdefault(p, [])
+            prop: list = self.out.setdefault(p, [])
             prop.append(getattr(self, "compute_"+p)(kpoint))
 
 
@@ -820,7 +820,7 @@ class NEGF(object):
 
     def compute_current(self, kpoint):
         self.deviceprop.cal_green_function(e=self.int_grid, kpoint=kpoint, block_tridiagonal=self.block_tridiagonal)
-        return self.devidevicepropce.current
+        return self.deviceprop.current
     
     def compute_lcurrent(self, kpoint):
         return self.deviceprop.lcurrent
