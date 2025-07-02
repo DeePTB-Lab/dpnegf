@@ -1,3 +1,5 @@
+from typing import List
+
 import numpy as np 
 # import pyamg #TODO: later add it to optional dependencies,like sisl
 # from pyamg.gallery import poisson
@@ -16,6 +18,7 @@ log = logging.getLogger(__name__)
 class Grid(object):
     """
     Represents a 3D grid structure for spatial discretization.
+    
     Parameters
     ----------
     xg : array_like
@@ -30,6 +33,7 @@ class Grid(object):
         1D array of atom coordinates along the y-axis. Atoms must be within the grid bounds.
     za : array_like
         1D array of atom coordinates along the z-axis. Atoms must be within the grid bounds.
+        
     Attributes
     ----------
     xg, yg, zg : ndarray
@@ -160,7 +164,6 @@ class Grid(object):
             xd[i] = (abs(x[i]-x[i-1])+abs(x[i]-x[i+1]))/2
         return xd
 
-
 class region(object):
     """
     A class representing a 3D rectangular region defined by ranges along the x, y, and z axes.
@@ -181,10 +184,10 @@ class region(object):
         zmin (float): Minimum value of the z-axis range.
         zmax (float): Maximum value of the z-axis range.
     """
-    def __init__(self,x_range,y_range,z_range):
-        self.xmin,self.xmax = float(x_range[0]),float(x_range[1])
-        self.ymin,self.ymax = float(y_range[0]),float(y_range[1])
-        self.zmin,self.zmax = float(z_range[0]),float(z_range[1])
+    def __init__(self, x_range, y_range, z_range):
+        self.xmin, self.xmax = float(x_range[0]), float(x_range[1])
+        self.ymin, self.ymax = float(y_range[0]), float(y_range[1])
+        self.zmin, self.zmax = float(z_range[0]), float(z_range[1])
     
 class Dirichlet(region):
     """
@@ -193,6 +196,7 @@ class Dirichlet(region):
     Inherits from the `region` class and defines a region in 3D space
     with given x, y, and z ranges. The Dirichlet boundary condition is specified
     by a Fermi level (`Ef`) which represents the potential at the boundary.
+    
     Parameters
     ----------
     x_range : tuple or list
@@ -201,17 +205,17 @@ class Dirichlet(region):
         The lower and upper bounds (min, max) for the y-coordinate range.
     z_range : tuple or list
         The lower and upper bounds (min, max) for the z-coordinate range.
+        
     Attributes
     ----------
     Ef : float
         Fermi level of the gate (in unit eV), representing the fixed potential at the boundary.
     """
-    def __init__(self,x_range,y_range,z_range):
+    def __init__(self, x_range, y_range, z_range):
         # Dirichlet boundary condition
-        super().__init__(x_range,y_range,z_range)
+        super().__init__(x_range, y_range, z_range)
         # Fermi_level of gate (in unit eV)
-        self.Ef = 0.0        
-
+        self.Ef = 0.0
 
 class Dielectric(region):
     """
@@ -239,14 +243,12 @@ class Dielectric(region):
         # dielectric permittivity
         self.eps = 1.0
 
-
-
-
 class Interface3D(object):
     """
     Interface3D(grid, Dirichlet_group, dielectric_group)
     A class to handle the initialization and solution of the 3D Poisson equation
     on a structured grid with support for Dirichlet and dielectric regions.
+    
     Parameters
     ----------
     grid : Grid
@@ -255,6 +257,7 @@ class Interface3D(object):
         List of Dirichlet region objects specifying boundary conditions.
     dielectric_group : list of Dielectric
         List of Dielectric region objects specifying spatially varying permittivity.
+        
     Attributes
     ----------
     Dirichlet_group : list
@@ -284,7 +287,10 @@ class Interface3D(object):
     internal_NP : int
         Number of internal (non-boundary) grid points.
     """
-    def __init__(self,grid,Dirichlet_group,dielectric_group):
+    def __init__(self, 
+                 grid: Grid, 
+                 Dirichlet_group: List[Dirichlet], 
+                 dielectric_group: List[Dielectric]):
         """
         Initializes the Poisson solver with the given grid, Dirichlet boundary regions, and dielectric regions.
         Parameters:
@@ -305,28 +311,25 @@ class Interface3D(object):
             boudnary_points (dict): Dictionary mapping grid point indices to boundary status ("in" or boundary type).
             lead_gate_potential (np.ndarray): Lead or gate potential array, initialized to zeros.
         """
-        assert grid.__class__.__name__ == 'Grid'
+        # simple sanity checks
+        assert isinstance(grid, Grid), "grid must be an instance of the Grid class"
+        assert all(isinstance(region, Dirichlet) for region in Dirichlet_group), \
+            "All elements in Dirichlet_group must be instances of Dirichlet class"
+        assert all(isinstance(region, Dielectric) for region in dielectric_group), \
+            "All elements in dielectric_group must be instances of Dielectric class"
 
-        
-        for i in range(0,len(Dirichlet_group)):
-            if not Dirichlet_group[i].__class__.__name__ == 'Dirichlet':
-                raise ValueError('Unknown region type in Gate list: ',Dirichlet_group[i].__class__.__name__)
-        for i in range(0,len(dielectric_group)):
-            if not dielectric_group[i].__class__.__name__ == 'Dielectric':
-                raise ValueError('Unknown region type in Dielectric list: ',dielectric_group[i].__class__.__name__)
-            
         self.Dirichlet_group = Dirichlet_group
         self.dielectric_group = dielectric_group
         self.grid = grid
         self.eps = np.ones(grid.Np) # dielectric permittivity
-        self.phi,self.phi_old = np.zeros(grid.Np),np.zeros(grid.Np) # potential
-        self.free_charge,self.fixed_charge  = np.zeros(grid.Np),np.zeros(grid.Np)  # free charge density and fixed charge density 
+        self.phi, self.phi_old = np.zeros(grid.Np), np.zeros(grid.Np) # potential
+        self.free_charge, self.fixed_charge = np.zeros(grid.Np), np.zeros(grid.Np) # free charge density and fixed charge density 
 
         self.Temperature = 300.0 # temperature in unit of Kelvin
         self.kBT = Boltzmann*self.Temperature/eV2J # thermal energy in unit of eV
 
         # store the boundary information: xmin,xmax,ymin,ymax,zmin,zmax,gate
-        self.boudnary_points = {i:"in" for i in range(self.grid.Np)} # initially set all points as internal
+        self.boudnary_points = {i: "in" for i in range(self.grid.Np)} # initially set all points as internal
         self.get_boundary_points()
 
         self.lead_gate_potential = np.zeros(grid.Np) # no lead or gate potential initially, all grid points are set to zero
@@ -400,42 +403,45 @@ class Interface3D(object):
             - If the region is of type 'Dirichlet', assigns the corresponding potential to those grid points and marks them as Dirichlet boundary points.
             - If the region is of type 'Dielectric', assigns the region's dielectric permittivity to those grid points.
             - Raises a ValueError if the region type is unknown.
+            
         Parameters
         ----------
         region_list : list
             List of region objects, each with attributes defining spatial boundaries (xmin, xmax, ymin, ymax, zmin, zmax)
             and either a potential (Ef) for Dirichlet regions or permittivity (eps) for Dielectric regions.
+            
         Raises
         ------
         ValueError
             If a region in the list has an unknown type.
+            
         Logs
         ----
         The number of Dirichlet points assigned.
         """
         # assign the potential of Dirichlet region and dielectric permittivity to the grid points
         Dirichlet_point = 0
-        for i in range(len(region_list)):    
-            # find gate region in grid
-            index=np.nonzero((region_list[i].xmin<=self.grid.grid_coord[:,0])&
-                             (region_list[i].xmax>=self.grid.grid_coord[:,0])&
-                        (region_list[i].ymin<=self.grid.grid_coord[:,1])&
-                        (region_list[i].ymax>=self.grid.grid_coord[:,1])&
-                        (region_list[i].zmin<=self.grid.grid_coord[:,2])&
-                        (region_list[i].zmax>=self.grid.grid_coord[:,2]))[0]
-            if region_list[i].__class__.__name__ == 'Dirichlet': 
-                #attribute potential of Dirichlet region(lead and gate) to the corresponding grid points
+        for region in region_list:    
+            # find grid indexes that are within the region (Dirichlet or dielectric)
+            if not isinstance(region, (Dirichlet, Dielectric)):
+                raise ValueError('Unknown region type: ', region.__class__.__name__)
+            index=np.nonzero(
+                (region.xmin<=self.grid.grid_coord[:,0]<=region.xmax)&
+                (region.ymin<=self.grid.grid_coord[:,1]<=region.ymax)&
+                (region.zmin<=self.grid.grid_coord[:,2]<=region.zmax))[0]
+            # boundary
+            if isinstance(region, Dirichlet):
+                # attribute potential of Dirichlet region(lead and gate) to the corresponding grid points
                 self.boudnary_points.update({index[i]: "Dirichlet" for i in range(len(index))})
-                self.lead_gate_potential[index] = -1*region_list[i].Ef 
+                self.lead_gate_potential[index] = -1*region.Ef 
                 Dirichlet_point += len(index)
-            elif region_list[i].__class__.__name__ == 'Dielectric':
+            # dielectric
+            elif isinstance(region, Dielectric):
                 # attribute dielectric permittivity to the corresponding grid points
-                self.eps[index] = region_list[i].eps
-            else:
-                raise ValueError('Unknown region type: ',region_list[i].__class__.__name__)
+                self.eps[index] = region.eps
         
-        log.info(msg="Number of Dirichlet points: {:.1f}".format(float(Dirichlet_point)))
-        
+        log.info(f"Number of Dirichlet points: {float(Dirichlet_point):.1f}")
+
         
     def to_pyamg_Jac_B(self,dtype=np.float64):
         """
@@ -468,10 +474,12 @@ class Interface3D(object):
         """
         Constructs the Jacobian matrix and right-hand side vector (B) for the Poisson equation in SciPy sparse format.
         The method relies on the `NR_construct_Jac_B` method to fill in the Jacobian and B.
+        
         Parameters
         ----------
         dtype : data-type, optional
             The desired data-type for the Jacobian and B arrays (default is np.float64).
+            
         Returns
         -------
         Jacobian : scipy.sparse.csr_matrix
@@ -482,27 +490,29 @@ class Interface3D(object):
         # create the Jacobian and B for the Poisson equation in scipy sparse format
         
         # Jacobian = csr_matrix(np.zeros((self.grid.Np,self.grid.Np),dtype=dtype))
-        Jacobian = csr_matrix((self.grid.Np,self.grid.Np),dtype=dtype)
-        B = np.zeros(Jacobian.shape[0],dtype=Jacobian.dtype)
+        Jacobian = csr_matrix((self.grid.Np, self.grid.Np), dtype=dtype)
+        B = np.zeros(Jacobian.shape[0], dtype=Jacobian.dtype)
 
         Jacobian_lil = Jacobian.tolil()
-        self.NR_construct_Jac_B(Jacobian_lil,B)
+        self.NR_construct_Jac_B(Jacobian_lil, B)
         Jacobian = Jacobian_lil.tocsr() 
         # self.construct_poisson(A,b)
         return Jacobian,B
     
 
 
-    def solve_poisson_NRcycle(self,method='pyamg',tolerance=1e-7,dtype:str='float64'):
+    def solve_poisson_NRcycle(self, method='pyamg', tolerance=1e-7, dtype:str='float64'):
         """
         Solve the Poisson equation using the Newton-Raphson (NR) iterative method.
-        This NR method is inspired by NanoTCAD ViDES (http://vides.nanotcad.com/vides/),iteratively solving 
-        the nonlinear Poisson equation by updating the potential (`self.phi`). 
+        This NR method is inspired by NanoTCAD ViDES (http://vides.nanotcad.com/vides/),
+        iteratively solving the nonlinear Poisson equation by updating the potential 
+        (`self.phi`). 
         At each iteration, it constructs the Jacobian and right-hand side (B),
         solves the resulting linear system using either a direct solver ('scipy') or an algebraic multigrid solver ('pyamg'),
         and updates the potential. The process continues until the correction norm falls below a threshold or a maximum
         number of iterations is reached. The method also includes a control mechanism to prevent divergence by monitoring
         the norm of B after each update.
+        
         Parameters
         ----------
         method : str, optional
@@ -513,15 +523,18 @@ class Interface3D(object):
             The tolerance for the linear solver (default: 1e-7).
         dtype : str, optional
             Data type for the computation, either 'float64' (default, recommended for stability) or 'float32'.
+        
         Returns
         -------
         max_diff : float
             The maximum absolute difference between the updated potential (`self.phi`) and the previous potential (`self.phi_old`)
             after the NR cycle.
+        
         Raises
         ------
         ValueError
             If an unknown data type or Poisson solver method is specified.
+        
         Notes
         -----
         - The method logs progress and warnings during the NR cycle.
@@ -616,7 +629,7 @@ class Interface3D(object):
         )
         return x
     
-    def NR_construct_Jac_B(self,J,B):
+    def NR_construct_Jac_B(self, J, B):
         """
         Constructs the Jacobian matrix (J) and right-hand side vector (B) for the Newton-Raphson solution 
         of the Poisson equation on a 3D grid, accounting for both interior and boundary grid points.
@@ -625,12 +638,14 @@ class Interface3D(object):
         For boundary points, the method applies appropriate boundary conditions (Dirichlet or Neumann) by 
         modifying J and B accordingly, based on the type of boundary (xmin, xmax, ymin, ymax, zmin, zmax, or Dirichlet).
         After assembling the contributions, the sign of B is flipped for nonzero entries for the Newton-Raphson iteration.
+        
         Parameters
         ----------
         J : numpy.ndarray
             The Jacobian matrix to be constructed/updated (shape: [Np, Np], where Np is the number of grid points).
         B : numpy.ndarray
             The right-hand side vector to be constructed/updated (shape: [Np]).
+            
         Notes
         -----
         - Assumes that self.grid, self.eps, self.phi, self.phi_old, self.free_charge, self.fixed_charge, 
@@ -638,9 +653,10 @@ class Interface3D(object):
         - Uses constants such as eps0 and elementary_charge, which must be defined in the scope.
         - The method modifies J and B in place.
         """
+        # number of grid points along x, y, z axis
+        Nx, Ny, Nz = map(int, self.grid.shape[:3])  
+        
         # construct the Jacobian and B for the Poisson equation
-               
-        Nx = self.grid.shape[0];Ny = self.grid.shape[1];Nz = self.grid.shape[2]
         for gp_index in range(self.grid.Np):
             if self.boudnary_points[gp_index] == "in":
                 flux_xm_J = self.grid.surface_grid[gp_index,0]*eps0*(self.eps[gp_index-1]+self.eps[gp_index])*0.5\
