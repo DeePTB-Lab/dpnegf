@@ -3,18 +3,61 @@ import logging
 
 log = logging.getLogger(__name__)
 
+class LinearMixer(object):
+    '''
+    the simple linear mixing method for accelerating self-consistent field (SCF) iterations.
+    '''
+    def __init__(self):
+        pass
+    
+    def reset(self):
+        """
+        Reset the mixer state. This method is a placeholder for any necessary reset logic.
+        """
+        pass
+    
+    def update(self, 
+               x_old : np.ndarray, 
+               x_new : np.ndarray, 
+               alpha : float=0.2) -> np.ndarray:
+        """
+        Update the current solution vector using linear mixing.
+
+        Parameters
+        ----------
+        x_old : np.ndarray
+            The previous solution vector.
+        x_new : np.ndarray
+            The new solution vector to be mixed.
+        alpha : float, optional
+            The mixing parameter (default is 0.2).
+
+        Returns
+        -------
+        np.ndarray
+            The updated (mixed) solution vector.
+        """
+        assert isinstance(x_old, np.ndarray), "x_old must be a numpy array"
+        assert isinstance(x_new, np.ndarray), "x_new must be a numpy array"
+        
+        return x_new + alpha * (x_old - x_new)  # Linear mixing formula
 
 class DIISMixer(object):
     """
     DIISMixer implements the Direct Inversion in the Iterative Subspace (DIIS) method 
     for accelerating self-consistent field (SCF) convergence.
+    
+    Parameters
+    ----------
     max_hist : int, optional
         Maximum number of history vectors to store for DIIS extrapolation (default: 6).
     alpha : float, optional
         Mixing parameter for linear mixing during warmup (default: 0.2).
     linear_warmup : int, optional
         Number of initial iterations to use linear mixing before switching to DIIS (default: 1).
+    
     Attributes
+    ----------
     x_hist : list of ndarray
         History of previous input vectors (e.g., potentials).
     r_hist : list of ndarray
@@ -113,7 +156,6 @@ class DIISMixer(object):
         x_mixed = sum(c * x for c, x in zip(coeffs, self.x_hist))
         return x_mixed.ravel()  # Return as 1D array
 
-
 class PDIISMixer(object):
     """
     PDIISMixer implements the Periodic Direct Inversion in the Iterative Subspace (PDIIS) 
@@ -121,6 +163,8 @@ class PDIISMixer(object):
 
     This PDIIS method is from https://doi.org/10.1016/j.cplett.2016.01.033.
     
+    Parameters
+    ----------
     init_f : np.ndarray
         Initial state (e.g., potential or density) for the mixer.
     mix_rate : float, optional
@@ -129,7 +173,9 @@ class PDIISMixer(object):
         Maximum number of history vectors to store for DIIS extrapolation (default: 4).
     mixing_period : int, optional
         Number of iterations between DIIS mixing steps (default: 2).
+    
     Attributes
+    ----------
     mix_rate : float
         Linear mixing rate.
     max_hist : int
@@ -148,11 +194,14 @@ class PDIISMixer(object):
         History of differences in mixed states.
     F : list of np.ndarray
         History of differences in input states.
+        
     Methods
+    -------
     reset(new_init_f=None)
         Reset the mixer, optionally with a new initial state.
     update(f_new)
         Perform one PDIIS mixing update based on the new input state.
+    
     Notes
     -----
     - The mixer alternates between linear mixing and DIIS mixing according to `mixing_period`.
@@ -268,9 +317,6 @@ class PDIISMixer(object):
             self.iter_count += 1
 
             return x_next.ravel()
-    
-
-
 
 class BroydenFirstMixer(object):
     """

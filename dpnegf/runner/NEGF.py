@@ -1,59 +1,134 @@
+'''
+the runner for solving the Non-Equilibrium Green's Function (NEGF) equations
+
+NOTE: any detailed implementation should be placed either in `negf` module or
+some others.
+'''
+import re
+import logging
+from typing import Optional, Union
+from pathlib import Path
+
+import ase
 import torch
-from dpnegf.negf.negf_utils import quad, gauss_xw,leggauss,update_kmap
+import numpy as np
+
 from dpnegf.utils.constants import valence_electron
-from dpnegf.negf.ozaki_res_cal import ozaki_residues
-from dpnegf.negf.negf_hamiltonian_init import NEGFHamiltonianInit
+from dpnegf.utils.constants import Boltzmann, eV2J
+from dpnegf.utils.make_kpoints import kmesh_sampling_negf
 from dpnegf.utils.elec_struc_cal import ElecStruCal
-from dpnegf.negf.density import Ozaki,Fiori
+from dpnegf.utils.tools import apply_gaussian_filter_3d
+from dpnegf.negf.negf_utils import \
+    quad, gauss_xw, leggauss, update_kmap, is_fully_covered
+from dpnegf.negf.negf_hamiltonian_init import NEGFHamiltonianInit
+from dpnegf.negf.ozaki_res_cal import ozaki_residues
+from dpnegf.negf.density import Ozaki, Fiori
 from dpnegf.negf.device_property import DeviceProperty
 from dpnegf.negf.lead_property import LeadProperty
-from dpnegf.negf.negf_utils import is_fully_covered
-import ase
-from dpnegf.utils.constants import Boltzmann, eV2J
-import numpy as np
-from dpnegf.utils.make_kpoints import kmesh_sampling_negf
-import logging
-from dpnegf.negf.poisson_init import Grid,Interface3D,Dirichlet,Dielectric
-from dpnegf.negf.scf_method import PDIISMixer,DIISMixer,BroydenFirstMixer,BroydenSecondMixer,AndersonMixer
-from typing import Optional, Union
-from dpnegf.utils.tools import apply_gaussian_filter_3d
+from dpnegf.negf.scf_method import \
+    LinearMixer, PDIISMixer, DIISMixer, BroydenFirstMixer, \
+    BroydenSecondMixer, AndersonMixer
+from dpnegf.negf.negf_exp_refactor import \
+    PoissonEquation, InterfacedPoissonEquation
 # from pyinstrument import Profiler
-
-log = logging.getLogger(__name__)
-
-
 try:
     from dptb.data import AtomicData, AtomicDataDict
 except ImportError:
-    raise ImportError("dptb.data is not available. Please install dptb package to use AtomicData.")
-    
+    raise ImportError("dptb.data is not available. "
+                      "Please install dptb package to use AtomicData.")
 
-
-
+log = logging.getLogger(__name__)
 # TODO : add common class to set all the dtype and precision.
 
 class NEGF(object):
     def __init__(self, 
-                model: torch.nn.Module,
-                AtomicData_options: dict, 
-                structure: Union[AtomicData, ase.Atoms, str],
-                ele_T: float,
-                emin: float, emax: float, espacing: float,
-                density_options: dict,
-                unit: str,
-                scf: bool, poisson_options: dict,
-                stru_options: dict,eta_lead: float,eta_device: float,
-                block_tridiagonal: bool,
-                sgf_solver: str,
-                e_fermi: float=None,
-                use_saved_HS: bool=False, saved_HS_path: str=None,
-                self_energy_save: bool=False, self_energy_save_path: str=None, se_info_display: bool=False,
-                out_tc: bool=False,out_dos: bool=False,out_density: bool=False,out_potential: bool=False,
-                out_current: bool=False,out_current_nscf: bool=False,out_ldos: bool=False,out_lcurrent: bool=False,
-                results_path: Optional[str]=None,
-                torch_device: Union[str, torch.device]=torch.device('cpu'),
-                **kwargs):
+                 model: torch.nn.Module,
+                 AtomicData_options: dict, 
+                 structure: Union[AtomicData, ase.Atoms, str],
+                 ele_T: float,
+                 emin: float, 
+                 emax: float, 
+                 espacing: float,
+                 density_options: dict,
+                 unit: str,
+                 scf: bool, 
+                 poisson_options: dict,
+                 stru_options: dict,
+                 eta_lead: float,
+                 eta_device: float,
+                 block_tridiagonal: bool,
+                 sgf_solver: str,
+                 e_fermi: float=None,
+                 use_saved_HS: bool = False, 
+                 saved_HS_path: str = None,
+                 self_energy_save: bool = False, 
+                 self_energy_save_path: str = None, 
+                 se_info_display: bool = False,
+                 out_tc: bool = False,
+                 out_dos: bool = False,
+                 out_density: bool = False,
+                 out_potential: bool = False,
+                 out_current: bool = False,
+                 out_current_nscf: bool = False,
+                 out_ldos: bool = False,
+                 out_lcurrent: bool = False,
+                 results_path: Optional[str] = None,
+                 torch_device: Union[str, torch.device] = torch.device('cpu'),
+                 **kwargs):
+        '''
+        instantiate the mathematical problem of solving the non-equilibrium Green's function
+        (NEGF) for a given system.
         
+        Parameters
+        ----------
+        model : torch.nn.Module
+            The model to be used for constructing the TB Hamiltonian and overlap matrices.
+        AtomicData_options : dict
+            settings of AtomicData, will be passed to AtomicDataDict and determine the
+            behavior of the topology of structures
+        structure : Union[AtomicData, ase.Atoms, str]
+            the structure to solve the NEGF problem for
+        ele_T : float
+            electronic temperature that defined in Fermi-dirac distribution, in Kelvin
+        emin : float
+            minimum energy for the NEGF calculation, in eV
+        emax : float
+            maximum energy for the NEGF calculation, in eV
+        espacing : float
+            the grid of energy for the NEGF calculation, in eV
+        density_options : dict
+
+        unit : str
+            the unit of energies, can be 'eV'
+        scf : bool
+            whether to solve the NEGF in a self-consistent manner or not.
+        poisson_options : dict
+            options for solving the Poisson equation
+        stru_options : dict
+            for determine different portions of the structure, such as leads and device. The
+            symmetry related parameters are also included.
+        eta_lead : float
+        
+        eta_device : float
+        
+        block_tridiagonal : bool
+
+        sgf_solver : str
+            the method to solve the self-energy GF
+        e_fermi : float, optional
+            the fermi level of the system, if not provided, it will be calculated from the
+            electronic structure.
+        use_saved_HS : bool
+            whether to use the saved Hamiltonian and overlap matrices instead of employing
+            the model to calculate them.
+        saved_HS_path : str, optional
+            the path to the saved Hamiltonian and overlap matrices, if use_saved_HS is True.
+        self_energy_save : bool
+            whether to save the self-energy matrices for each k-point and energy point.
+        self_energy_save_path : str, optional
+            the path to save the self-energy matrices, if self_energy_save is True.
+        
+        '''
         
         # self.model = model # No need to set model as property for memory saving      
         self.results_path = results_path
@@ -68,11 +143,14 @@ class NEGF(object):
         self.emin = emin; self.emax = emax; self.espacing = espacing
         self.stru_options = stru_options
         self.poisson_options = poisson_options
+        
+        # check
         if e_fermi is None:
-            for lead in ["lead_L", "lead_R"]:
-                assert "kmesh_lead_Ef" in self.stru_options[lead], f"{lead} must have 'kmesh_lead_Ef' set in stru_options if e_fermi is None"
+            if not all("kmesh_lead_Ef" in self.stru_options[f"lead_{x}"] for x in ["L", "R"]):
+                raise ValueError("If e_fermi is None, 'kmesh_lead_Ef' must be set in "
+                                 "stru_options for both leads")
 
-
+        # Hamiltonian and overlap matrix cache options
         self.use_saved_HS = use_saved_HS
         self.saved_HS_path = saved_HS_path
 
@@ -82,31 +160,52 @@ class NEGF(object):
         self.se_info_display = se_info_display
         self.pbc = self.stru_options["pbc"]
 
-        if  self.stru_options["lead_L"]["useBloch"] or self.stru_options["lead_R"]["useBloch"]:
-            assert self.stru_options["lead_L"]["bloch_factor"] == self.stru_options["lead_R"]["bloch_factor"], "bloch_factor should be the same for both leads in this version"
+        ####################################################
+        ## check and assignment of bloch related keywords ##
+        ####################################################
+        if any(self.stru_options[f"lead_{x}"].get("useBloch", False) for x in ["L", "R"]):
             self.useBloch = True
+            # if `useBloch` is explicitly defined, it is expected user knows the `bloch_factor`
+            # is needed to be set, otherwise the KeyError will be raised and should be 
+            # easy to understand
+            if not all(f1 == f2 for f1, f2 in zip([
+                self.stru_options[f"lead_{x}"]["bloch_factor"] for x in ["L", "R"]])):
+                raise NotImplementedError(
+                    "bloch_factor should be the same for both leads in this version")
             self.bloch_factor = self.stru_options["lead_L"]["bloch_factor"]
         else:
             self.useBloch = False
-            self.bloch_factor = [1,1,1]
+            self.bloch_factor = [1, 1, 1]
 
-        # check the consistency of the kmesh and pbc
-        assert len(self.pbc) == 3, "pbc should be a list of length 3"
-        for i in range(3):
-            if self.pbc[i] == False and self.stru_options["kmesh"][i] > 1:
-                raise ValueError("kmesh should be 1 for non-periodic direction")
-            elif self.pbc[i] == False and self.stru_options["kmesh"][i] == 0:
-                self.stru_options["kmesh"][i] = 1
-                log.warning(msg="kmesh should be set to 1 for non-periodic direction! Automatically Setting kmesh to 1 in direction {}.".format(i))
-            elif self.pbc[i] == True and self.stru_options["kmesh"][i] == 0:
-                raise ValueError("kmesh should be > 0 for periodic direction")
-            
+        #############
+        ## kpoints ##
+        #############
+        if len(self.pbc) != 3:
+            raise ValueError("pbc should be a list of length 3")
+        if not all(isinstance(pbc_i, bool) for pbc_i in self.pbc):
+            raise ValueError("pbc should be a list of bool values")
+        if len(self.stru_options["kmesh"]) != 3:
+            raise ValueError("kmesh should be a list of length 3")
+        for p, kmsh in zip(self.pbc, self.stru_options["kmesh"]):
+            if not p:
+                if kmsh > 1: # the case that not periodic but set k points, inconsistent
+                    raise ValueError("kmesh should be 1 for non-periodic direction")
+                # kmsh <= 1 is acceptable
+            else:
+                if kmsh == 0: # the case that periodic but set k points to 0, error
+                    raise ValueError("kmesh should be > 0 for periodic direction")
+                # kmsh >=1 is acceptable
+        # refresh the kmesh if pbc is False
+        self.stru_options["kmesh"] = [kmsh if p else 1 for p, kmsh 
+                                      in zip(self.pbc, self.stru_options["kmesh"])]
+        # kpoint sampling          
         if not any(self.pbc):
-            self.kpoints,self.wk = np.array([[0,0,0]]),np.array([1.])
+            self.kpoints, self.wk = np.array([[0, 0, 0]]), np.array([1.])
         else:
-            self.kpoints,self.wk = kmesh_sampling_negf(self.stru_options["kmesh"], 
-                                                       self.stru_options["gamma_center"],
-                                                     self.stru_options["time_reversal_symmetry"])
+            self.kpoints, self.wk = kmesh_sampling_negf(self.stru_options["kmesh"], 
+                                                        self.stru_options["gamma_center"],
+                                                        self.stru_options["time_reversal_symmetry"])
+        # report
         log.info(msg="------ k-point for NEGF -----")
         log.info(msg="Gamma Center: {0}".format(self.stru_options["gamma_center"]))
         log.info(msg="Time Reversal: {0}".format(self.stru_options["time_reversal_symmetry"]))
@@ -130,54 +229,62 @@ class NEGF(object):
             else:
                 assert self.stru_options[lead_tag]["voltage"] == 0, f"{lead_tag} voltage should be 0 in non-scf calculation"
 
-        # computing the hamiltonian
-        self.negf_hamiltonian = NEGFHamiltonianInit(model=model,
-                                                    AtomicData_options=AtomicData_options, 
-                                                    structure=structure,
-                                                    block_tridiagonal=self.block_tridiagonal,
-                                                    pbc_negf = self.pbc, 
-                                                    stru_options=self.stru_options,
-                                                    unit = self.unit, 
-                                                    results_path=self.results_path,
-                                                    torch_device = self.torch_device)
+        # compute the hamiltonian
+        self.negf_hamiltonian = NEGFHamiltonianInit(
+            model=model,
+            AtomicData_options=AtomicData_options, 
+            structure=structure,
+            block_tridiagonal=self.block_tridiagonal,
+            pbc_negf = self.pbc, 
+            stru_options=self.stru_options,
+            unit = self.unit, 
+            results_path=self.results_path,
+            torch_device = self.torch_device)
+        
+        # inference mode
         with torch.no_grad():
             # if useBloch is None, structure_leads_fold,bloch_sorted_indices,bloch_R_lists = None,None,None
-            struct_device, struct_leads,structure_leads_fold,bloch_sorted_indices,bloch_R_lists = \
-                self.negf_hamiltonian.initialize(kpoints=self.kpoints,block_tridiagnal=self.block_tridiagonal,\
-                                                 useBloch=self.useBloch,bloch_factor=self.bloch_factor,\
-                                                 use_saved_HS=self.use_saved_HS, saved_HS_path=self.saved_HS_path)
+            struct_device, struct_leads, structure_leads_fold, bloch_sorted_indices, \
+                bloch_R_lists = self.negf_hamiltonian.initialize(
+                    kpoints=self.kpoints,
+                    block_tridiagnal=self.block_tridiagonal,
+                    useBloch=self.useBloch,
+                    bloch_factor=self.bloch_factor,
+                    use_saved_HS=self.use_saved_HS, 
+                    saved_HS_path=self.saved_HS_path)
 
         self.free_charge = {} # net charge: hole - electron
         #  Regions for Poisson equation
         ## Dirichlet region: gate and leads
         ## Dielectric region: dielectrics
         ## Doped region: doped atomic sites, usually in leads region
-        self.Dirichlet_region = [self.poisson_options[i] for i in self.poisson_options if i.startswith("gate")\
-                                    or i.startswith("lead")]
-        self.dielectric_region = [self.poisson_options[i] for i in self.poisson_options if i.startswith("dielectric")]
-        self.doped_region = [self.poisson_options[i] for i in self.poisson_options if i.startswith("doped")]
-
-
+        self.Dirichlet_region = [self.poisson_options[i] for i in self.poisson_options \
+            if i.startswith("gate") or i.startswith("lead")]
+        self.dielectric_region = [self.poisson_options[i] for i in self.poisson_options \
+            if i.startswith("dielectric")]
+        self.doped_region = [self.poisson_options[i] for i in self.poisson_options \
+            if i.startswith("doped")]
 
         log.info(msg="-------------Fermi level calculation-------------")
         e_fermi = {}; chemiPot = {}
         # calculate Fermi level
         if  self.e_fermi is None:        
-            elec_cal = ElecStruCal(model=model,device=self.torch_device)
+            elec_cal = ElecStruCal(model=model, device=self.torch_device)
             nel_atom_lead = self.get_nel_atom_lead(
                                 struct_leads, 
-                                charge={lead_tag: self.stru_options[lead_tag].get("charge", 0) for lead_tag in ["lead_L", "lead_R"]}
-                                )
+                                charge={lead_tag: self.stru_options[lead_tag].get("charge", 0) 
+                                        for lead_tag in ["lead_L", "lead_R"]})
             log.info(msg="Number of electrons in lead_L: {0}".format(nel_atom_lead["lead_L"]))
             log.info(msg="Number of electrons in lead_R: {0}".format(nel_atom_lead["lead_R"]))
             for lead_tag in ["lead_L", "lead_R"]:
                 log.info(msg="-----Calculating Fermi level for {0}-----".format(lead_tag))
-                _, e_fermi[lead_tag]  = elec_cal.get_fermi_level(data=struct_leads[lead_tag], 
-                                nel_atom = nel_atom_lead[lead_tag],
-                                meshgrid=self.stru_options[lead_tag]["kmesh_lead_Ef"],
-                                AtomicData_options=AtomicData_options,
-                                smearing_method=self.stru_options.get("e_fermi_smearing", "FD"),
-                                temp=100.0)
+                _, e_fermi[lead_tag]  = elec_cal.get_fermi_level(
+                    data=struct_leads[lead_tag], 
+                    nel_atom = nel_atom_lead[lead_tag],
+                    meshgrid=self.stru_options[lead_tag]["kmesh_lead_Ef"],
+                    AtomicData_options=AtomicData_options,
+                    smearing_method=self.stru_options.get("e_fermi_smearing", "FD"),
+                    temp=100.0)
         else:
             e_fermi["lead_L"] = self.e_fermi
             e_fermi["lead_R"] = self.e_fermi
@@ -213,8 +320,12 @@ class NEGF(object):
         log.info(msg="=================================================\n")
 
         # initialize deviceprop and leadprop
-        self.deviceprop = DeviceProperty(self.negf_hamiltonian, struct_device, results_path=self.results_path,
-                                         efermi=self.e_fermi, chemiPot=chemiPot, E_ref=E_ref)
+        self.deviceprop = DeviceProperty(self.negf_hamiltonian, 
+                                         struct_device, 
+                                         results_path=self.results_path,
+                                         efermi=self.e_fermi, 
+                                         chemiPot=chemiPot, 
+                                         E_ref=E_ref)
         self.deviceprop.set_leadLR(
                 lead_L=LeadProperty(
                 hamiltonian=self.negf_hamiltonian, 
@@ -337,165 +448,173 @@ class NEGF(object):
             self.int_grid, self.int_weight = gauss_xw(xl=xl, xu=xu, n=int(self.density_options["n_gauss"]))
 
     def compute(self):
-
+        '''
+        compute the NEGF for the given system, in either NSCF or SCF mode.
+        In SCF mode, the consistency of electrostatic potential must be reached.
+        '''
+        Vbias = None
+        
+        ### BEGIN: SCF implementation
         if self.scf:
-
-            # create real-space grid
-            grid = self.get_grid(self.poisson_options["grid"],self.deviceprop.structure)
-
-            # create Dirichlet boundary condition region
-            Dirichlet_group = []
-            for idx in range(len(self.Dirichlet_region)):
-                Dirichlet_init = Dirichlet(self.Dirichlet_region[idx].get("x_range",None).split(':'),\
-                                self.Dirichlet_region[idx].get("y_range",None).split(':'),\
-                                self.Dirichlet_region[idx].get("z_range",None).split(':'))
-                #TODO: when heterogenous Dirichlet conditions are set, the voltage should be set as electrochemical potential(Fermi level + voltage)
-                Dirichlet_init.Ef = -1*float(self.Dirichlet_region[idx].get("voltage",None)) # in unit of eV
-                Dirichlet_group.append(Dirichlet_init)
+            # the case that the consistency is required between Poisson and NEGF
+            ## create real-space grid
+            gridparam = {f'{r}range': self.poisson_options['grid'].get(f'{r}_range') for r in 'xyz'}
+            gridparam |= {'coords': self.deviceprop.structure.get_positions()}
             
-            # create dielectric region          
-            dielectric_group = []
-            for dd in range(len(self.dielectric_region)):
-                dielectric_init = Dielectric(   self.dielectric_region[dd].get("x_range",None).split(':'),\
-                                                self.dielectric_region[dd].get("y_range",None).split(':'),\
-                                                self.dielectric_region[dd].get("z_range",None).split(':'))
-                dielectric_init.eps = float(self.dielectric_region[dd].get("relative permittivity",None))
-                dielectric_group.append(dielectric_init) 
+            ## establish the interface Poisson equation
+            interface_pe = InterfacedPoissonEquation(
+                real_space_grid=PoissonEquation.generate_real_space_grid(**gridparam), 
+                bc=PoissonEquation.build_dirichlet_boundary_conditions(self.poisson_options),
+                bc_type="Dirichlet", # presently only Dirichlet bc is supported
+                dielectric_group=InterfacedPoissonEquation.define_dielectric_regions(self.poisson_options),
+                rho=None)
+            # TODO: performance hot-spot: tranverse grid points initialization
+            interface_pe.initialize_grid_points(self.doped_region)
 
-            # create interface
-            interface_poisson = Interface3D(grid,Dirichlet_group,dielectric_group)
-            interface_poisson.get_potential_eps(Dirichlet_group+dielectric_group)
-            atom_gridpoint_index =  list(interface_poisson.grid.atom_index_dict.values()) # atomic site index in the grid
-            for dp in range(len(self.doped_region)):
-                interface_poisson.get_fixed_charge( self.doped_region[dp].get("x_range",None).split(':'),\
-                                                    self.doped_region[dp].get("y_range",None).split(':'),\
-                                                    self.doped_region[dp].get("z_range",None).split(':'),\
-                                                    self.doped_region[dp].get("charge",None),\
-                                                    atom_gridpoint_index)
+            ## first solve (initial guess) for electrostatic potential
+            log.info("-----Initial guess for electrostatic potential----")
+            interface_pe.solve(method=self.poisson_options['solver'],
+                               tol=self.poisson_options['tolerance'],
+                               dtype=self.poisson_options['poisson_dtype'])
+            log.info("--------------------------------------------------\n")
 
-            #initial guess for electrostatic potential
-            log.info(msg="-----Initial guess for electrostatic potential----")
-            interface_poisson.solve_poisson_NRcycle(method=self.poisson_options['solver'],\
-                                                    tolerance=self.poisson_options['tolerance'],\
-                                                    dtype=self.poisson_options['poisson_dtype'])
-            log.info(msg="-------------------------------------------\n")
-
-            self.poisson_negf_scf(  interface_poisson=interface_poisson,atom_gridpoint_index=atom_gridpoint_index,\
-                                    err=self.poisson_options['err'],max_iter=self.poisson_options['max_iter'],\
-                                    mix_rate=self.poisson_options['mix_rate'],tolerance=self.poisson_options['tolerance'])
-            # calculate transport properties with converged potential
-            self.negf_compute(scf_require=False,Vbias=self.potential_at_orb)
+            ## SCF
+            self.poisson_negf_scf(interface_poisson=interface_pe._impl,
+                                  atom_gridpoint_index=interface_pe.atom_grid_point_indexes,
+                                  err=self.poisson_options['err'],
+                                  max_iter=self.poisson_options['max_iter'],
+                                  mix_rate=self.poisson_options['mix_rate'],
+                                  tolerance=self.poisson_options['tolerance'])
+            Vbias = self.potential_at_orb
+        ### END: SCF implementation
         
-        else:
-            self.negf_compute(scf_require=False,Vbias=None)
+        ## properties calculation
+        self.negf_compute(scf_require=False, Vbias=Vbias)
 
-    def poisson_negf_scf(self,interface_poisson,atom_gridpoint_index,err=1e-6,max_iter=1000,
-                         mix_method:str='linear', mix_rate:float=0.3, tolerance:float=1e-7,Gaussian_sigma:float=3.0):
-
+    def poisson_negf_scf(self,
+                         interface_poisson,
+                         atom_gridpoint_index,
+                         err=1e-6,
+                         max_iter=1000,
+                         mix_method:str='linear', 
+                         mix_rate:float=0.3, 
+                         tolerance:float=1e-7,
+                         Gaussian_sigma:float=3.0):        
+        # profiler.start()
+        ### simple sanity check on mixing method
+        mixing_supported = ['linear', 'PDIIS', 'DIIS', 'BroydenFirst', 
+                            'BroydenSecond', 'Anderson']
+        if mix_method not in mixing_supported:
+            raise ValueError(f"mix_method should be one of {mixing_supported}")
         
-        # profiler.start() 
-        max_diff_phi = 1e30
-        max_diff_list = [] 
-        iter_count=0
-        mix_method_list = ['linear', 'PDIIS', 'DIIS', 'BroydenFirst', 'BroydenSecond', 'Anderson']
-        if mix_method not in mix_method_list:
-            raise ValueError("mix_method should be one of {}".format(mix_method_list))
-        else:
-        # initialize the mixer
-            log.info(msg="Using {} mixing method for NEGF-Poisson SCF".format(mix_method))
-            if mix_method == 'PDIIS':
-                mixer = PDIISMixer(init_x=interface_poisson.phi.copy(), mix_rate=mix_rate)
-            elif mix_method == 'DIIS':
-                mixer = DIISMixer(max_hist=6, alpha=0.2)
-            elif mix_method == 'BroydenFirst':
-                mixer = BroydenFirstMixer(init_x=interface_poisson.phi, alpha=mix_rate)
-            elif mix_method == 'BroydenSecond':
-                mixer = BroydenSecondMixer(shape=interface_poisson.phi.shape, max_hist=8, alpha=mix_rate)
-            elif mix_method == 'Anderson':
-                mixer = AndersonMixer(m=5, alpha=0.2)
-            elif mix_method == 'linear':
-                mixer = None
+        ### initialize the mixing method
+        log.info(msg="Using {} mixing method for NEGF-Poisson SCF".format(mix_method))
+        if mix_method == 'PDIIS':
+            mixer = PDIISMixer(init_x=interface_poisson.phi.copy(), mix_rate=mix_rate)
+        elif mix_method == 'DIIS':
+            mixer = DIISMixer(max_hist=6, alpha=0.2)
+        elif mix_method == 'BroydenFirst':
+            mixer = BroydenFirstMixer(init_x=interface_poisson.phi, alpha=mix_rate)
+        elif mix_method == 'BroydenSecond':
+            mixer = BroydenSecondMixer(shape=interface_poisson.phi.shape, 
+                                       max_hist=8, 
+                                       alpha=mix_rate)
+        elif mix_method == 'Anderson':
+            mixer = AndersonMixer(m=5, alpha=0.2)
+        elif mix_method == 'linear':
+            mixer = LinearMixer()   
 
-   
-
+        ### start the SCF iteration
+        max_diff_phi = np.inf
+        max_diff_traj = [] 
+        iter_count = 0
         # Gummel type iteration
         while max_diff_phi > err:
             # update Hamiltonian by modifying onsite energy with potential
             self.potential_at_atom = interface_poisson.phi[atom_gridpoint_index]
-            self.potential_at_orb = torch.cat([torch.full((norb,), p) for p, norb\
-                                                in zip(self.potential_at_atom, self.device_atom_norbs)])              
-            self.negf_compute(scf_require=True,Vbias=self.potential_at_orb)
+            self.potential_at_orb = torch.cat([torch.full((norb,), p) 
+                    for p, norb in zip(self.potential_at_atom, self.device_atom_norbs)])
+            self.negf_compute(scf_require=True, Vbias=self.potential_at_orb)
             # Vbias makes sense for orthogonal basis as in NanoTCAD
             # TODO: check if Vbias makes sense for non-orthogonal basis 
             # TODO: check the sign of free_charge
             # TODO: check the spin degenracy
             # TODO: add k summation operation
-            free_charge_allk = torch.zeros_like(torch.tensor(self.device_atom_norbs))
-            for ik,k in enumerate(self.kpoints):
-                free_charge_allk += np.real(self.free_charge[str(k)].numpy()) * self.wk[ik]
-            interface_poisson.free_charge[atom_gridpoint_index] = free_charge_allk
             
-
+            ## integrate the free charge in k-space
+            interface_poisson.free_charge[atom_gridpoint_index] = \
+                torch.sum([self.free_charge[str(k)].real * wk 
+                           for k, wk in zip(self.kpoints, self.wk)])
+            
+            ## backup the old potential and solve for new
             interface_poisson.phi_old = interface_poisson.phi.copy()
-            max_diff_phi = interface_poisson.solve_poisson_NRcycle(method=self.poisson_options['solver'],\
-                                                                tolerance=tolerance,\
-                                                                dtype=self.poisson_options['poisson_dtype'])
+            max_diff_phi = interface_poisson.solve_poisson_NRcycle(
+                method=self.poisson_options['solver'],
+                tolerance=tolerance,
+                dtype=self.poisson_options['poisson_dtype'])
+            max_diff_traj.append(max_diff_phi)
+            
+            ## mixing after solving Poisson equation
             if mix_method == 'linear':
-                interface_poisson.phi = interface_poisson.phi + mix_rate*(interface_poisson.phi_old-interface_poisson.phi)
+                interface_poisson.phi = mixer.update(interface_poisson.phi.copy(), 
+                                                     interface_poisson.phi_old.copy(), 
+                                                     mix_rate=mix_rate)
             elif mix_method == 'DIIS':
                 residual = interface_poisson.phi - interface_poisson.phi_old
-                interface_poisson.phi = mixer.update(interface_poisson.phi.copy(), residual)
+                interface_poisson.phi = mixer.update(interface_poisson.phi.copy(), 
+                                                     residual)
             elif mix_method == 'PDIIS':
                 interface_poisson.phi = mixer.update(interface_poisson.phi.copy())
             elif mix_method == 'BroydenFirst':
                 residual = interface_poisson.phi - interface_poisson.phi_old
-                interface_poisson.phi = mixer.update(f = residual) # fixed point problem: f defined as F(\phi)-\phi =0
+                # fixed point problem: f defined as F(\phi)-\phi =0
+                interface_poisson.phi = mixer.update(f = residual) 
             elif mix_method == 'BroydenSecond':
                 residual = interface_poisson.phi - interface_poisson.phi_old
-                interface_poisson.phi = mixer.update(interface_poisson.phi.copy(), residual)
+                interface_poisson.phi = mixer.update(interface_poisson.phi.copy(), 
+                                                     residual)
             elif mix_method == 'Anderson':
-                interface_poisson.phi = mixer.update(interface_poisson.phi.copy(), interface_poisson.phi_old.copy())
+                interface_poisson.phi = mixer.update(interface_poisson.phi.copy(), 
+                                                     interface_poisson.phi_old.copy())
 
+            ## loop control
             iter_count += 1 # Gummel type iteration
-            log.info(msg="Poisson-NEGF iteration: {}    Potential Diff Maximum: {}\n".format(iter_count,max_diff_phi))
-            max_diff_list.append(max_diff_phi)
+            log.info(f"Poisson-NEGF iteration: {iter_count}, "
+                     f"Potential Diff Maximum: {max_diff_phi}\n")
 
             if max_diff_phi <= err:
                 log.info(msg="Poisson-NEGF SCF Converges Successfully!")
-            if max_diff_phi > 1e8:
-                raise RuntimeError("Poisson-NEGF iteration diverges, max_diff_phi = {}".format(max_diff_phi))
-            if np.isnan(max_diff_phi):
-                raise RuntimeError("Poisson-NEGF iteration diverges, max_diff_phi = {}".format(max_diff_phi))
-                
-
+            if max_diff_phi > 1e8 or np.isnan(max_diff_phi):
+                raise RuntimeError("Poisson-NEGF iteration diverges, "
+                                   f"max_diff_phi = {max_diff_phi}")
             if iter_count > max_iter:
-                log.warning(msg="Warning! Poisson-NEGF iteration exceeds the upper limit of iterations {}".format(int(max_iter)))
+                log.warning("Warning! Poisson-NEGF iteration exceeds the "
+                            f"upper limit of iterations {int(max_iter)}")
                 break
                 # profiler.stop()
                 # with open('profile_report.html', 'w') as report_file:
                 #     report_file.write(profiler.output_html())
                 # break
 
-        self.poisson_out = {}
-        self.poisson_out['potential'] = torch.tensor(interface_poisson.phi)
-        self.poisson_out['potential_at_atom'] = self.potential_at_atom
-        self.poisson_out['grid_point_number'] = interface_poisson.grid.Np
-        self.poisson_out['grid'] = torch.tensor(interface_poisson.grid.grid_coord)
-        self.poisson_out['free_charge_at_atom'] = torch.tensor(interface_poisson.free_charge[atom_gridpoint_index])
-        self.poisson_out['max_diff_list'] = torch.tensor(max_diff_list)
-        torch.save(self.poisson_out, self.results_path+"/poisson.out.pth")
-
-
-
+        ### save the final potential and other information
+        self.poisson_out = {
+            'potential': torch.tensor(interface_poisson.phi),
+            'potential_at_atom': self.potential_at_atom,
+            'grid_point_number': interface_poisson.grid.Np,
+            'grid': torch.tensor(interface_poisson.grid.grid_coord),
+            'free_charge_at_atom': torch.tensor(
+                interface_poisson.free_charge[atom_gridpoint_index]),
+            'max_diff_list': torch.tensor(max_diff_traj),
+        }
+        torch.save(self.poisson_out, Path(self.results_path) / "poisson.out.pth")
         # output the profile report in html format
         # if iter_count <= max_iter: 
         #     profiler.stop()
         #     with open('profile_report.html', 'w') as report_file:
         #         report_file.write(profiler.output_html())
 
-    def negf_compute(self,scf_require=False,Vbias=None):
+    def negf_compute(self, scf_require=False, Vbias=None):
         
-    
         assert scf_require is not None, "scf_require should be set to True or False"
 
         self.out['k']=[];self.out['wk']=[]
@@ -560,8 +679,7 @@ class NEGF(object):
                         free_charge = self.free_charge,
                         eta_lead = self.eta_lead,
                         eta_device = self.eta_device,
-                        E_ref = self.deviceprop.E_ref
-                        )
+                        E_ref = self.deviceprop.E_ref)
                 else:
                     # TODO: add Ozaki support for NanoTCAD-style SCF
                     raise ValueError("Ozaki method does not support Poisson-NEGF SCF in this version.")
@@ -734,26 +852,14 @@ class NEGF(object):
                 self.out["BIAS_POTENTIAL_NSCF"], self.out["CURRENT_NSCF"] = self.compute_current_nscf(self.uni_grid, self.out["T_avg"])
             torch.save(self.out, self.results_path+"/negf.out.pth")
 
-                
-            
-
-    def get_grid(self,grid_info,structase):
-        x_start,x_end,x_num = grid_info.get("x_range",None).split(':')
-        xg = np.linspace(float(x_start),float(x_end),int(x_num))
-
-        y_start,y_end,y_num = grid_info.get("y_range",None).split(':')
-        yg = np.linspace(float(y_start),float(y_end),int(y_num))
-        # yg = np.array([(float(y_start)+float(y_end))/2]) # TODO: temporary fix for 2D case
-
-        z_start,z_end,z_num = grid_info.get("z_range",None).split(':')
-        zg = np.linspace(float(z_start),float(z_end),int(z_num))
-
-        device_atom_coords = structase.get_positions()
-        xa,ya,za = device_atom_coords[:,0],device_atom_coords[:,1],device_atom_coords[:,2]
-
-        # grid = Grid(xg,yg,zg,xa,ya,za)
-        grid = Grid(xg,yg,za,xa,ya,za) #TODO: change back to zg
-        return grid     
+    def get_grid(self, grid_info: dict, structase: ase.Atoms):
+        '''get the grid for solving Poisson equation'''
+        return PoissonEquation.generate_real_space_grid(
+            xrange=grid_info.get("x_range"),
+            yrange=grid_info.get("y_range"),
+            zrange=grid_info.get("z_range"),
+            structase=structase.get_positions()
+        )
 
     def get_nel_atom_lead(self, struct_leads, charge:float=None):
         nel_atom = self.stru_options.get("nel_atom", None)
