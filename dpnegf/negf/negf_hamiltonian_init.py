@@ -479,7 +479,7 @@ class NEGFHamiltonianInit(object):
     def get_lead_structure(self,kk,natom,useBloch=False,bloch_factor=None):       
         stru_lead = self.structase[self.lead_ids[kk][0]:self.lead_ids[kk][1]]
         cell = np.array(stru_lead.cell)[:2]
-        
+        assert natom % 2 == 0, "The number of atoms in the lead should be even."
         # translational vector between two parts (so-called principal layers) of atoms of lead
         R_vec = stru_lead[int(natom/2):].positions - stru_lead[:int(natom/2)].positions
         # require the structure to have translational symmetry, and the atoms are arranged in two 
