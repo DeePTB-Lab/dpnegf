@@ -484,7 +484,7 @@ class NEGFHamiltonianInit(object):
         R_vec = stru_lead[int(natom/2):].positions - stru_lead[:int(natom/2)].positions
         # require the structure to have translational symmetry, and the atoms are arranged in two 
         # layers in the identical way
-        err_symm = np.linalg.norm(R_vec - np.mean(R_vec, axis=0))/natom
+        err_symm = np.linalg.norm(R_vec - np.mean(R_vec, axis=0))/(natom/2)
         log.info(f'Lead principal layers translational equivalence error: {err_symm:<.6e}')
         if err_symm >= 1e-6: # hard-coded threshold
             raise ValueError('The dpnegf requires two principal layers of lead have tight translational'
