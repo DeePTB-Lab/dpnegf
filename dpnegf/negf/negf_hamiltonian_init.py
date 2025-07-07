@@ -487,11 +487,11 @@ class NEGFHamiltonianInit(object):
         err_symm = np.linalg.norm(R_vec - np.mean(R_vec, axis=0))/(natom/2)
         log.info(f'Lead principal layers translational equivalence error: {err_symm:<.6e}')
         if err_symm >= 1e-6: # hard-coded threshold
-            raise ValueError('The dpnegf requires two principal layers of lead have tight translational'
-                             ' equivalence, which means if there are 2N atoms, the second N atoms\''
-                             ' coordinates can be obtained by translating the first N atoms. Plus, the'
+            raise ValueError('DPNEGF requires two principal layers of lead have tight translational'
+                             ' equivalence. It means that for leads with 2N atoms, the second N atoms\''
+                             ' coordinates can be obtained by translating the first N atoms. Moreover, the'
                              ' second N atoms (near the device) are required to be placed in front of '
-                             'the first N atoms for performance reason.')
+                             'the first N atoms for implementation reason.')
         R_vec = R_vec.mean(axis=0) * 2
         cell = np.concatenate([cell, R_vec.reshape(1,-1)])
         pbc_lead = self.pbc_negf.copy()
