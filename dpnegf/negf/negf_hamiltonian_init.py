@@ -479,9 +479,19 @@ class NEGFHamiltonianInit(object):
     def get_lead_structure(self,kk,natom,useBloch=False,bloch_factor=None):       
         stru_lead = self.structase[self.lead_ids[kk][0]:self.lead_ids[kk][1]]
         cell = np.array(stru_lead.cell)[:2]
-        
+        assert natom % 2 == 0, "The number of atoms in the lead should be even."
+        # translational vector between two parts (so-called principal layers) of atoms of lead
         R_vec = stru_lead[int(natom/2):].positions - stru_lead[:int(natom/2)].positions
-        assert np.abs(R_vec[0] - R_vec[-1]).sum() < 1e-5
+        # require the structure to have translational symmetry, and the atoms are arranged in two 
+        # layers in the identical way
+        err_symm = np.linalg.norm(R_vec - np.mean(R_vec, axis=0))/(natom/2)
+        log.info(f'Lead principal layers translational equivalence error: {err_symm:<.6e}')
+        if err_symm >= 1e-10: # hard-coded threshold
+            raise ValueError('DPNEGF requires two principal layers of one lead to be translationally equivalent.'
+                             'For lead with 2N atoms, ensure the second N atoms are a direct translation '
+                             'of the first N. Moreover, the second N atoms (near the device) are required'
+                             'to be placed in front of the first N atoms for implementation reason.')
+
         R_vec = R_vec.mean(axis=0) * 2
         cell = np.concatenate([cell, R_vec.reshape(1,-1)])
         pbc_lead = self.pbc_negf.copy()
