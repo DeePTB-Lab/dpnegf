@@ -1204,6 +1204,8 @@ def pyamg():
         Argument("gate_top", dict, optional=False, sub_fields=Dirichlet_BC(), doc=doc_gate),
         Argument("gate_bottom", dict, optional=False, sub_fields=Dirichlet_BC(), doc=doc_gate),
         Argument("dielectric_region", dict, optional=False, sub_fields=dielectric(), doc=doc_dielectric),
+        Argument("dielectric_region2", dict, optional=False, sub_fields=dielectric(), doc=doc_dielectric),
+        Argument("dielectric_region3", dict, optional=False, sub_fields=dielectric(), doc=doc_dielectric),
         Argument("doped_region", dict, optional=False, sub_fields=doped(), doc=doc_doped)
     ]
 
@@ -1230,6 +1232,8 @@ def scipy():
         Argument("lead_L", dict, optional=True, sub_fields=Dirichlet_BC(), doc=doc_gate),
         Argument("lead_R", dict, optional=True, sub_fields=Dirichlet_BC(), doc=doc_gate),
         Argument("dielectric_region", dict, optional=True, sub_fields=dielectric(), doc=doc_dielectric),
+        Argument("dielectric_region2", dict, optional=True, sub_fields=dielectric(), doc=doc_dielectric),
+        Argument("dielectric_region3", dict, optional=True, sub_fields=dielectric(), doc=doc_dielectric),
         Argument("doped_region1", dict, optional=True, sub_fields=doped(), doc=doc_doped),
         Argument("doped_region2", dict, optional=True, sub_fields=doped(), doc=doc_doped)
     ]
