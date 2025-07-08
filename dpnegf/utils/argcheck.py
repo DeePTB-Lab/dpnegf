@@ -1206,6 +1206,7 @@ def pyamg():
         Argument("dielectric_region", dict, optional=False, sub_fields=dielectric(), doc=doc_dielectric),
         Argument("dielectric_region2", dict, optional=False, sub_fields=dielectric(), doc=doc_dielectric),
         Argument("dielectric_region3", dict, optional=False, sub_fields=dielectric(), doc=doc_dielectric),
+        Argument("dielectric_region4", dict, optional=False, sub_fields=dielectric(), doc=doc_dielectric),
         Argument("doped_region", dict, optional=False, sub_fields=doped(), doc=doc_doped)
     ]
 
@@ -1234,6 +1235,7 @@ def scipy():
         Argument("dielectric_region", dict, optional=True, sub_fields=dielectric(), doc=doc_dielectric),
         Argument("dielectric_region2", dict, optional=True, sub_fields=dielectric(), doc=doc_dielectric),
         Argument("dielectric_region3", dict, optional=True, sub_fields=dielectric(), doc=doc_dielectric),
+        Argument("dielectric_region4", dict, optional=True, sub_fields=dielectric(), doc=doc_dielectric),
         Argument("doped_region1", dict, optional=True, sub_fields=doped(), doc=doc_doped),
         Argument("doped_region2", dict, optional=True, sub_fields=doped(), doc=doc_doped)
     ]
