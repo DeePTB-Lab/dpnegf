@@ -1,23 +1,23 @@
-from typing import List
-import torch
-from ase.io import read,write
-import logging
 import os
-import numpy as np
+import re
+import h5py
+import logging
+from typing import Optional, Union, List
 
+import torch
+import numpy as np
 import ase
-from dptb.data import AtomicData, AtomicDataDict
-from typing import Optional, Union
-from dptb.nn.hr2hk import HR2HK
+from ase.io import read, write
 from ase import Atoms
 from ase.build import sort
+from scipy.spatial import KDTree
+from dptb.data import AtomicData, AtomicDataDict
+from dptb.nn.hr2hk import HR2HK
+
 from dpnegf.negf.bloch import Bloch
 from dpnegf.negf.sort_btd import sort_lexico, sort_projection, sort_capacitance
 from dpnegf.negf.split_btd import show_blocks,split_into_subblocks,split_into_subblocks_optimized
 from dpnegf.negf.negf_utils import natsorted
-from scipy.spatial import KDTree
-import h5py
-import re
 
 '''
 a Hamiltonian object  that initializes and manipulates device and  lead Hamiltonians for NEGF
@@ -476,23 +476,75 @@ class NEGFHamiltonianInit(object):
                 if overlap:
                     data[AtomicDataDict.EDGE_OVERLAP_KEY] = data[AtomicDataDict.EDGE_OVERLAP_KEY][mask]
 
-    def get_lead_structure(self,kk,natom,useBloch=False,bloch_factor=None):       
-        stru_lead = self.structase[self.lead_ids[kk][0]:self.lead_ids[kk][1]]
-        cell = np.array(stru_lead.cell)[:2]
-        assert natom % 2 == 0, "The number of atoms in the lead should be even."
-        # translational vector between two parts (so-called principal layers) of atoms of lead
-        R_vec = stru_lead[int(natom/2):].positions - stru_lead[:int(natom/2)].positions
-        # require the structure to have translational symmetry, and the atoms are arranged in two 
+    @staticmethod
+    def calc_principal_layers_disp_vec(coords, thr=1e-5):
+        '''
+        calculate the displacement vector between two principal layers of lead structure,
+        by subtracting the coordinates of the first half atoms from the second half atoms.
+        This function can also be used to check the translational equivalence of the 
+        coordinates between two principal layers.
+
+        Parameters
+        ----------
+        coords : np.ndarray
+            The coordinates of the atoms in the lead structure.
+        thr : float, optional
+            The threshold for the translational equivalence error, by default 1e-6.
+        
+        Returns
+        -------
+        np.ndarray
+            The displacement vector between the two principal layers of the lead structure.
+        
+        Raises
+        -------
+        ValueError
+            If the number of atoms in the lead structure is not even, or if the translational
+            equivalence error is larger than the threshold.
+        '''
+        nat = coords.shape[0]
+        if nat % 2 != 0:
+            raise ValueError('The number of atoms in the lead structure must be even for dividing '
+                             'into two principal layers.')
+        Rvec = coords[int(nat/2):] - coords[:int(nat/2)]
+        # require the structure to have translational symmetry, and the atoms are arranged in two
         # layers in the identical way
-        err_symm = np.linalg.norm(R_vec - np.mean(R_vec, axis=0))/(natom/2)
-        log.info(f'Lead principal layers translational equivalence error: {err_symm:<.6e}')
-        if err_symm >= 1e-10: # hard-coded threshold
+        Rvec_mean = np.mean(Rvec, axis=0)
+        err_symm = np.linalg.norm(Rvec - Rvec_mean, axis=1)
+        log.info(f'Lead principal layers translational equivalence error (on average): {np.mean(err_symm):<.6e}'
+                 f' (threshold: {thr:<.6e})')
+        if any(e >= thr for e in err_symm): # check on each pair of corresponding atoms
+            log.info('The translational vector between corresponding atoms in two principal layers of lead '
+                     'that exceed the threshold are:')
+            log.info(f'{"atom indexes":<12} {"principal layer 1 atom coordinates":>36} {"principal layer 2 atom coordinates":>36}'
+                     f'    {"displacement vector":>36}')
+            log.info('-'*(12 + 36 + 36 + 36 + 6))
+            for i, (r1, r2, v, e) in enumerate(zip(coords[int(nat/2):], coords[:int(nat/2)], Rvec, err_symm)):
+                if e >= thr:
+                    log.info(f'{i:>5}, {i+int(nat/2):>5}' + ' ' + \
+                             '(' + ', '.join([f'{x:>10.6f}' for x in r1])+')' + ' ' + \
+                             '(' + ', '.join([f'{x:>10.6f}' for x in r2])+')' + ' ' + \
+                             '->' + ' ' + \
+                             '(' + ', '.join([f'{x:>10.6f}' for x in v ])+')')
+            log.info('-'*(12 + 36 + 36 + 36 + 6))
             raise ValueError('DPNEGF requires two principal layers of one lead to be translationally equivalent.'
                              'For lead with 2N atoms, ensure the second N atoms are a direct translation '
                              'of the first N. Moreover, the second N atoms (near the device) are required'
                              'to be placed in front of the first N atoms for implementation reason.')
+        return Rvec_mean
 
-        R_vec = R_vec.mean(axis=0) * 2
+    def get_lead_structure(self,kk,natom,useBloch=False,bloch_factor=None):
+        stru_lead = self.structase[self.lead_ids[kk][0]:self.lead_ids[kk][1]]
+        cell = np.array(stru_lead.cell)[:2]
+        # @kirk0830 recover the threshold for the translational equivalence error
+        # to 1e-5, which is the default value in the original DPNEGF code.
+        try:
+            R_vec : np.ndarray = \
+                2 * NEGFHamiltonianInit.calc_principal_layers_disp_vec(stru_lead.positions[:natom], thr=1e-5)
+        except ValueError as e:
+            log.error(f"The atom coordinates of {kk} don\'t satisfy the "
+                      f"translational equivalence condition: {e}")
+            raise
         cell = np.concatenate([cell, R_vec.reshape(1,-1)])
         pbc_lead = self.pbc_negf.copy()
         pbc_lead[2] = True
@@ -902,8 +954,6 @@ class NEGFHamiltonianInit(object):
     # def get_hs_block_tridiagonal(self, HD, SD):
 
     #     return hd, hu, hl, sd, su, sl
-
-
 
 # class _NEGFHamiltonianInit(object):
 #     '''The Class for Hamiltonian object in negf module. 
