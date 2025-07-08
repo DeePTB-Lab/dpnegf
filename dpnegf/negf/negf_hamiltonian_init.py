@@ -517,12 +517,13 @@ class NEGFHamiltonianInit(object):
         if any(e >= thr for e in err_symm): # check on each pair of corresponding atoms
             log.info('The translational vector between corresponding atoms in two principal layers of lead '
                      'that exceed the threshold are:')
-            log.info(f'{"atom indexes":<12} {"layer 1 coordinates":<36} {"layer 2 coordinates":<36}'
-                     f' -> {"displacement vector":<36}')
+            log.info(f'{"atom indexes":<12} {"principal layer 1 atom coordinates":>36} {"principal layer 2 atom coordinates":>36}'
+                     f'    {"displacement vector":>36}')
             log.info('-'*(12 + 36 + 36 + 36 + 6))
             for i, (r1, r2, v, e) in enumerate(zip(coords[int(nat/2):], coords[:int(nat/2)], Rvec, err_symm)):
                 if e >= thr:
-                    log.info('(' + ', '.join([f'{x:>10.6f}' for x in r1])+')' + ' ' + \
+                    log.info(f'{i:>5}, {i+int(nat/2):>5}' + ' ' + \
+                             '(' + ', '.join([f'{x:>10.6f}' for x in r1])+')' + ' ' + \
                              '(' + ', '.join([f'{x:>10.6f}' for x in r2])+')' + ' ' + \
                              '->' + ' ' + \
                              '(' + ', '.join([f'{x:>10.6f}' for x in v ])+')')
@@ -981,6 +982,16 @@ class NEGFHamiltonianInitTest(unittest.TestCase):
         # however if we lower the threshold, it should raise ValueError
         with self.assertRaises(ValueError):
             NEGFHamiltonianInit.calc_principal_layers_disp_vec(coords_equiv, thr=1e-7)
+        
+        # then a function call to ensure the normal stdout
+        for c in [coords, coords_odd, coords_error, coords_equiv]:
+            try:
+                with self.assertLogs(level='DEBUG') as log:
+                    NEGFHamiltonianInit.calc_principal_layers_disp_vec(c, thr)
+            except ValueError as e:
+                print(f"Caught expected ValueError: {e}")
+                for o in log.output:
+                    print(o)
         
 if __name__ == "__main__":
     unittest.main()
