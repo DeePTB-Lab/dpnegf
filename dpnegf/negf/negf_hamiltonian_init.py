@@ -477,7 +477,7 @@ class NEGFHamiltonianInit(object):
                     data[AtomicDataDict.EDGE_OVERLAP_KEY] = data[AtomicDataDict.EDGE_OVERLAP_KEY][mask]
 
     @staticmethod
-    def calc_principal_layers_disp_vec(coords, thr=1e-6):
+    def calc_principal_layers_disp_vec(coords, thr=1e-5, lead:str=None):
         '''
         calculate the displacement vector between two principal layers of lead structure,
         by subtracting the coordinates of the first half atoms from the second half atoms.
@@ -514,7 +514,8 @@ class NEGFHamiltonianInit(object):
         log.info(f'Lead principal layers translational equivalence error: {err_symm:<.6e}'
                  f' (threshold: {thr:<.6e})')
         if err_symm >= thr:
-            log.info('The atom coordinates of the lead:')
+            log.warning(f'The atom coordinates of {lead} don\'t satisfy the translational equivalence condition.')
+            log.info(f'The atom coordinates in {lead} are:')
             for pos in coords:
                 log.info('(' + ', '.join([f'{x:>10.6f}' for x in pos])+')')
             log.info('The translational vector between two principal layers of lead:')
@@ -523,11 +524,10 @@ class NEGFHamiltonianInit(object):
                          '(' + ', '.join([f'{x:>10.6f}' for x in r2])+')' + ' ' + \
                          '->' + ' ' + \
                          '(' + ', '.join([f'{x:>10.6f}' for x in v ])+')')
-            raise ValueError('The dpnegf requires two principal layers of lead have tight translational'
-                             ' equivalence, which means if there are 2N atoms, the second N atoms\''
-                             ' coordinates can be obtained by translating the first N atoms. Plus, the'
-                             ' second N atoms (near the device) are required to be placed in front of '
-                             'the first N atoms for performance reason.')
+            raise ValueError('DPNEGF requires two principal layers of one lead to be translationally equivalent.'
+                             'For lead with 2N atoms, ensure the second N atoms are a direct translation '
+                             'of the first N. Moreover, the second N atoms (near the device) are required'
+                             'to be placed in front of the first N atoms for implementation reason.')
         return R_vec_mean
 
     def get_lead_structure(self,kk,natom,useBloch=False,bloch_factor=None):
@@ -535,7 +535,7 @@ class NEGFHamiltonianInit(object):
         cell = np.array(stru_lead.cell)[:2]
         # @kirk0830 recover the threshold for the translational equivalence error
         # to 1e-5, which is the default value in the original DPNEGF code.
-        R_vec = 2 * NEGFHamiltonianInit.calc_principal_layers_disp_vec(stru_lead.positions[:natom], 1e-5)
+        R_vec = 2 * NEGFHamiltonianInit.calc_principal_layers_disp_vec(stru_lead.positions[:natom], thr=1e-5, lead=kk)
         cell = np.concatenate([cell, R_vec.reshape(1,-1)])
         pbc_lead = self.pbc_negf.copy()
         pbc_lead[2] = True
