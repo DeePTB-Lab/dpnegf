@@ -1,23 +1,24 @@
-from typing import List
-import torch
-from ase.io import read,write
-import logging
 import os
-import numpy as np
+import re
+import h5py
+import logging
+import unittest
+from typing import Optional, Union, List
 
+import torch
+import numpy as np
 import ase
-from dptb.data import AtomicData, AtomicDataDict
-from typing import Optional, Union
-from dptb.nn.hr2hk import HR2HK
+from ase.io import read, write
 from ase import Atoms
 from ase.build import sort
+from scipy.spatial import KDTree
+from dptb.data import AtomicData, AtomicDataDict
+from dptb.nn.hr2hk import HR2HK
+
 from dpnegf.negf.bloch import Bloch
 from dpnegf.negf.sort_btd import sort_lexico, sort_projection, sort_capacitance
 from dpnegf.negf.split_btd import show_blocks,split_into_subblocks,split_into_subblocks_optimized
 from dpnegf.negf.negf_utils import natsorted
-from scipy.spatial import KDTree
-import h5py
-import re
 
 '''
 a Hamiltonian object  that initializes and manipulates device and  lead Hamiltonians for NEGF
@@ -477,7 +478,7 @@ class NEGFHamiltonianInit(object):
                     data[AtomicDataDict.EDGE_OVERLAP_KEY] = data[AtomicDataDict.EDGE_OVERLAP_KEY][mask]
 
     @staticmethod
-    def calc_principal_layers_disp_vec(coords, thr=1e-5, lead:str=None):
+    def calc_principal_layers_disp_vec(coords, thr=1e-5):
         '''
         calculate the displacement vector between two principal layers of lead structure,
         by subtracting the coordinates of the first half atoms from the second half atoms.
@@ -506,36 +507,44 @@ class NEGFHamiltonianInit(object):
         if nat % 2 != 0:
             raise ValueError('The number of atoms in the lead structure must be even for dividing '
                              'into two principal layers.')
-        R_vec = coords[int(nat/2):] - coords[:int(nat/2)]
+        Rvec = coords[int(nat/2):] - coords[:int(nat/2)]
         # require the structure to have translational symmetry, and the atoms are arranged in two
         # layers in the identical way
-        R_vec_mean = np.mean(R_vec, axis=0)
-        err_symm = np.linalg.norm(R_vec - R_vec_mean)/nat
-        log.info(f'Lead principal layers translational equivalence error: {err_symm:<.6e}'
+        Rvec_mean = np.mean(Rvec, axis=0)
+        err_symm = np.linalg.norm(Rvec - Rvec_mean, axis=1)
+        log.info(f'Lead principal layers translational equivalence error (on average): {np.mean(err_symm):<.6e}'
                  f' (threshold: {thr:<.6e})')
-        if err_symm >= thr:
-            log.warning(f'The atom coordinates of {lead} don\'t satisfy the translational equivalence condition.')
-            log.info(f'The atom coordinates in {lead} are:')
-            for pos in coords:
-                log.info('(' + ', '.join([f'{x:>10.6f}' for x in pos])+')')
-            log.info('The translational vector between two principal layers of lead:')
-            for r1, r2, v in zip(coords[int(nat/2):], coords[:int(nat/2)], R_vec):
-                log.info('(' + ', '.join([f'{x:>10.6f}' for x in r1])+')' + ' ' + \
-                         '(' + ', '.join([f'{x:>10.6f}' for x in r2])+')' + ' ' + \
-                         '->' + ' ' + \
-                         '(' + ', '.join([f'{x:>10.6f}' for x in v ])+')')
+        if any(e >= thr for e in err_symm): # check on each pair of corresponding atoms
+            log.info('The translational vector between corresponding atoms in two principal layers of lead '
+                     'that exceed the threshold are:')
+            log.info(f'{"atom indexes":<12} {"layer 1 coordinates":<36} {"layer 2 coordinates":<36}'
+                     f' -> {"displacement vector":<36}')
+            log.info('-'*(12 + 36 + 36 + 36 + 6))
+            for i, (r1, r2, v, e) in enumerate(zip(coords[int(nat/2):], coords[:int(nat/2)], Rvec, err_symm)):
+                if e >= thr:
+                    log.info('(' + ', '.join([f'{x:>10.6f}' for x in r1])+')' + ' ' + \
+                             '(' + ', '.join([f'{x:>10.6f}' for x in r2])+')' + ' ' + \
+                             '->' + ' ' + \
+                             '(' + ', '.join([f'{x:>10.6f}' for x in v ])+')')
+            log.info('-'*(12 + 36 + 36 + 36 + 6))
             raise ValueError('DPNEGF requires two principal layers of one lead to be translationally equivalent.'
                              'For lead with 2N atoms, ensure the second N atoms are a direct translation '
                              'of the first N. Moreover, the second N atoms (near the device) are required'
                              'to be placed in front of the first N atoms for implementation reason.')
-        return R_vec_mean
+        return Rvec_mean
 
     def get_lead_structure(self,kk,natom,useBloch=False,bloch_factor=None):
         stru_lead = self.structase[self.lead_ids[kk][0]:self.lead_ids[kk][1]]
         cell = np.array(stru_lead.cell)[:2]
         # @kirk0830 recover the threshold for the translational equivalence error
         # to 1e-5, which is the default value in the original DPNEGF code.
-        R_vec = 2 * NEGFHamiltonianInit.calc_principal_layers_disp_vec(stru_lead.positions[:natom], thr=1e-5, lead=kk)
+        try:
+            R_vec : np.ndarray = \
+                2 * NEGFHamiltonianInit.calc_principal_layers_disp_vec(stru_lead.positions[:natom], thr=1e-5)
+        except ValueError as e:
+            log.error(f"The atom coordinates of {kk} don\'t satisfy the "
+                      f"translational equivalence condition: {e}")
+            raise
         cell = np.concatenate([cell, R_vec.reshape(1,-1)])
         pbc_lead = self.pbc_negf.copy()
         pbc_lead[2] = True
@@ -946,7 +955,35 @@ class NEGFHamiltonianInit(object):
 
     #     return hd, hu, hl, sd, su, sl
 
+# pytest for the newly introduced staticmethod `calc_principal_layers_disp_vec`
+class NEGFHamiltonianInitTest(unittest.TestCase):
+    def test_calc_principal_layers_disp_vec(self):
+        # the normal case with even number of atoms
+        coords = np.array([[0, 0, 0], [1, 1, 0], [0, 0, 1], [1, 1, 1]])
+        thr = 1e-5
+        Rvec_mean = NEGFHamiltonianInit.calc_principal_layers_disp_vec(coords, thr)
+        self.assertTrue(np.allclose(Rvec_mean, np.array([0, 0, 1]), atol=1e-6))
 
+        # the case with odd number of atoms should raise ValueError
+        coords_odd = np.array([[0, 0, 0], [1, 1, 0], [0, 0, 1]])
+        with self.assertRaises(ValueError):
+            NEGFHamiltonianInit.calc_principal_layers_disp_vec(coords_odd, thr)
+        
+        # the case with translational equivalence error larger than threshold
+        coords_error = np.array([[0, 0, 0], [1, 1, 0], [0, 0, 1], [1, 1, 2]])
+        with self.assertRaises(ValueError):
+            NEGFHamiltonianInit.calc_principal_layers_disp_vec(coords_error, thr)
+        
+        # the case with translational equivalence error smaller than threshold
+        coords_equiv = np.array([[0, 0, 0], [1, 1, 0], [0, 0, 1], [1, 1, 1 + 1e-6]])
+        Rvec_mean = NEGFHamiltonianInit.calc_principal_layers_disp_vec(coords_equiv, thr)
+        self.assertTrue(np.allclose(Rvec_mean, np.array([0, 0, 1]), atol=1e-6))
+        # however if we lower the threshold, it should raise ValueError
+        with self.assertRaises(ValueError):
+            NEGFHamiltonianInit.calc_principal_layers_disp_vec(coords_equiv, thr=1e-7)
+        
+if __name__ == "__main__":
+    unittest.main()
 
 # class _NEGFHamiltonianInit(object):
 #     '''The Class for Hamiltonian object in negf module. 
