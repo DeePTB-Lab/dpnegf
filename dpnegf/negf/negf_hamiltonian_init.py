@@ -480,7 +480,7 @@ class NEGFHamiltonianInit(object):
     def calc_principal_layers_disp_vec(coords, thr=1e-6):
         '''
         calculate the displacement vector between two principal layers of lead structure,
-        by substracting the coordinates of the first half atoms from the second half atoms.
+        by subtracting the coordinates of the first half atoms from the second half atoms.
         This function can also be used to check the translational equivalence of the 
         coordinates between two principal layers.
 
