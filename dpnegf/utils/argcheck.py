@@ -1206,10 +1206,10 @@ def pyamg():
         Argument("gate_left", dict, optional=True, sub_fields=Dirichlet_BC(), doc=doc_gate),
         Argument("gate_right", dict, optional=True, sub_fields=Dirichlet_BC(), doc=doc_gate),
         Argument("dielectric_region", dict, optional=False, sub_fields=dielectric(), doc=doc_dielectric),
-        Argument("dielectric_region2", dict, optional=False, sub_fields=dielectric(), doc=doc_dielectric),
-        Argument("dielectric_region3", dict, optional=False, sub_fields=dielectric(), doc=doc_dielectric),
-        Argument("dielectric_region4", dict, optional=False, sub_fields=dielectric(), doc=doc_dielectric),
-        Argument("dielectric_region5", dict, optional=False, sub_fields=dielectric(), doc=doc_dielectric),
+        *[
+            Argument(f"dielectric_region{i}", dict, optional=True, sub_fields=dielectric(), doc=doc_dielectric)
+            for i in range(2, 6)
+        ],
         Argument("doped_region", dict, optional=False, sub_fields=doped(), doc=doc_doped)
     ]
 
@@ -1238,10 +1238,10 @@ def scipy():
         Argument("lead_L", dict, optional=True, sub_fields=Dirichlet_BC(), doc=doc_gate),
         Argument("lead_R", dict, optional=True, sub_fields=Dirichlet_BC(), doc=doc_gate),
         Argument("dielectric_region", dict, optional=True, sub_fields=dielectric(), doc=doc_dielectric),
-        Argument("dielectric_region2", dict, optional=True, sub_fields=dielectric(), doc=doc_dielectric),
-        Argument("dielectric_region3", dict, optional=True, sub_fields=dielectric(), doc=doc_dielectric),
-        Argument("dielectric_region4", dict, optional=True, sub_fields=dielectric(), doc=doc_dielectric),
-        Argument("dielectric_region5", dict, optional=True, sub_fields=dielectric(), doc=doc_dielectric),
+        *[
+            Argument(f"dielectric_region{i}", dict, optional=True, sub_fields=dielectric(), doc=doc_dielectric)
+            for i in range(2, 6)
+        ],
         Argument("doped_region1", dict, optional=True, sub_fields=doped(), doc=doc_doped),
         Argument("doped_region2", dict, optional=True, sub_fields=doped(), doc=doc_doped)
     ]
