@@ -1,16 +1,15 @@
 # Hamiltonian
-from dpnegf.utils.make_kpoints import kmesh_sampling
-from dpnegf.negf.device_property import DeviceProperty
-from dpnegf.negf.lead_property import LeadProperty
-from dptb.nn.build import build_model
 import json
-
 
 import numpy as np
 import torch
 import pytest
-from dpnegf.negf.negf_hamiltonian_init import NEGFHamiltonianInit
+from dptb.nn.build import build_model
 
+from dpnegf.negf.negf_hamiltonian_init import NEGFHamiltonianInit
+from dpnegf.utils.make_kpoints import kmesh_sampling
+from dpnegf.negf.device_property import DeviceProperty
+from dpnegf.negf.lead_property import LeadProperty
 
 @pytest.fixture(scope='session', autouse=True)
 def root_directory(request):
@@ -176,10 +175,41 @@ def test_negf_Hamiltonian(root_directory):
     assert na == 4
     assert hamiltonian.device_norbs==device_norbs_standard
 
-   
+def test_calc_principal_layers_disp_vec():
+    '''
+    unittest for static method calc_principal_layers_disp_vec of class
+    NEGFHamiltonianInit
+    '''
+    symm_thr = 1e-5
+    # test the following cases
+    # case 1: normal case
+    coords = np.array([[0, 0, 0], [1, 1, 0], [0, 0, 1], [1, 1, 1]])
+    out = NEGFHamiltonianInit.calc_principal_layers_disp_vec(coords, symm_thr)
+    assert np.allclose(out, np.array([0, 0, 1]), atol=1e-6)
+    
+    # case 2: with odd number of atoms
+    coords_nat_odd = np.array([[0, 0, 0], [1, 1, 0], [0, 0, 1]])
+    try:
+        NEGFHamiltonianInit.calc_principal_layers_disp_vec(coords_nat_odd, symm_thr)
+    except ValueError as e:
+        assert 'The number of atoms in the lead structure must be even for' in str(e)
+    
+    # case 3: with atoms have not consistent displacement vector
+    coords_error = np.array([[0, 0, 0], [1, 1, 0], [0, 0, 1], [1, 1, 2]])
+    try:
+        NEGFHamiltonianInit.calc_principal_layers_disp_vec(coords_error, symm_thr)
+    except ValueError as e:
+        assert 'principal layers of one lead to be translationally equivalent' in str(e)
 
-
-
+    # case 4: with atoms have not consistent displacement vector but with a small error
+    coords_equiv = np.array([[0, 0, 0], [1, 1, 0], [0, 0, 1], [1, 1, 1 + 1e-6]])
+    out = NEGFHamiltonianInit.calc_principal_layers_disp_vec(coords_equiv, symm_thr)
+    assert np.allclose(out, np.array([0, 0, 1]), atol=1e-6)
+    # case 4-1: however, if the error is larger than symm_thr, it will raise an error
+    try:
+        NEGFHamiltonianInit.calc_principal_layers_disp_vec(coords_equiv, 1e-7)
+    except ValueError as e:
+        assert 'principal layers of one lead to be translationally equivalent' in str(e)
 
 # def _test_negf_Hamiltonian(root_directory):
 

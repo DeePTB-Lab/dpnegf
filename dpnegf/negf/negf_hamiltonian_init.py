@@ -956,46 +956,6 @@ class NEGFHamiltonianInit(object):
 
     #     return hd, hu, hl, sd, su, sl
 
-# pytest for the newly introduced staticmethod `calc_principal_layers_disp_vec`
-class NEGFHamiltonianInitTest(unittest.TestCase):
-    def test_calc_principal_layers_disp_vec(self):
-        # the normal case with even number of atoms
-        coords = np.array([[0, 0, 0], [1, 1, 0], [0, 0, 1], [1, 1, 1]])
-        thr = 1e-5
-        Rvec_mean = NEGFHamiltonianInit.calc_principal_layers_disp_vec(coords, thr)
-        self.assertTrue(np.allclose(Rvec_mean, np.array([0, 0, 1]), atol=1e-6))
-
-        # the case with odd number of atoms should raise ValueError
-        coords_odd = np.array([[0, 0, 0], [1, 1, 0], [0, 0, 1]])
-        with self.assertRaises(ValueError):
-            NEGFHamiltonianInit.calc_principal_layers_disp_vec(coords_odd, thr)
-        
-        # the case with translational equivalence error larger than threshold
-        coords_error = np.array([[0, 0, 0], [1, 1, 0], [0, 0, 1], [1, 1, 2]])
-        with self.assertRaises(ValueError):
-            NEGFHamiltonianInit.calc_principal_layers_disp_vec(coords_error, thr)
-        
-        # the case with translational equivalence error smaller than threshold
-        coords_equiv = np.array([[0, 0, 0], [1, 1, 0], [0, 0, 1], [1, 1, 1 + 1e-6]])
-        Rvec_mean = NEGFHamiltonianInit.calc_principal_layers_disp_vec(coords_equiv, thr)
-        self.assertTrue(np.allclose(Rvec_mean, np.array([0, 0, 1]), atol=1e-6))
-        # however if we lower the threshold, it should raise ValueError
-        with self.assertRaises(ValueError):
-            NEGFHamiltonianInit.calc_principal_layers_disp_vec(coords_equiv, thr=1e-7)
-        
-        # then a function call to ensure the normal stdout
-        for c in [coords, coords_odd, coords_error, coords_equiv]:
-            try:
-                with self.assertLogs(level='DEBUG') as log:
-                    NEGFHamiltonianInit.calc_principal_layers_disp_vec(c, thr)
-            except ValueError as e:
-                print(f"Caught expected ValueError: {e}")
-                for o in log.output:
-                    print(o)
-        
-if __name__ == "__main__":
-    unittest.main()
-
 # class _NEGFHamiltonianInit(object):
 #     '''The Class for Hamiltonian object in negf module. 
     
