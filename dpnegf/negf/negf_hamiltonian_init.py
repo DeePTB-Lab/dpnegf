@@ -2,7 +2,6 @@ import os
 import re
 import h5py
 import logging
-import unittest
 from typing import Optional, Union, List
 
 import torch
