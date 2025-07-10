@@ -457,7 +457,8 @@ class NEGF(object):
                 interface_poisson.phi = mixer.update(interface_poisson.phi.copy(), interface_poisson.phi_old.copy())
 
             iter_count += 1 # Gummel type iteration
-            log.info(msg="Poisson-NEGF iteration: {}    Potential Diff Maximum: {}\n".format(iter_count,max_diff_phi))
+            log.info(f"Poisson-NEGF iteration: {iter_count}")
+            log.info(f"Potential Diff Maximum: {max_diff_phi:>12.8e}\n")
             max_diff_list.append(max_diff_phi)
 
             if max_diff_phi <= err:
@@ -520,7 +521,7 @@ class NEGF(object):
             self.out['k'].append(k)
             self.out['wk'].append(self.wk[ik])
             self.free_charge.update({str(k):torch.zeros_like(torch.tensor(self.device_atom_norbs),dtype=torch.complex128)})
-            log.info(msg="Properties computation at k = [{:.4f},{:.4f},{:.4f}]".format(float(k[0]),float(k[1]),float(k[2])))
+            log.info(f"Properties computation at k = ({', '.join([f'{kk:>6.4f}' for kk in k])})")
 
             if scf_require:
                 if self.density_options["method"] == "Fiori":                    
@@ -574,7 +575,7 @@ class NEGF(object):
                     if output_freq == 0: output_freq = 1
                     for ie, e in enumerate(self.uni_grid):
                         if ie % output_freq == 0:
-                            log.info(msg="computing green's function at e = {:.3f}".format(float(e)))
+                            log.info(f" computing green's function at e = {float(e):>6.3f}")
                         if self.scf:
                             if not self.poisson_options["with_Dirichlet_leads"]:
                                 for ll in self.stru_options.keys():
@@ -698,9 +699,9 @@ class NEGF(object):
                     # TODO: check the following code for multiple k points calculation
                     if self.out_lcurrent:
                         lcurrent = 0
-                        log.info(msg="computing local current at k = [{:.4f},{:.4f},{:.4f}]".format(float(k[0]),float(k[1]),float(k[2])))
+                        log.info(f"Properties computation at k = ({', '.join([f'{kk:>6.4f}' for kk in k])})")
                         for i, e in enumerate(self.int_grid):
-                            log.info(msg=" computing green's function at e = {:.3f}".format(float(e)))
+                            log.info(f" computing green's function at e = {float(e):>6.3f}")
                             for ll in self.stru_options.keys():
                                 if ll.startswith("lead"):
                                     getattr(self.deviceprop, ll).self_energy(
