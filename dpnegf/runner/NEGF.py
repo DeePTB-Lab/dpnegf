@@ -130,6 +130,17 @@ class NEGF(object):
             else:
                 assert self.stru_options[lead_tag]["voltage"] == 0, f"{lead_tag} voltage should be 0 in non-scf calculation"
 
+        if AtomicData_options is None:
+            from dptb.utils.argcheck import get_cutoffs_from_model_options
+            # get the cutoffs from model options
+            r_max, er_max, oer_max  = get_cutoffs_from_model_options(model.model_options)
+            AtomicData_options = {'r_max': r_max, 'er_max': er_max, 'oer_max': oer_max}
+        else:
+            log.warning(msg="AtomicData_options is extracted from input file. " \
+                            "This may not be consistent with the model options. " \
+                            "Please be carefule and check the cutoffs.")
+            log.info(msg="The AtomicData_options is {}".format(AtomicData_options))
+
         # computing the hamiltonian
         self.negf_hamiltonian = NEGFHamiltonianInit(model=model,
                                                     AtomicData_options=AtomicData_options, 
