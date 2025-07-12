@@ -13,6 +13,7 @@ from dpnegf.utils.constants import Boltzmann, eV2J
 import numpy as np
 from dpnegf.utils.make_kpoints import kmesh_sampling_negf
 import logging
+import json
 from dpnegf.negf.poisson_init import Grid,Interface3D,Dirichlet,Dielectric
 from dpnegf.negf.scf_method import PDIISMixer,DIISMixer,BroydenFirstMixer,BroydenSecondMixer,AndersonMixer
 from typing import Optional, Union
@@ -35,7 +36,6 @@ except ImportError:
 class NEGF(object):
     def __init__(self, 
                 model: torch.nn.Module,
-                AtomicData_options: dict, 
                 structure: Union[AtomicData, ase.Atoms, str],
                 ele_T: float,
                 emin: float, emax: float, espacing: float,
@@ -52,6 +52,7 @@ class NEGF(object):
                 out_current: bool=False,out_current_nscf: bool=False,out_ldos: bool=False,out_lcurrent: bool=False,
                 results_path: Optional[str]=None,
                 torch_device: Union[str, torch.device]=torch.device('cpu'),
+                AtomicData_options: Optional[dict]=None, 
                 **kwargs):
         
         
@@ -137,9 +138,11 @@ class NEGF(object):
             AtomicData_options = {'r_max': r_max, 'er_max': er_max, 'oer_max': oer_max}
         else:
             log.warning(msg="AtomicData_options is extracted from input file. " \
-                            "This may not be consistent with the model options. " \
+                            "This may be not consistent with the model options. " \
                             "Please be carefule and check the cutoffs.")
-            log.info(msg="The AtomicData_options is {}".format(AtomicData_options))
+        formatted = json.dumps(AtomicData_options, indent=4)
+        indented = '\n'.join('               ' + line for line in formatted.splitlines())
+        log.info("The AtomicData_options is:\n%s", indented)
 
         # computing the hamiltonian
         self.negf_hamiltonian = NEGFHamiltonianInit(model=model,
