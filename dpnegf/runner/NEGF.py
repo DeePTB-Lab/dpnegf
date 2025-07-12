@@ -13,6 +13,7 @@ from dpnegf.utils.constants import Boltzmann, eV2J
 import numpy as np
 from dpnegf.utils.make_kpoints import kmesh_sampling_negf
 import logging
+import json
 from dpnegf.negf.poisson_init import Grid,Interface3D,Dirichlet,Dielectric
 from dpnegf.negf.scf_method import PDIISMixer,DIISMixer,BroydenFirstMixer,BroydenSecondMixer,AndersonMixer
 from typing import Optional, Union
@@ -35,7 +36,6 @@ except ImportError:
 class NEGF(object):
     def __init__(self, 
                 model: torch.nn.Module,
-                AtomicData_options: dict, 
                 structure: Union[AtomicData, ase.Atoms, str],
                 ele_T: float,
                 emin: float, emax: float, espacing: float,
@@ -52,6 +52,7 @@ class NEGF(object):
                 out_current: bool=False,out_current_nscf: bool=False,out_ldos: bool=False,out_lcurrent: bool=False,
                 results_path: Optional[str]=None,
                 torch_device: Union[str, torch.device]=torch.device('cpu'),
+                AtomicData_options: Optional[dict]=None, 
                 **kwargs):
         
         
@@ -129,6 +130,19 @@ class NEGF(object):
                         self.poisson_options[lead_tag]["voltage"] = self.stru_options[lead_tag].get("voltage", None)
             else:
                 assert self.stru_options[lead_tag]["voltage"] == 0, f"{lead_tag} voltage should be 0 in non-scf calculation"
+
+        if AtomicData_options is None:
+            from dptb.utils.argcheck import get_cutoffs_from_model_options
+            # get the cutoffs from model options
+            r_max, er_max, oer_max  = get_cutoffs_from_model_options(model.model_options)
+            AtomicData_options = {'r_max': r_max, 'er_max': er_max, 'oer_max': oer_max}
+        else:
+            log.warning(msg="AtomicData_options is extracted from input file. " \
+                            "This may be not consistent with the model options. " \
+                            "Please be careful and check the cutoffs.")
+        formatted = json.dumps(AtomicData_options, indent=4)
+        indented = '\n'.join(' ' * 15 + line for line in formatted.splitlines())
+        log.info("The AtomicData_options is:\n%s", indented)
 
         # computing the hamiltonian
         self.negf_hamiltonian = NEGFHamiltonianInit(model=model,

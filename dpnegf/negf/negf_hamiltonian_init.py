@@ -73,7 +73,6 @@ class NEGFHamiltonianInit(object):
         self.torch_device = torch_device   
         self.model = model
         self.AtomicData_options = AtomicData_options
-        log.info(msg="The AtomicData_options is {}".format(AtomicData_options))
         self.model.eval()
         
         # get bondlist with pbc in all directions for complete chemical environment
