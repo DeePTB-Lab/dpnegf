@@ -139,7 +139,7 @@ class NEGF(object):
         else:
             log.warning(msg="AtomicData_options is extracted from input file. " \
                             "This may be not consistent with the model options. " \
-                            "Please be carefule and check the cutoffs.")
+                            "Please be careful and check the cutoffs.")
         formatted = json.dumps(AtomicData_options, indent=4)
         indented = '\n'.join('               ' + line for line in formatted.splitlines())
         log.info("The AtomicData_options is:\n%s", indented)
