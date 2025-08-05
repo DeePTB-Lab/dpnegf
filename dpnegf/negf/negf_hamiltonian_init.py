@@ -509,7 +509,12 @@ class NEGFHamiltonianInit(object):
         # require the structure to have translational symmetry, and the atoms are arranged in two
         # layers in the identical way
         Rvec_mean = np.mean(Rvec, axis=0)
-        err_symm = np.linalg.norm(Rvec - Rvec_mean, axis=1)
+        err_symm = np.linalg.norm(Rvec - Rvec_mean + 1e-10, axis=1) # 1e-10 to avoid zero division
+        if np.any(np.isnan(err_symm)):
+            log.error("Calculation of translational equivalence error resulted in NaN values. "
+                    "This may result from wrong input settings.")
+            raise ValueError
+
         log.info(f'Lead principal layers translational equivalence error (on average): {np.mean(err_symm):<.6e}'
                  f' (threshold: {thr:<.6e})')
         if any(e >= thr for e in err_symm): # check on each pair of corresponding atoms
