@@ -59,12 +59,13 @@ def selfEnergy(hL, hLL, sL, sLL, ee, hDL=None, sDL=None, etaLead=1e-8, Bulk=Fals
     E_ref = convert_to_numpy(E_ref)
 
 
-    # 处理 ee
+    
     if not isinstance(ee, np.ndarray):
         eeshifted = np.array(ee, dtype=dtype) + E_ref
     else:
         eeshifted = ee + E_ref
     
+    eeshifted = eeshifted.item()
     
     if hDL is None:
         ESH = (eeshifted * sL - hL)
@@ -88,10 +89,13 @@ def selfEnergy(hL, hLL, sL, sLL, ee, hDL=None, sDL=None, etaLead=1e-8, Bulk=Fals
 
 _numba_available = False
 
-try:
-    from numba import njit, complex128
 
-    @njit(complex128[:,:](complex128[:,:], complex128[:,:], complex128[:,:], complex128[:,:], complex128))
+try:
+    from numba import njit, complex128, int64, float64
+    from numba.types import Tuple
+    NumbaReturnType = Tuple((complex128[:,:], int64, float64, float64))
+
+    @njit(NumbaReturnType(complex128[:,:], complex128[:,:], complex128[:,:], complex128[:,:], complex128))
     def _surface_green_numba_core(H, h01, S, s01, ee):
         # 将 PyTorch 的 h10 = h01.conj().T 逻辑转换为 NumPy
         h10 = np.conj(h01.T)
@@ -131,10 +135,10 @@ try:
                         # 返回结果和成功标志
                         return gs, 0, 0, 0
                 else:
-                    raise ArithmeticError(f"Criteria not met with value {myConvTest:.8f} at iteration {iteration}.")
+                    raise ArithmeticError
         
             if iteration >= 101:
-                raise RuntimeError("Lopez-scheme not converged after 100 iteration.")
+                raise RuntimeError
                 
         return gs
 
@@ -145,7 +149,7 @@ except (ImportError, Exception) as e:
     log.warning(f"Numba acceleration is not available. Falling back to pure NumPy. Error: {e}")
     _numba_available = False
 
-# --- 纯 NumPy 版本核心函数（作为回退） ---
+# NumPy-based implementation of the surface Green's function calculation
 def _surface_green_numpy_core(H, h01, S, s01, ee):
     h10 = np.conj(h01.T)
     s10 = np.conj(s01.T)
@@ -206,6 +210,26 @@ def surface_green(H, h01, S, s01, ee,
     else: # Lopez-Sancho scheme
         if numba_jit and _numba_available:
             try:
+                # check
+                # 1. type check
+                assert isinstance(H, np.ndarray), "H must be a NumPy array."
+                assert isinstance(h01, np.ndarray), "h01 must be a NumPy array."
+                assert isinstance(S, np.ndarray), "S must be a NumPy array."
+                assert isinstance(s01, np.ndarray), "s01 must be a NumPy array."
+                assert isinstance(ee, (complex, float, int)), "ee must be a complex, float, or integer scalar."
+
+                # 2. dimension check
+                assert H.ndim == 2, "H must be a 2D array."
+                assert h01.ndim == 2, "h01 must be a 2D array."
+                assert S.ndim == 2, "S must be a 2D array."
+                assert s01.ndim == 2, "s01 must be a 2D array."
+
+                # 3. complex type check
+                assert np.iscomplexobj(H), "H must be a complex array."
+                assert np.iscomplexobj(h01), "h01 must be a complex array."
+                assert np.iscomplexobj(S), "S must be a complex array."
+                assert np.iscomplexobj(s01), "s01 must be a complex array."
+                assert isinstance(ee, complex), "ee must be a complex scalar."
                 gs, conv_flag, conv_test, e_real = _surface_green_numba_core(H, h01, S, s01, ee)
                 if conv_flag == 1:
                     log.warning(f"Lopez-Sancho scheme not-so-well converged at E = {e_real:.4f} eV: {conv_test}")
@@ -336,6 +360,5 @@ def convert_to_numpy(data):
         return data.detach().numpy()
     elif isinstance(data, np.ndarray):
         return data
-    else:
-        log.error("Unsupported data type: {}".format(type(data)))
-        return data
+    elif isinstance(data, float):
+        return np.array(data)
