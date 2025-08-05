@@ -1,69 +1,103 @@
 import numpy as np
 import scipy.linalg as SLA
 import logging
+import torch
 
 log = logging.getLogger(__name__)
 
 def selfEnergy(hL, hLL, sL, sLL, ee, hDL=None, sDL=None, etaLead=1e-8, Bulk=False, 
                     E_ref=0.0, dtype=np.complex128, device='cpu', method='Lopez-Sancho'):
-    '''
-    Calculates the self-energy and surface Green's function for a given Hamiltonian and overlap matrix.
-    NumPy-based rewrite of the PyTorch selfEnergy function.
+    '''calculates the self-energy and surface Green's function for a given  Hamiltonian and overlap matrix.
+    
+    Parameters
+    ----------
+    hL
+        Hamiltonian matrix for one principal layer in Lead
+    hLL
+        Hamiltonian matrix between the most nearby principal layers in Lead
+    sL
+        Overlap matrix for one principal layer in Lead
+    sLL
+        Overlap matrix between the most nearby principal layers in Lead
+    ee
+        the given energy
+    hDL
+        Hamiltonian matrix between the lead and the device.   
+    sDL
+        Overlap matrix between the lead and the device.
+    etaLead
+        A small imaginary number that is used to avoid the singularity of the surface Green's function.
+    Bulk, optional
+        Ignore it, please.
+    chemiPot
+        the chemical potential of the lead.
+    dtype
+        the data type of the tensors used in the calculations. 
+    device
+        The "device" parameter specifies the device on which the calculations will be performed. It can be
+        set to 'cpu' for CPU computation or 'cuda' for GPU computation.
+    method
+        specify the method for calculating the surface Green's function.The available options 
+        are "Lopez-Sancho" and any other value will default to "Lopez-Sancho".
+    
+    Returns
+    -------
+        two values: Sig and SGF. The former is self-energy and the latter is surface Green's function.
+    
     '''
     # 确保输入是NumPy数组
-    hL = np.array(hL)
-    sL = np.array(sL)
-    
+    hL = convert_to_numpy(hL)
+    sL = convert_to_numpy(sL)
+    hLL = convert_to_numpy(hLL)
+    sLL = convert_to_numpy(sLL)
+    ee = convert_to_numpy(ee)
+    if hDL is not None:
+        hDL = convert_to_numpy(hDL)
+    if sDL is not None:
+        sDL = convert_to_numpy(sDL)
+    E_ref = convert_to_numpy(E_ref)
+
+
     # 处理 ee
     if not isinstance(ee, np.ndarray):
         eeshifted = np.array(ee, dtype=dtype) + E_ref
     else:
         eeshifted = ee + E_ref
     
-    # 添加一个小的虚部以避免奇点
-    eeshifted = eeshifted + 1j * etaLead
     
     if hDL is None:
         ESH = (eeshifted * sL - hL)
-        # 调用 NumPy 版本的 surface_green_numpy
-        SGF = surface_green(hL, hLL, sL, sLL, eeshifted, method)
+        SGF = surface_green(hL, hLL, sL, sLL, eeshifted + 1j * etaLead , method)
         
         if Bulk:
             Sig = np.linalg.inv(SGF)
         else:
             Sig = ESH - np.linalg.inv(SGF)
     else:
-        hDL = np.array(hDL)
-        sDL = np.array(sDL)
         a, b = hDL.shape
-        SGF = surface_green(hL, hLL, sL, sLL, eeshifted, method)
+        SGF = surface_green(hL, hLL, sL, sLL, eeshifted + 1j * etaLead , method)
         
         Sig = (eeshifted*sDL-hDL) @ SGF[:b,:b] @ (eeshifted*sDL.conj().T-hDL.conj().T)
+    
+    Sig = torch.tensor(Sig, dtype=torch.complex128, device=device)
+    SGF = torch.tensor(SGF, dtype=torch.complex128, device=device)
     
     return Sig, SGF
 
 
 def surface_green(H, h01, S, s01, ee, method='Lopez-Sancho'):
-    '''
-    Calculate surface green function using NumPy.
+    '''calculate surface green function
 
-    This function is a NumPy-based rewrite of the PyTorch SurfaceGreen.forward method.
-    '''
     
-    # 将输入的张量转换为NumPy数组
-    H = np.array(H)
-    h01 = np.array(h01)
-    S = np.array(S)
-    s01 = np.array(s01)
-    ee = np.array(ee)
+    At this stage, we realized Lopez-Sancho scheme and  GEP scheme.
+    However, GEP scheme is not so stable, and we strongly recommended  to implement the Lopez-Sancho scheme.
 
-    # 确保 ee 是一个复数，以便处理复数运算
+    '''
     if not np.iscomplexobj(ee):
         ee = np.complex128(ee)
 
     if method == 'GEP':
-        # 调用 NumPy 版本的 calcg0
-        gs = calcg0_numpy(ee, H, S, h01, s01)
+        gs = calcg0(ee, H, S, h01, s01)
     else:
         h10 = h01.conj().T
         s10 = s01.conj().T
@@ -76,16 +110,13 @@ def surface_green(H, h01, S, s01, ee, method='Lopez-Sancho'):
             iteration += 1
             oldeps, oldepss = eps.copy(), epss.copy()
             oldalpha, oldbeta = alpha.copy(), beta.copy()
-            
-            # 使用 numpy.linalg.solve 替换 torch.linalg.solve
             tmpa = np.linalg.solve(ee * S - oldeps, oldalpha)
             tmpb = np.linalg.solve(ee * S - oldeps, oldbeta)
 
-            # 使用 @ 运算符进行矩阵乘法
             alpha, beta = oldalpha @ tmpa, oldbeta @ tmpb
             eps = oldeps + oldalpha @ tmpb + oldbeta @ tmpa
-            epss = oldepss + oldbeta @ tmpa
             
+            epss = oldepss + oldbeta @ tmpa
             LopezConvTest = np.max(np.abs(alpha) + np.abs(beta))
 
             if iteration == 101:
@@ -111,17 +142,34 @@ def surface_green(H, h01, S, s01, ee, method='Lopez-Sancho'):
     return gs
 
 
-def calcg0_numpy(ee, h00, s00, h01, s01):
-    '''
-    The `calcg0_numpy` function calculates the surface Green's function for a specific |k> , ref. Euro Phys J B 62, 381 (2008)
-    NumPy-based rewrite of the PyTorch calcg0 function.
+def calcg0(ee, h00, s00, h01, s01):
+    '''The `calcg0` function calculates the surface Green's function for a specific |k> , ref. Euro Phys J B 62, 381 (2008)
+        Inverse of : NOTE, setup for "right" lead.
+        e-h00 -h01  ...
+        -h10  e-h11 ...
+         .
+         .
+         .
+
+    Parameters
+    ----------
+    ee
+        The parameter `ee` represents the energy value for which the surface Green's function is
+    calculated. It is a complex number that determines the energy of the state being considered.
+    h00
+        hamiltonian matrix within principal layer
+    s00
+        overlap matrix within principal layer
+    h01
+        hamiltonian matrix between two adject principal layers
+    s01
+        overlap matrix between two adject principal layers
+    
+    Returns
+    -------
+        Surface Green's function `g00`.
+    
     ''' 
-    # 将输入张量转换为 NumPy 数组
-    h00 = np.array(h00)
-    s00 = np.array(s00)
-    h01 = np.array(h01)
-    s01 = np.array(s01)
-    ee = np.array(ee)
     
     NN = h00.shape[0]
     ee = ee.real + max(ee.imag, 1e-8) * 1.0j
@@ -135,19 +183,18 @@ def calcg0_numpy(ee, h00, s00, h01, s01):
     b[0:NN, 0:NN] = h01 - ee * s01
     b[NN:2 * NN, NN:2 * NN] = np.eye(NN, dtype=h00.dtype)
 
-    # 使用 scipy.linalg.eig 替换 PyTorch 版本
+
     ev, evec = SLA.eig(a=a, b=b)
-    
-    # 选择 ev 绝对值小于 1 的特征值及其对应的特征向量
+
     ipiv = np.where(np.abs(ev) < 1.)[0]
-    ev, evec = ev[ipiv], evec[:, ipiv]
+    ev, evec = ev[ipiv], evec[:NN, ipiv].T
 
     # Normalize evec
-    norm = np.sqrt(np.diag(evec.conj().T @ evec))
-    evec = evec @ np.diag(1.0 / norm)
+    norm = np.sqrt(np.diag(evec @ evec.conj().T)) 
+    evec = np.diag(1.0 / norm) @ evec
 
     # E^+ Lambda_+ (E^+)^-1 --->>> g00
-    EP = evec
+    EP = evec.T
     FP = EP @ np.diag(ev) @ np.linalg.inv(EP.conj().T @ EP) @ EP.conj().T
     g00 = np.linalg.inv(ee * s00 - h00 - (h01 - ee * s01) @ FP)
     
@@ -206,3 +253,12 @@ def iterative_simple_numpy(ee, h00, h01, s00, s01, iter_max=1000):
             break
             
     return gs
+
+def convert_to_numpy(data):
+    if isinstance(data, torch.Tensor):
+        return data.detach().numpy()
+    elif isinstance(data, np.ndarray):
+        return data
+    else:
+        log.error("Unsupported data type: {}".format(type(data)))
+        return data
