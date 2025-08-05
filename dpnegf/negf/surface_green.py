@@ -2,6 +2,7 @@ import numpy as np
 import scipy.linalg as SLA
 import logging
 import torch
+from numba import njit, float64, complex128, int64
 
 log = logging.getLogger(__name__)
 
@@ -85,24 +86,19 @@ def selfEnergy(hL, hLL, sL, sLL, ee, hDL=None, sDL=None, etaLead=1e-8, Bulk=Fals
     return Sig, SGF
 
 
-def surface_green(H, h01, S, s01, ee, method='Lopez-Sancho'):
-    '''calculate surface green function
+_numba_available = False
 
-    
-    At this stage, we realized Lopez-Sancho scheme and  GEP scheme.
-    However, GEP scheme is not so stable, and we strongly recommended  to implement the Lopez-Sancho scheme.
+try:
+    from numba import njit, complex128
 
-    '''
-    if not np.iscomplexobj(ee):
-        ee = np.complex128(ee)
-
-    if method == 'GEP':
-        gs = calcg0(ee, H, S, h01, s01)
-    else:
-        h10 = h01.conj().T
-        s10 = s01.conj().T
+    @njit(complex128[:,:](complex128[:,:], complex128[:,:], complex128[:,:], complex128[:,:], complex128))
+    def _surface_green_numba_core(H, h01, S, s01, ee):
+        # 将 PyTorch 的 h10 = h01.conj().T 逻辑转换为 NumPy
+        h10 = np.conj(h01.T)
+        s10 = np.conj(s01.T)
         alpha, beta = h10 - ee * s10, h01 - ee * s01
-        eps, epss = H.copy(), H.copy()
+        eps = H.copy()
+        epss = H.copy()
         
         converged = False
         iteration = 0
@@ -112,34 +108,115 @@ def surface_green(H, h01, S, s01, ee, method='Lopez-Sancho'):
             oldalpha, oldbeta = alpha.copy(), beta.copy()
             tmpa = np.linalg.solve(ee * S - oldeps, oldalpha)
             tmpb = np.linalg.solve(ee * S - oldeps, oldbeta)
-
-            alpha, beta = oldalpha @ tmpa, oldbeta @ tmpb
-            eps = oldeps + oldalpha @ tmpb + oldbeta @ tmpa
             
+            alpha = oldalpha @ tmpa
+            beta = oldbeta @ tmpb
+            eps = oldeps + oldalpha @ tmpb + oldbeta @ tmpa
             epss = oldepss + oldbeta @ tmpa
             LopezConvTest = np.max(np.abs(alpha) + np.abs(beta))
 
-            if iteration == 101:
-                log.error("Lopez-scheme not converged after 100 iteration.")
-                raise RuntimeError("Lopez-scheme not converged.")
-
             if LopezConvTest < 1.0e-40:
-                # 使用 numpy.linalg.inv 替换 tensor.inverse()
+                # np.linalg.inv() 等价于 PyTorch 的 .inverse()
                 gs = np.linalg.inv(ee * S - epss)
-
-                test = ee * S - H - (ee * s01 - h01) @ gs @ (ee * s10 - h10)
-                myConvTest = np.max(np.abs(test @ gs - np.eye(H.shape[0], dtype=H.dtype)))
                 
+                test = ee * S - H - (ee * s01 - h01) @ gs @ (ee * s10 - h10)
+                myConvTest = np.max(np.abs((test @ gs) - np.eye(H.shape[0], dtype=h01.dtype)))
+
                 if myConvTest < 3.0e-5:
                     converged = True
                     if myConvTest > 1.0e-8:
-                        log.warning("Lopez-scheme not-so-well converged at E = %.4f eV:" % ee.real.item() + str(myConvTest.item()))
+                        # 返回结果和警告标志
+                        return gs, 1, myConvTest, ee.real
+                    else:
+                        # 返回结果和成功标志
+                        return gs, 0, 0, 0
                 else:
-                    log.error("Lopez-Sancho %.8f " % myConvTest.item() +
-                                "Error: gs iteration {0}".format(iteration))
-                    raise ArithmeticError("Criteria not met. Please check output...")
+                    raise ArithmeticError(f"Criteria not met with value {myConvTest:.8f} at iteration {iteration}.")
+        
+            if iteration >= 101:
+                raise RuntimeError("Lopez-scheme not converged after 100 iteration.")
                 
+        return gs
+
+    _numba_available = True
+    log.info("Numba is available and JIT functions are compiled.")
+
+except (ImportError, Exception) as e:
+    log.warning(f"Numba acceleration is not available. Falling back to pure NumPy. Error: {e}")
+    _numba_available = False
+
+# --- 纯 NumPy 版本核心函数（作为回退） ---
+def _surface_green_numpy_core(H, h01, S, s01, ee):
+    h10 = np.conj(h01.T)
+    s10 = np.conj(s01.T)
+    alpha, beta = h10 - ee * s10, h01 - ee * s01
+    
+    eps, epss = H.copy(), H.copy()
+    
+    converged = False
+    iteration = 0
+    
+    while not converged:
+        iteration += 1
+        oldeps, oldepss = eps.copy(), epss.copy()
+        oldalpha, oldbeta = alpha.copy(), beta.copy()
+        tmpa = np.linalg.solve(ee * S - oldeps, oldalpha)
+        tmpb = np.linalg.solve(ee * S - oldeps, oldbeta)
+        
+        alpha = oldalpha @ tmpa
+        beta = oldbeta @ tmpb
+        eps = oldeps + oldalpha @ tmpb + oldbeta @ tmpa
+        epss = oldepss + oldbeta @ tmpa
+        
+        LopezConvTest = np.max(np.abs(alpha) + np.abs(beta))
+
+        if LopezConvTest < 1.0e-40:
+            gs = np.linalg.inv(ee * S - epss)
+            
+            test = ee * S - H - (ee * s01 - h01) @ gs @ (ee * s10 - h10)
+            myConvTest = np.max(np.abs((test @ gs) - np.eye(H.shape[0], dtype=h01.dtype)))
+            
+            if myConvTest < 3.0e-5:
+                converged = True
+                if myConvTest > 1.0e-8:
+                    log.warning(f"Lopez-scheme not-so-well converged at E = {ee.real:.4f} eV: {myConvTest}")
+            else:
+                log.error(f"Lopez-Sancho {myConvTest:.8f} Error: gs iteration {iteration}")
+                raise ArithmeticError("Criteria not met. Please check output...")
+        
+        if iteration >= 101:
+            log.error("Lopez-scheme not converged after 100 iteration.")
+            raise RuntimeError("Lopez-scheme not converged.")
+            
     return gs
+
+
+def surface_green(H, h01, S, s01, ee, 
+                  method='Lopez-Sancho',
+                  numba_jit=True):
+    '''calculate surface green function
+    At this stage, we realized Lopez-Sancho scheme and  GEP scheme.
+    However, GEP scheme is not so stable, and we strongly recommended  to implement the Lopez-Sancho scheme.
+
+    '''
+
+    if method == 'GEP':
+        gs = calcg0(ee, H, S, h01, s01)
+        return gs
+    else: # Lopez-Sancho scheme
+        if numba_jit and _numba_available:
+            try:
+                gs, conv_flag, conv_test, e_real = _surface_green_numba_core(H, h01, S, s01, ee)
+                if conv_flag == 1:
+                    log.warning(f"Lopez-Sancho scheme not-so-well converged at E = {e_real:.4f} eV: {conv_test}")
+                return gs
+            except (RuntimeError, ArithmeticError) as e:
+                log.error(f"Numba JIT function failed at runtime. Falling back to NumPy. Error: {e}")
+                return _surface_green_numpy_core(H, h01, S, s01, ee)
+        else:
+            return _surface_green_numpy_core(H, h01, S, s01, ee)
+                
+
 
 
 def calcg0(ee, h00, s00, h01, s01):
