@@ -188,7 +188,7 @@ class LeadProperty(object):
             kpoints_bloch = bloch_unfolder.unfold_points(self.kpoint.tolist())
             sgf_k = []
             m_size = self.bloch_factor[1]*self.bloch_factor[0]
-            for ik_lead,k_bloch in enumerate(kpoints_bloch):
+            for k_bloch in kpoints_bloch:
                 k_bloch = torch.tensor(k_bloch)
                 self.HLk, self.HLLk, self.HDLk, self.SLk, self.SLLk, self.SDLk \
                     = self.hamiltonian.get_hs_lead(k_bloch, tab=self.tab, v=self.voltage)
