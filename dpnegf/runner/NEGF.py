@@ -18,7 +18,10 @@ from dpnegf.negf.poisson_init import Grid,Interface3D,Dirichlet,Dielectric
 from dpnegf.negf.scf_method import PDIISMixer,DIISMixer,BroydenFirstMixer,BroydenSecondMixer,AndersonMixer
 from typing import Optional, Union
 from dpnegf.utils.tools import apply_gaussian_filter_3d
-# from pyinstrument import Profiler
+from pyinstrument import Profiler
+import os
+from multiprocessing import Pool, cpu_count
+from dpnegf.utils.tools import self_energy_worker
 
 log = logging.getLogger(__name__)
 
@@ -401,7 +404,13 @@ class NEGF(object):
             self.negf_compute(scf_require=False,Vbias=self.potential_at_orb)
         
         else:
+            profiler = Profiler()
+            profiler.start() 
             self.negf_compute(scf_require=False,Vbias=None)
+            profiler.stop()
+            output_path = os.path.join(self.results_path, "profile_report.html")
+            with open(output_path, 'w') as report_file:
+                report_file.write(profiler.output_html())
 
     def poisson_negf_scf(self,interface_poisson,atom_gridpoint_index,err=1e-6,max_iter=1000,
                          mix_method:str='linear', mix_rate:float=0.3, tolerance:float=1e-7,Gaussian_sigma:float=3.0):
@@ -506,6 +515,18 @@ class NEGF(object):
         #     profiler.stop()
         #     with open('profile_report.html', 'w') as report_file:
         #         report_file.write(profiler.output_html())
+    
+
+    def compute_all_self_energy(self, kpoint_grid, energy_grid, n_processes=None):
+        if n_processes is None:
+            n_processes = min(4, cpu_count())  # 默认使用最多 4个进程，或者系统的CPU核心数
+        args_list = [
+            (k, e, self.eta_lead, self.deviceprop.lead_L, self.deviceprop.lead_R)
+            for k in kpoint_grid
+            for e in energy_grid
+        ]
+        with Pool(processes=n_processes) as pool:
+            pool.map(self_energy_worker, args_list)
 
     def negf_compute(self,scf_require=False,Vbias=None):
         
@@ -514,6 +535,7 @@ class NEGF(object):
 
         self.out['k']=[];self.out['wk']=[]
         if hasattr(self, "uni_grid"): self.out["uni_grid"] = self.uni_grid
+
 
         if scf_require and self.poisson_options["with_Dirichlet_leads"]:
             # For the Dirichlet leads, the self-energy of the leads is only calculated once and saved.
@@ -524,10 +546,11 @@ class NEGF(object):
                     self.deviceprop.lead_R.self_energy(kpoint=k, energy=e, eta_lead=self.eta_lead, save=True)
         elif not self.scf:
             # In non-scf case, the self-energy of the leads is calculated for each energy point in the energy grid.
-            for ik, k in enumerate(self.kpoints): 
-                for e in self.uni_grid:
-                    self.deviceprop.lead_L.self_energy(kpoint=k, energy=e, eta_lead=self.eta_lead, save=True)
-                    self.deviceprop.lead_R.self_energy(kpoint=k, energy=e, eta_lead=self.eta_lead, save=True)
+            # for ik, k in enumerate(self.kpoints): 
+            #     for e in self.uni_grid:
+            #         self.deviceprop.lead_L.self_energy(kpoint=k, energy=e, eta_lead=self.eta_lead, save=True)
+            #         self.deviceprop.lead_R.self_energy(kpoint=k, energy=e, eta_lead=self.eta_lead, save=True)
+            self.compute_all_self_energy(self.kpoints, self.uni_grid)
     
         for ik, k in enumerate(self.kpoints):
 
