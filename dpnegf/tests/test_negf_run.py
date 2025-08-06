@@ -38,7 +38,7 @@ def test_negf_run_chain(root_directory):
 
 def test_negf_run_orth(root_directory):
     INPUT_file =  root_directory +"/dpnegf/tests/data/test_negf/test_negf_run/negf_graphene_new.json" 
-    output =  root_directory +"/dpnegf/tests/data/test_negf/test_negf_run/out_negf_graphene"  
+    output =  root_directory +"/dpnegf/tests/data/test_negf/test_negf_run/out_negf_graphene_orth"  
     checkfile =  root_directory +'/dpnegf/tests/data/test_negf/test_negf_run/nnsk_C_new.json'
     structure =  root_directory +"/dpnegf/tests/data/test_negf/test_negf_run/graphene.xyz" 
 
@@ -106,7 +106,7 @@ def test_negf_run_orth(root_directory):
 
 def test_negf_run_S(root_directory):
     INPUT_file =  root_directory +"/dpnegf/tests/data/test_negf/test_negf_run/negf_graphene_new.json" 
-    output =  root_directory +"/dpnegf/tests/data/test_negf/test_negf_run/out_negf_graphene"  
+    output =  root_directory +"/dpnegf/tests/data/test_negf/test_negf_run/out_negf_graphene_S"  
     checkfile =  root_directory +'/dpnegf/tests/data/test_negf/test_negf_run/nnsk_C_newS.json'
     structure =  root_directory +"/dpnegf/tests/data/test_negf/test_negf_run/graphene.xyz" 
 
