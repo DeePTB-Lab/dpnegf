@@ -1,147 +1,13 @@
-import torch
-import torch.linalg as tLA
-from xitorch.linalg.solve import solve
+import numpy as np
 import scipy.linalg as SLA
-import matplotlib.pyplot as plt
-from xitorch.grad.jachess import jac
-from torch.autograd.functional import jvp
 import logging
+import torch
+from numba import njit, float64, complex128, int64
 
 log = logging.getLogger(__name__)
 
-
-class SurfaceGreen(torch.autograd.Function):
-    '''calculate surface green function
-
-    To realize AD-NEGF, this Class is designed manually to calculate the surface green function auto-differentiably.
-    
-    At this stage, we realized Lopez-Sancho scheme and  GEP scheme.
-    However, GEP scheme is not so stable, and we strongly recommended  to implement the Lopez-Sancho scheme.
-
-    '''
-
-    @staticmethod
-    def forward(ctx, H, h01, S, s01, ee, method='Lopez-Sancho'):
-        # '''
-        # gs = [A_l - A_{l,l-1} gs A_{l-1,l}]^{-1}
-        # H : HL
-        # h01 : HLL
-        # 1. ee can be a list, to handle a batch of samples
-        # '''
-
-        if method == 'GEP':
-            gs = calcg0(ee, H, S, h01, s01)
-        else:
-            h10 = h01.conj().T
-            s10 = s01.conj().T
-            alpha, beta = h10 - ee * s10, h01 - ee * s01
-            eps, epss = H.clone(), H.clone()
-            
-            converged = False
-            iteration = 0
-            while not converged:
-                iteration += 1
-                oldeps, oldepss = eps.clone(), epss.clone()
-                oldalpha, oldbeta = alpha.clone(), beta.clone()
-                tmpa = tLA.solve(ee * S - oldeps, oldalpha)
-                tmpb = tLA.solve(ee * S - oldeps, oldbeta)
-
-                alpha, beta = torch.mm(oldalpha, tmpa), torch.mm(oldbeta, tmpb)
-                eps = oldeps + torch.mm(oldalpha, tmpb) + torch.mm(oldbeta, tmpa)
-
-                epss = oldepss + torch.mm(oldbeta, tmpa)
-                LopezConvTest = torch.max(alpha.abs() + beta.abs())
-
-                if iteration == 101:
-                    log.error("Lopez-scheme not converged after 100 iteration.")
-
-                if LopezConvTest < 1.0e-40:
-                    gs = (ee * S - epss).inverse()
-
-                    test = ee * S - H - torch.mm(ee * s01 - h01, gs.mm(ee * s10 - h10))
-                    myConvTest = torch.max((test.mm(gs) - torch.eye(H.shape[0], dtype=h01.dtype)).abs())
-                    if myConvTest < 3.0e-5:
-                        converged = True
-                        if myConvTest > 1.0e-8:
-                            log.warning("Lopez-scheme not-so-well converged at E = %.4f eV:" % ee.real.item() + str(myConvTest.item()))
-                    else:
-                        log.error("Lopez-Sancho %.8f " % myConvTest.item() +
-                              "Error: gs iteration {0}".format(iteration))
-                        raise ArithmeticError("Criteria not met. Please check output...")
-                    
-        ctx.save_for_backward(gs, H, h01, S, s01, ee)
-        return gs
-
-    @staticmethod
-    def backward(ctx, grad_outputs):
-        gs_, H_, h01_, S_, s01_, ee_ = ctx.saved_tensors
-
-        def sgfn(gs, *params):
-            [H, h01, S, s01, ee] = params
-            return tLA.inv(ee*S - H - (ee*s01 - h01).matmul(gs).matmul(ee*s01.conj().T - h01.conj().T)) - gs
-
-        params = [H_, h01_, S_, s01_, ee_]
-        idx = [i for i in range(len(params)) if params[i].requires_grad]
-        params_copy = [p.detach().requires_grad_() for p in params]
-
-        with torch.enable_grad():
-
-            grad = jac(fcn=sgfn, params=(gs_, *params), idxs=[0])[0] # dfdz
-            pre = solve(A=grad.H, B=-grad_outputs.reshape(-1, 1))
-            pre = pre.reshape(grad_outputs.shape)
-            
-            yfcn = sgfn(gs_, *params_copy)
-
-            grad = torch.autograd.grad(yfcn, [params_copy[i] for i in idx], grad_outputs=pre,
-                                                         create_graph=torch.is_grad_enabled(),
-                                                         allow_unused=True)
-
-        # grad = torch.autograd.grad(yfcn, params_copy, grad_outputs=pre,
-        #                         create_graph=torch.is_grad_enabled(),
-        #                         allow_unused=True)
-
-            grad_out = [None for _ in range(len(params))]
-            for i in range(len(idx)):
-                grad_out[idx[i]] = grad[i]
-
-
-            '''
-            2. Is the matrix index direction correct? Also, is T necessarily becomes H when comes to complex matrix?
-            '''
-            # return *grad, None, None
-            return *grad_out, None
-
-    @staticmethod
-    def jvp(ctx, grad_input):
-        # should be of shape as [H, h01, S, s01, ee]
-        gs_, H_, h01_, S_, s01_, ee_ = ctx.saved_tensors
-        left = ctx.left
-
-        if left:
-            def sgfn(gs, *params):
-                [H, h01, S, s01, ee] = params
-                return tLA.inv(ee*S-H-(ee*s01.conj().T-h01.conj().T).matmul(gs).matmul(ee*s01-h01)) - gs
-        else:
-            def sgfn(gs, *params):
-                [H, h01, S, s01, ee] = params
-                return tLA.inv(ee*S - H - (ee*s01 - h01).matmul(gs).matmul(ee*s01.conj().T - h01.conj().T)) - gs
-        
-        yfcn = sgfn(gs_, *params_copy)
-
-        params = [H_, h01_, S_, s01_, ee_]
-        idx = [i for i in range(len(params)) if params[i].requires_grad]
-        params_copy = [p.detach().requires_grad_() for p in params]
-
-        with torch.enable_grad():
-            _, grad_fw = jvp(func=yfcn, inputs=[params_copy[i] for i in idx], v=[grad_input[i] for i in idx], create_graph=torch.is_grad_enabled())
-            dfdy = jac(fcn=sgfn, params=(gs_, *params), idxs=[0])[0]
-
-            out = [solve(A=dfdy, B=-gf.reshape(-1, 1)).conj().reshape(gf.shape) for gf in grad_fw]
-
-            return torch.mean(out, dim=0)
-
 def selfEnergy(hL, hLL, sL, sLL, ee, hDL=None, sDL=None, etaLead=1e-8, Bulk=False, 
-               E_ref=0.0, dtype=torch.complex128, device='cpu', method='Lopez-Sancho'):
+                    E_ref=0.0, dtype=np.complex128, device='cpu', method='Lopez-Sancho'):
     '''calculates the self-energy and surface Green's function for a given  Hamiltonian and overlap matrix.
     
     Parameters
@@ -180,33 +46,201 @@ def selfEnergy(hL, hLL, sL, sLL, ee, hDL=None, sDL=None, etaLead=1e-8, Bulk=Fals
         two values: Sig and SGF. The former is self-energy and the latter is surface Green's function.
     
     '''
-    # if not isinstance(ee, torch.Tensor):
-    #     eeshifted = torch.scalar_tensor(ee, dtype=dtype) - voltage  # Shift of self energies due to voltage(V)
-    # else:
-    #     eeshifted = ee - voltage
+    # 确保输入是NumPy数组
+    hL = convert_to_numpy(hL)
+    sL = convert_to_numpy(sL)
+    hLL = convert_to_numpy(hLL)
+    sLL = convert_to_numpy(sLL)
+    ee = convert_to_numpy(ee)
+    if hDL is not None:
+        hDL = convert_to_numpy(hDL)
+    if sDL is not None:
+        sDL = convert_to_numpy(sDL)
+    E_ref = convert_to_numpy(E_ref)
 
-    if not isinstance(ee, torch.Tensor):
-        eeshifted = torch.scalar_tensor(ee, dtype=dtype) + E_ref
+
+    
+    if not isinstance(ee, np.ndarray):
+        eeshifted = np.array(ee, dtype=dtype) + E_ref
     else:
         eeshifted = ee + E_ref
-        
-
-    if hDL == None:
+    
+    eeshifted = eeshifted.item()
+    
+    if hDL is None:
         ESH = (eeshifted * sL - hL)
-        with torch.no_grad():
-            SGF = SurfaceGreen.apply(hL, hLL, sL, sLL, eeshifted + 1j * etaLead, method)
-
+        SGF = surface_green(hL, hLL, sL, sLL, eeshifted + 1j * etaLead , method)
+        
         if Bulk:
-            Sig = tLA.inv(SGF)  # SGF^1
+            Sig = np.linalg.inv(SGF)
         else:
-            Sig = ESH - tLA.inv(SGF)
+            Sig = ESH - np.linalg.inv(SGF)
     else:
         a, b = hDL.shape
-        with torch.no_grad():
-            SGF = SurfaceGreen.apply(hL, hLL, sL, sLL, eeshifted + 1j * etaLead, method)
-        #SGF = iterative_simple(eeshifted + 1j * etaLead, hL, hLL, sL, sLL, iter_max=1000)
+        SGF = surface_green(hL, hLL, sL, sLL, eeshifted + 1j * etaLead , method)
+        
         Sig = (eeshifted*sDL-hDL) @ SGF[:b,:b] @ (eeshifted*sDL.conj().T-hDL.conj().T)
-    return Sig, SGF  # R(nuo, nuo)
+    
+    Sig = torch.tensor(Sig, dtype=torch.complex128, device=device)
+    SGF = torch.tensor(SGF, dtype=torch.complex128, device=device)
+    
+    return Sig, SGF
+
+
+_numba_available = False
+
+
+try:
+    from numba import njit, complex128, int64, float64
+    from numba.types import Tuple
+    NumbaReturnType = Tuple((complex128[:,:], int64, float64, float64))
+
+    @njit(NumbaReturnType(complex128[:,:], complex128[:,:], complex128[:,:], complex128[:,:], complex128))
+    def _surface_green_numba_core(H, h01, S, s01, ee):
+
+        h10 = np.conj(h01.T)
+        s10 = np.conj(s01.T)
+        alpha, beta = h10 - ee * s10, h01 - ee * s01
+        eps = H.copy()
+        epss = H.copy()
+        
+        converged = False
+        iteration = 0
+        oldeps, oldepss = np.empty_like(eps), np.empty_like(epss)
+        oldalpha, oldbeta = np.empty_like(alpha), np.empty_like(beta)
+        while not converged:
+            iteration += 1
+            oldeps[:], oldepss[:] = eps, epss
+            oldalpha[:], oldbeta[:] = alpha, beta
+            tmpa = np.linalg.solve(ee * S - oldeps, oldalpha)
+            tmpb = np.linalg.solve(ee * S - oldeps, oldbeta)
+            
+            alpha = oldalpha @ tmpa
+            beta = oldbeta @ tmpb
+            eps = oldeps + oldalpha @ tmpb + oldbeta @ tmpa
+            epss = oldepss + oldbeta @ tmpa
+            LopezConvTest = np.max(np.abs(alpha) + np.abs(beta))
+
+            if LopezConvTest < 1.0e-40:
+                # np.linalg.inv() 等价于 PyTorch 的 .inverse()
+                gs = np.linalg.inv(ee * S - epss)
+                
+                test = ee * S - H - (ee * s01 - h01) @ gs @ (ee * s10 - h10)
+                myConvTest = np.max(np.abs((test @ gs) - np.eye(H.shape[0], dtype=h01.dtype)))
+
+                if myConvTest < 3.0e-5:
+                    converged = True
+                    if myConvTest > 1.0e-8: # warning threshold
+                        return gs, 1, myConvTest, ee.real
+                    else:
+                        return gs, 0, 0, 0
+                else:
+                    raise ArithmeticError
+        
+            if iteration >= 101:
+                raise RuntimeError
+                
+        return gs
+
+    _numba_available = True
+    log.info("Numba is available and JIT functions are compiled.")
+
+except (ImportError, Exception) as e:
+    log.warning(f"Numba acceleration is not available. Falling back to pure NumPy. Error: {e}")
+    _numba_available = False
+
+# Scipy-based implementation of the surface Green's function calculation
+def _surface_green_scipy_core(H, h01, S, s01, ee):
+    h10 = np.conj(h01.T)
+    s10 = np.conj(s01.T)
+    alpha, beta = h10 - ee * s10, h01 - ee * s01
+    
+    eps, epss = H.copy(), H.copy()
+    
+    converged = False
+    iteration = 0
+    oldeps, oldepss = np.empty_like(eps), np.empty_like(epss)
+    oldalpha, oldbeta = np.empty_like(alpha), np.empty_like(beta)
+    while not converged:
+        iteration += 1
+        oldeps[:], oldepss[:] = eps, epss
+        oldalpha[:], oldbeta[:] = alpha, beta
+        tmpa = SLA.solve(ee * S - oldeps, oldalpha)
+        tmpb = SLA.solve(ee * S - oldeps, oldbeta)
+        
+        alpha = oldalpha @ tmpa
+        beta = oldbeta @ tmpb
+        eps = oldeps + oldalpha @ tmpb + oldbeta @ tmpa
+        epss = oldepss + oldbeta @ tmpa
+        LopezConvTest = np.max(np.abs(alpha) + np.abs(beta))
+
+        if LopezConvTest < 1.0e-40:
+            gs = np.linalg.inv(ee * S - epss)
+            
+            test = ee * S - H - (ee * s01 - h01) @ gs @ (ee * s10 - h10)
+            myConvTest = np.max(np.abs((test @ gs) - np.eye(H.shape[0], dtype=h01.dtype)))
+            
+            if myConvTest < 3.0e-5:
+                converged = True
+                if myConvTest > 1.0e-8:
+                    log.warning(f"Lopez-scheme not-so-well converged at E = {ee.real:.4f} eV: {myConvTest}")
+            else:
+                log.error(f"Lopez-Sancho {myConvTest:.8f} Error: gs iteration {iteration}")
+                raise ArithmeticError("Criteria not met. Please check output...")
+        
+        if iteration >= 101:
+            log.error("Lopez-scheme not converged after 100 iteration.")
+            raise RuntimeError("Lopez-scheme not converged.")
+            
+    return gs
+
+
+def surface_green(H, h01, S, s01, ee, 
+                  method='Lopez-Sancho',
+                  numba_jit=False):
+    '''calculate surface green function
+    At this stage, we realized Lopez-Sancho scheme and  GEP scheme.
+    However, GEP scheme is not so stable, and we strongly recommended  to implement the Lopez-Sancho scheme.
+
+    '''
+
+    if method == 'GEP':
+        gs = calcg0(ee, H, S, h01, s01)
+        return gs
+    else: # Lopez-Sancho scheme
+        if numba_jit and _numba_available:
+            try:
+                # check
+                # 1. type check
+                assert isinstance(H, np.ndarray), "H must be a NumPy array."
+                assert isinstance(h01, np.ndarray), "h01 must be a NumPy array."
+                assert isinstance(S, np.ndarray), "S must be a NumPy array."
+                assert isinstance(s01, np.ndarray), "s01 must be a NumPy array."
+                assert isinstance(ee, (complex, float, int)), "ee must be a complex, float, or integer scalar."
+
+                # 2. dimension check
+                assert H.ndim == 2, "H must be a 2D array."
+                assert h01.ndim == 2, "h01 must be a 2D array."
+                assert S.ndim == 2, "S must be a 2D array."
+                assert s01.ndim == 2, "s01 must be a 2D array."
+
+                # 3. complex type check
+                assert np.iscomplexobj(H), "H must be a complex array."
+                assert np.iscomplexobj(h01), "h01 must be a complex array."
+                assert np.iscomplexobj(S), "S must be a complex array."
+                assert np.iscomplexobj(s01), "s01 must be a complex array."
+                assert isinstance(ee, complex), "ee must be a complex scalar."
+                gs, conv_flag, conv_test, e_real = _surface_green_numba_core(H, h01, S, s01, ee)
+                if conv_flag == 1:
+                    log.warning(f"Lopez-Sancho scheme not-so-well converged at E = {e_real:.4f} eV: {conv_test}")
+                return gs
+            except (RuntimeError, ArithmeticError) as e:
+                log.error(f"Numba JIT function failed at runtime. Falling back to NumPy. Error: {e}")
+                return _surface_green_scipy_core(H, h01, S, s01, ee)
+        else:
+            return _surface_green_scipy_core(H, h01, S, s01, ee)
+                
+
 
 
 def calcg0(ee, h00, s00, h01, s01):
@@ -237,76 +271,94 @@ def calcg0(ee, h00, s00, h01, s01):
         Surface Green's function `g00`.
     
     ''' 
-
-
-    NN, ee = h00.shape[0], ee.real + max(torch.max(ee.imag).item(), 1e-8) * 1.0j
+    
+    NN = h00.shape[0]
+    ee = ee.real + max(ee.imag, 1e-8) * 1.0j
 
     # Solve generalized eigen-problem
-    # ( e I - h00 , -I) (eps)          (h01 , 0) (eps)
-    # ( h10       ,  0) (xi ) = lambda (0   , I) (xi )
-    
-    a, b = torch.zeros((2 * NN, 2 * NN), dtype=h00.dtype), torch.zeros((2 * NN, 2 * NN),
-                                                                             dtype=h00.dtype)
+    a, b = np.zeros((2 * NN, 2 * NN), dtype=h00.dtype), np.zeros((2 * NN, 2 * NN), dtype=h00.dtype)
     
     a[0:NN, 0:NN] = ee * s00 - h00
-    a[0:NN, NN:2 * NN] = -torch.eye(NN, dtype=h00.dtype)
+    a[0:NN, NN:2 * NN] = -np.eye(NN, dtype=h00.dtype)
     a[NN:2 * NN, 0:NN] = h01.conj().T - ee * s01.conj().T
     b[0:NN, 0:NN] = h01 - ee * s01
-    b[NN:2 * NN, NN:2 * NN] = torch.eye(NN, dtype=h00.dtype)
-
-    
+    b[NN:2 * NN, NN:2 * NN] = np.eye(NN, dtype=h00.dtype)
 
 
     ev, evec = SLA.eig(a=a, b=b)
-    ev = torch.tensor(ev, dtype=h00.dtype)
-    evec = torch.tensor(evec, dtype=h00.dtype)
-    # ev = torch.complex(real=torch.tensor(ev.real), imag=torch.tensor(ev.imag))
-    # evec = torch.complex(real=torch.tensor(evec.real), imag=torch.tensor(evec.imag))
 
-    # Select lambda <0 and the eps part of the evec
-    ipiv = torch.where(ev.abs() < 1.)[0]
-
+    ipiv = np.where(np.abs(ev) < 1.)[0]
     ev, evec = ev[ipiv], evec[:NN, ipiv].T
+
     # Normalize evec
-    norm = torch.diag(torch.mm(evec, evec.conj().T)).sqrt()
-    evec = torch.mm(torch.diag(1.0 / norm), evec)
+    norm = np.sqrt(np.diag(evec @ evec.conj().T)) 
+    evec = np.diag(1.0 / norm) @ evec
 
     # E^+ Lambda_+ (E^+)^-1 --->>> g00
     EP = evec.T
-    FP = EP.mm(torch.diag(ev)).mm(torch.inverse(torch.mm(EP.conj().T, EP))).mm(EP.conj().T)
-    g00 = torch.inverse(ee * s00 - h00 - torch.mm(h01 - ee * s01, FP))
+    FP = EP @ np.diag(ev) @ np.linalg.inv(EP.conj().T @ EP) @ EP.conj().T
+    g00 = np.linalg.inv(ee * s00 - h00 - (h01 - ee * s01) @ FP)
+    
+    g00 = iterative_gf_numpy(ee, g00, h00, h01, s00, s01, iter=3)
 
-    g00 = iterative_gf(ee, g00, h00, h01, s00, s01, iter=3)
-
-    # Check!
-    err = torch.max(torch.abs(g00 - torch.inverse(ee * s00 - h00 - \
-                                                  torch.mm(h01 - ee * s01, g00).mm(
-                                                      h01.conj().T - ee * s01.conj().T))))
+    err = np.max(np.abs(g00 - np.linalg.inv(ee * s00 - h00 - \
+                                            (h01 - ee * s01) @ g00 @ (h01.conj().T - ee * s01.conj().T))))
     if err > 1.0e-8:
-        print("WARNING: not-so-well converged for RIGHT electrode at E = {0} eV:".format(ee.real.numpy()), err.numpy())
+        print("WARNING: not-so-well converged for RIGHT electrode at E = {0} eV:".format(ee.real), err)
+    
     return g00
 
-
-def iterative_gf(ee, gs, h00, h01, s00, s01, iter=1):
+def iterative_gf_numpy(ee, gs, h00, h01, s00, s01, iter=1):
+    '''
+    NumPy-based rewrite of the PyTorch iterative_gf function.
+    '''
+    # 将输入张量转换为 NumPy 数组
+    gs = np.array(gs)
+    h00 = np.array(h00)
+    h01 = np.array(h01)
+    s00 = np.array(s00)
+    s01 = np.array(s01)
+    ee = np.array(ee)
+    
     for i in range(iter):
-        gs = ee*s00 - h00 - (ee * s01 - h01) @ gs @ (ee * s01.conj().T - h01.conj().T)
-        gs = tLA.pinv(gs)
-
+        gs_new = ee*s00 - h00 - (ee * s01 - h01) @ gs @ (ee * s01.conj().T - h01.conj().T)
+        gs = np.linalg.pinv(gs_new)
+    
     return gs
 
-def iterative_simple(ee, h00, h01, s00, s01, iter_max=1000):
-    gs =  torch.linalg.inv(ee*s00 - h00)
+def iterative_simple_numpy(ee, h00, h01, s00, s01, iter_max=1000):
+    '''
+    NumPy-based rewrite of the PyTorch iterative_simple function.
+    '''
+    # 将输入张量转换为 NumPy 数组
+    h00 = np.array(h00)
+    h01 = np.array(h01)
+    s00 = np.array(s00)
+    s01 = np.array(s01)
+    ee = np.array(ee)
+    
+    gs = np.linalg.inv(ee*s00 - h00)
     diff_gs = 1
-    iter = 0
+    iteration = 0
     while diff_gs > 1e-8:
-        iter +=1
-        gs = ee*s00 - h00 - (ee * s01 - h01) @ gs @ (ee * s01.conj().T - h01.conj().T)
-        # gs = tLA.pinv(gs)
-        gs = torch.linalg.inv(gs)
-        diff_gs = \
-        torch.max(torch.abs(gs - torch.inverse(ee * s00 - h00 - torch.mm(h01 - ee * s01, gs).mm(h01.conj().T - ee * s01.conj().T))))
-        if iter > iter_max:
+        iteration += 1
+        gs_prev = gs.copy()
+        
+        term = (ee * s01 - h01) @ gs_prev @ (ee * s01.conj().T - h01.conj().T)
+        gs = np.linalg.inv(ee*s00 - h00 - term)
+        
+        diff_gs = np.max(np.abs(gs - gs_prev))
+        
+        if iteration > iter_max:
             log.warning("iterative_simple not converged after 1000 iteration.")
             break
-
+            
     return gs
+
+def convert_to_numpy(data):
+    if isinstance(data, torch.Tensor):
+        return data.detach().numpy()
+    elif isinstance(data, np.ndarray):
+        return data
+    elif isinstance(data, float):
+        return np.array(data)
