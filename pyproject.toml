@@ -54,6 +54,7 @@ h5py = ">=3.7.0,<=3.11.0,!=3.10.0"
 lmdb = "1.4.1"
 pyfiglet = "1.0.2"
 tensorboard = "*"
+numba = "*"
 
 
 [tool.poetry.group.pybinding]
