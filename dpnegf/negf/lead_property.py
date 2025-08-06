@@ -100,7 +100,7 @@ class LeadProperty(object):
 
     def self_energy(self, kpoint, energy, eta_lead: float=1e-5, method: str="Lopez-Sancho", \
                     save: bool=False, save_path: str=None, se_info_display: bool=False,
-                    HS_inmem: bool=False):
+                    HS_inmem: bool=True):
         '''calculate and loads the self energy and surface green function at the given kpoint and energy.
         
         Parameters
