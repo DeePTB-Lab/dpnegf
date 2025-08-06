@@ -802,3 +802,8 @@ def apply_gaussian_filter_3d(phi_vector, shape, sigma):
 
     # Flatten back to 1D
     return phi_3d_filtered.ravel()
+
+
+def self_energy_worker(k, e, eta, lead_L, lead_R):
+    lead_L.self_energy(kpoint=k, energy=e, eta_lead=eta, save=True)
+    lead_R.self_energy(kpoint=k, energy=e, eta_lead=eta, save=True)

@@ -18,7 +18,10 @@ from dpnegf.negf.poisson_init import Grid,Interface3D,Dirichlet,Dielectric
 from dpnegf.negf.scf_method import PDIISMixer,DIISMixer,BroydenFirstMixer,BroydenSecondMixer,AndersonMixer
 from typing import Optional, Union
 from dpnegf.utils.tools import apply_gaussian_filter_3d
-# from pyinstrument import Profiler
+from pyinstrument import Profiler
+import os
+from dpnegf.utils.tools import self_energy_worker
+from joblib import Parallel, delayed
 
 log = logging.getLogger(__name__)
 
@@ -401,7 +404,13 @@ class NEGF(object):
             self.negf_compute(scf_require=False,Vbias=self.potential_at_orb)
         
         else:
+            # profiler = Profiler()
+            # profiler.start() 
             self.negf_compute(scf_require=False,Vbias=None)
+            # profiler.stop()
+            # output_path = os.path.join(self.results_path, "profile_report.html")
+            # with open(output_path, 'w') as report_file:
+                # report_file.write(profiler.output_html())
 
     def poisson_negf_scf(self,interface_poisson,atom_gridpoint_index,err=1e-6,max_iter=1000,
                          mix_method:str='linear', mix_rate:float=0.3, tolerance:float=1e-7,Gaussian_sigma:float=3.0):
@@ -506,6 +515,29 @@ class NEGF(object):
         #     profiler.stop()
         #     with open('profile_report.html', 'w') as report_file:
         #         report_file.write(profiler.output_html())
+    
+
+    def compute_all_self_energy(self, kpoints_grid, energy_grid, n_jobs=-1):
+        """
+        Compute the self-energy for all combinations of k-points and energy values in parallel using joblib.
+        Parameters:
+            kpoints_grid (Iterable): An iterable of k-point values to compute self-energy for.
+            energy_grid (Iterable): An iterable of energy values to compute self-energy for.
+            n_jobs (int, optional): The number of parallel jobs to run. Defaults to -1 (use all available cores).
+        Notes:
+            This method uses joblib's Parallel to distribute the computation of self-energy across multiple processes.
+            The worker function `self_energy_worker` must be serializable and defined at the top level.
+        """
+        eta = self.eta_lead
+        lead_L = self.deviceprop.lead_L
+        lead_R = self.deviceprop.lead_R
+        # joblib's Parallel and delayed are used to parallelize the self-energy computation
+        # joblib requires worker function to be top-level or serializable
+        Parallel(n_jobs=n_jobs, backend="loky")(
+            delayed(self_energy_worker)(k, e, eta, lead_L, lead_R)
+            for k in kpoints_grid
+            for e in energy_grid
+        )
 
     def negf_compute(self,scf_require=False,Vbias=None):
         
@@ -515,19 +547,22 @@ class NEGF(object):
         self.out['k']=[];self.out['wk']=[]
         if hasattr(self, "uni_grid"): self.out["uni_grid"] = self.uni_grid
 
+
+
+        selfen_parent_dir = os.path.join(self.results_path,"self_energy")
+        if not os.path.exists(selfen_parent_dir): 
+            os.makedirs(selfen_parent_dir)
         if scf_require and self.poisson_options["with_Dirichlet_leads"]:
             # For the Dirichlet leads, the self-energy of the leads is only calculated once and saved.
             # In each iteration, the self-energy of the leads is not updated.
-            for ik, k in enumerate(self.kpoints):
-                for e in self.density.integrate_range:
-                    self.deviceprop.lead_L.self_energy(kpoint=k, energy=e, eta_lead=self.eta_lead, save=True)
-                    self.deviceprop.lead_R.self_energy(kpoint=k, energy=e, eta_lead=self.eta_lead, save=True)
+            # for ik, k in enumerate(self.kpoints):
+            #     for e in self.density.integrate_range:
+            #         self.deviceprop.lead_L.self_energy(kpoint=k, energy=e, eta_lead=self.eta_lead, save=True)
+            #         self.deviceprop.lead_R.self_energy(kpoint=k, energy=e, eta_lead=self.eta_lead, save=True)
+            self.compute_all_self_energy(self.kpoints, self.density.integrate_range)
         elif not self.scf:
             # In non-scf case, the self-energy of the leads is calculated for each energy point in the energy grid.
-            for ik, k in enumerate(self.kpoints): 
-                for e in self.uni_grid:
-                    self.deviceprop.lead_L.self_energy(kpoint=k, energy=e, eta_lead=self.eta_lead, save=True)
-                    self.deviceprop.lead_R.self_energy(kpoint=k, energy=e, eta_lead=self.eta_lead, save=True)
+            self.compute_all_self_energy(self.kpoints, self.uni_grid)
     
         for ik, k in enumerate(self.kpoints):
 
