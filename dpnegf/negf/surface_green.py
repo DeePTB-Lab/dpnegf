@@ -97,7 +97,7 @@ try:
 
     @njit(NumbaReturnType(complex128[:,:], complex128[:,:], complex128[:,:], complex128[:,:], complex128))
     def _surface_green_numba_core(H, h01, S, s01, ee):
-        # 将 PyTorch 的 h10 = h01.conj().T 逻辑转换为 NumPy
+
         h10 = np.conj(h01.T)
         s10 = np.conj(s01.T)
         alpha, beta = h10 - ee * s10, h01 - ee * s01
@@ -106,10 +106,12 @@ try:
         
         converged = False
         iteration = 0
+        oldeps, oldepss = np.empty_like(eps), np.empty_like(epss)
+        oldalpha, oldbeta = np.empty_like(alpha), np.empty_like(beta)
         while not converged:
             iteration += 1
-            oldeps, oldepss = eps.copy(), epss.copy()
-            oldalpha, oldbeta = alpha.copy(), beta.copy()
+            oldeps[:], oldepss[:] = eps, epss
+            oldalpha[:], oldbeta[:] = alpha, beta
             tmpa = np.linalg.solve(ee * S - oldeps, oldalpha)
             tmpb = np.linalg.solve(ee * S - oldeps, oldbeta)
             
@@ -128,11 +130,9 @@ try:
 
                 if myConvTest < 3.0e-5:
                     converged = True
-                    if myConvTest > 1.0e-8:
-                        # 返回结果和警告标志
+                    if myConvTest > 1.0e-8: # warning threshold
                         return gs, 1, myConvTest, ee.real
                     else:
-                        # 返回结果和成功标志
                         return gs, 0, 0, 0
                 else:
                     raise ArithmeticError
@@ -149,8 +149,8 @@ except (ImportError, Exception) as e:
     log.warning(f"Numba acceleration is not available. Falling back to pure NumPy. Error: {e}")
     _numba_available = False
 
-# NumPy-based implementation of the surface Green's function calculation
-def _surface_green_numpy_core(H, h01, S, s01, ee):
+# Scipy-based implementation of the surface Green's function calculation
+def _surface_green_scipy_core(H, h01, S, s01, ee):
     h10 = np.conj(h01.T)
     s10 = np.conj(s01.T)
     alpha, beta = h10 - ee * s10, h01 - ee * s01
@@ -159,19 +159,19 @@ def _surface_green_numpy_core(H, h01, S, s01, ee):
     
     converged = False
     iteration = 0
-    
+    oldeps, oldepss = np.empty_like(eps), np.empty_like(epss)
+    oldalpha, oldbeta = np.empty_like(alpha), np.empty_like(beta)
     while not converged:
         iteration += 1
-        oldeps, oldepss = eps.copy(), epss.copy()
-        oldalpha, oldbeta = alpha.copy(), beta.copy()
-        tmpa = np.linalg.solve(ee * S - oldeps, oldalpha)
-        tmpb = np.linalg.solve(ee * S - oldeps, oldbeta)
+        oldeps[:], oldepss[:] = eps, epss
+        oldalpha[:], oldbeta[:] = alpha, beta
+        tmpa = SLA.solve(ee * S - oldeps, oldalpha)
+        tmpb = SLA.solve(ee * S - oldeps, oldbeta)
         
         alpha = oldalpha @ tmpa
         beta = oldbeta @ tmpb
         eps = oldeps + oldalpha @ tmpb + oldbeta @ tmpa
         epss = oldepss + oldbeta @ tmpa
-        
         LopezConvTest = np.max(np.abs(alpha) + np.abs(beta))
 
         if LopezConvTest < 1.0e-40:
@@ -197,7 +197,7 @@ def _surface_green_numpy_core(H, h01, S, s01, ee):
 
 def surface_green(H, h01, S, s01, ee, 
                   method='Lopez-Sancho',
-                  numba_jit=True):
+                  numba_jit=False):
     '''calculate surface green function
     At this stage, we realized Lopez-Sancho scheme and  GEP scheme.
     However, GEP scheme is not so stable, and we strongly recommended  to implement the Lopez-Sancho scheme.
@@ -236,9 +236,9 @@ def surface_green(H, h01, S, s01, ee,
                 return gs
             except (RuntimeError, ArithmeticError) as e:
                 log.error(f"Numba JIT function failed at runtime. Falling back to NumPy. Error: {e}")
-                return _surface_green_numpy_core(H, h01, S, s01, ee)
+                return _surface_green_scipy_core(H, h01, S, s01, ee)
         else:
-            return _surface_green_numpy_core(H, h01, S, s01, ee)
+            return _surface_green_scipy_core(H, h01, S, s01, ee)
                 
 
 
