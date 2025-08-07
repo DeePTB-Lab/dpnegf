@@ -22,8 +22,8 @@ def run(
         init_model: str,
         structure: str,
         output: str,
-        log_level: int,
         log_path: Optional[str],
+        log_level: int = 20,
         **kwargs
         ):
 
