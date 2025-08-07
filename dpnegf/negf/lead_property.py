@@ -9,8 +9,10 @@ import numpy as np
 from dpnegf.negf.bloch import Bloch
 import torch.profiler
 import ase
-from dpnegf.utils.tools import self_energy_worker
 from joblib import Parallel, delayed
+from multiprocessing import Process, Queue
+import h5py
+
 
 log = logging.getLogger(__name__)
 
@@ -68,9 +70,9 @@ class LeadProperty(object):
         calculate the Gamma function from the self energy.
 
     '''
-    def __init__(self, tab, hamiltonian, structure, results_path, voltage, \
-                 structure_leads_fold:ase.Atoms=None,bloch_sorted_indice:torch.Tensor=None, useBloch: bool=False, \
-                    bloch_factor: List[int]=[1,1,1],bloch_R_list:List=None,\
+    def __init__(self, tab, hamiltonian, structure, results_path, voltage,
+                 structure_leads_fold:ase.Atoms=None,bloch_sorted_indice:torch.Tensor=None, useBloch: bool=False,
+                    bloch_factor: List[int]=[1,1,1],bloch_R_list:List=None,
                     e_T=300, efermi:float=0.0, E_ref:float=None) -> None:
         self.hamiltonian = hamiltonian
         self.structure = structure
@@ -100,8 +102,13 @@ class LeadProperty(object):
             assert self.bloch_factor is not None
             assert self.structure_leads_fold is not None
 
-    def self_energy(self, kpoint, energy, eta_lead: float=1e-5, method: str="Lopez-Sancho", \
-                    save: bool=False, save_path: str=None, se_info_display: bool=False,
+    def self_energy(self, kpoint, energy, 
+                    eta_lead: float=1e-5,
+                    method: str="Lopez-Sancho",
+                    save: bool=False, 
+                    save_path: str=None, 
+                    save_format: str="h5",
+                    se_info_display: bool=False,
                     HS_inmem: bool=True):
         '''calculate and loads the self energy and surface green function at the given kpoint and energy.
         
@@ -133,25 +140,62 @@ class LeadProperty(object):
             parent_dir = os.path.join(self.results_path, "self_energy")
             if not os.path.exists(parent_dir):
                 os.makedirs(parent_dir)
-            save_path = os.path.join(parent_dir, f"se_{self.tab}_k{kpoint[0]}_{kpoint[1]}_{kpoint[2]}_E{energy}.pth")
+            if save_format == "pth":
+                save_path = os.path.join(parent_dir, 
+                                         f"se_{self.tab}_k{kpoint[0]}_{kpoint[1]}_{kpoint[2]}_E{energy}.pth")
+            elif save_format == "h5":
+                if self.tab == "lead_L":
+                    save_path = os.path.join(parent_dir, "self_energy_leadL.h5")
+                elif self.tab == "lead_R":
+                    save_path = os.path.join(parent_dir, "self_energy_leadR.h5")
+                else:
+                    raise ValueError(f"Unsupported tab {self.tab} for saving self energy.")
+            else:
+                raise ValueError(f"Unsupported save format {save_format}. Only 'pth' and 'h5' are supported.")
 
-
-        # If the .pth file in save_path exists, then directly load it    
+        # If the file in save_path exists, then directly load it    
         if os.path.exists(save_path):
-            if se_info_display: log.info(f"Loading self energy from {save_path}")     
-            if not save_path.endswith(".pth"):
+            if se_info_display: 
+                log.info(f"Loading self energy from {save_path}")   
+
+            if os.path.isdir(save_path):
+                if save_format == "pth":
+                    save_path = os.path.join(save_path, f"se_{self.tab}_k{kpoint[0]}_{kpoint[1]}_{kpoint[2]}_E{energy}.pth")
+                elif save_format == "h5":
+                    save_path = os.path.join(save_path, f"self_energy_{self.tab}.h5")
+                else:
+                    raise ValueError(f"Unsupported save format {save_format}. Only 'pth' and 'h5' are supported.")
+                
+
+            assert os.path.exists(save_path), f"Cannot find the self energy file {save_path}"
+            if save_path.endswith(".pth"):
                 # if the save_path is a directory, then the self energy file is stored in the directory
-                save_path = os.path.join(save_path, \
-                                        f"se_{self.tab}_k{kpoint[0]}_{kpoint[1]}_{kpoint[2]}_E{energy}.pth")
-                assert os.path.exists(save_path), f"Cannot find the self energy file {save_path}"
-            self.se = torch.load(save_path,weights_only=False)
+                self.se = torch.load(save_path, weights_only=False)
+            elif save_path.endswith(".h5"):
+                try:
+                    self.se = read_from_hdf5(save_path, kpoint, energy)
+                    self.se = torch.from_numpy(self.se)
+                except KeyError as e:
+                    log.error(f"Cannot find the self energy for kpoint {kpoint} and energy {energy} in {save_path}.")
+                    raise e
+
             return
+            
         else:
             if se_info_display:
                 log.info("-"*50)
                 log.info(f"Not find stored {self.tab} self energy. Calculating it at kpoint {kpoint} and energy {energy}.")
                 log.info("-"*50)
+        
+        self.self_energy_cal(kpoint, energy, eta_lead=eta_lead, method=method,HS_inmem=HS_inmem)
 
+    def self_energy_cal(self, 
+                        kpoint, 
+                        energy, 
+                        eta_lead: float=1e-5,
+                        method: str="Lopez-Sancho",
+                        HS_inmem: bool=True):
+        
         subblocks = self.hamiltonian.get_hs_device(kpoint, only_subblocks=True)
         # calculate self energy
         if not self.useBloch:
@@ -232,15 +276,7 @@ class LeadProperty(object):
         if not HS_inmem:
             del self.HLk, self.HLLk, self.HDLk, self.SLk, self.SLLk, self.SDLk
 
-
-        if save:
-            assert save_path is not None, "Please specify the path to save the self energy."
-            if se_info_display: log.info(f"Saving self energy to {save_path}")
-            torch.save(self.se, save_path)
-            # if self.useBloch:
-            #     torch.save(self.se, os.path.join(self.results_path, f"se_bloch_k{kpoint[0]}_{kpoint[1]}_{kpoint[2]}_{energy}.pth"))
-            # else:
-            #     torch.save(self.se, os.path.join(self.results_path, f"se_nobloch_k{kpoint[0]}_{kpoint[1]}_{kpoint[2]}_{energy}.pth"))
+        return self.se
 
     @staticmethod
     def HDL_reduced(HDL: torch.Tensor, SDL: torch.Tensor, subblocks: np.ndarray) -> torch.Tensor:
@@ -320,24 +356,88 @@ class LeadProperty(object):
     
 
 
-def compute_all_self_energy(eta, lead_L, lead_R, kpoints_grid, energy_grid, n_jobs=-1):
-    """
-    Compute the self-energy for all combinations of k-points and energy values in parallel using joblib.
-    Parameters:
-        eta (float): The broadening parameter for calculating lead surface green function.
-        lead_L (LeadProperty): The left lead object.
-        lead_R (LeadProperty): The right lead object.
-        kpoints_grid (Iterable): An iterable of k-point values to compute self-energy for.
-        energy_grid (Iterable): An iterable of energy values to compute self-energy for.
-        n_jobs (int, optional): The number of parallel jobs to run. Defaults to -1 (use all available cores).
-    Notes:
-        This method uses joblib's Parallel to distribute the computation of self-energy across multiple processes.
-        The worker function `self_energy_worker` must be serializable and defined at the top level.
-    """
-    # joblib's Parallel and delayed are used to parallelize the self-energy computation
-    # joblib requires worker function to be top-level or serializable
-    Parallel(n_jobs=n_jobs, backend="loky")(
-        delayed(self_energy_worker)(k, e, eta, lead_L, lead_R)
-        for k in kpoints_grid
-        for e in energy_grid
-    )
+# def compute_all_self_energy(eta, lead_L, lead_R, kpoints_grid, energy_grid, n_jobs=-1):
+#     """
+#     Compute the self-energy for all combinations of k-points and energy values in parallel using joblib.
+#     Parameters:
+#         eta (float): The broadening parameter for calculating lead surface green function.
+#         lead_L (LeadProperty): The left lead object.
+#         lead_R (LeadProperty): The right lead object.
+#         kpoints_grid (Iterable): An iterable of k-point values to compute self-energy for.
+#         energy_grid (Iterable): An iterable of energy values to compute self-energy for.
+#         n_jobs (int, optional): The number of parallel jobs to run. Defaults to -1 (use all available cores).
+#     Notes:
+#         This method uses joblib's Parallel to distribute the computation of self-energy across multiple processes.
+#         The worker function `self_energy_worker` must be serializable and defined at the top level.
+#     """
+#     # joblib's Parallel and delayed are used to parallelize the self-energy computation
+#     # joblib requires worker function to be top-level or serializable
+#     Parallel(n_jobs=n_jobs, backend="loky")(
+#         delayed(self_energy_worker)(k, e, eta, lead_L, lead_R)
+#         for k in kpoints_grid
+#         for e in energy_grid
+#     )
+
+
+def compute_all_self_energy(eta, lead_L, lead_R, kpoints_grid, energy_grid, n_jobs=-1, batch_size=200):
+
+    save_path_L = os.path.join(lead_L.results_path, "self_energy", "self_energy_leadL.h5")
+    save_path_R = os.path.join(lead_R.results_path, "self_energy", "self_energy_leadR.h5")
+    
+    total_tasks = [(k, e) for k in kpoints_grid for e in energy_grid]
+    print("Total tasks to compute:", len(total_tasks))
+    if len(total_tasks) <= batch_size:
+        results = Parallel(n_jobs=n_jobs, backend="loky")(
+            delayed(self_energy_worker)(k, e, eta, lead_L, lead_R)
+            for k, e in total_tasks
+        )
+        results_L = [(k, e, sigma_L) for (k, e, sigma_L, _) in results]
+        results_R = [(k, e, sigma_R) for (k, e, _, sigma_R) in results]
+
+        write_to_hdf5(save_path_L, results_L)
+        write_to_hdf5(save_path_R, results_R)
+    
+    else:
+        for i in range(0, len(total_tasks), batch_size):
+            batch = total_tasks[i:i+batch_size]
+            print("batch idx:", i , "Batch:", batch)
+            results = Parallel(n_jobs=n_jobs, backend="loky")(
+                delayed(self_energy_worker)(k, e, eta, lead_L, lead_R)
+                for k, e in batch
+            )
+
+            results_L = [(k, e, sigma_L) for (k, e, sigma_L, _) in results]
+            results_R = [(k, e, sigma_R) for (k, e, _, sigma_R) in results]
+
+            write_to_hdf5(save_path_L, results_L)
+            write_to_hdf5(save_path_R, results_R)
+
+
+
+def self_energy_worker(k, e, eta, lead_L, lead_R):
+    seL = lead_L.self_energy_cal(kpoint=k, energy=e, eta_lead=eta)
+    seR = lead_R.self_energy_cal(kpoint=k, energy=e, eta_lead=eta)
+    return k, e, seL, seR
+
+def write_to_hdf5(h5_path, results):
+    with h5py.File(h5_path, "a") as f:
+        for k, e, se in results:
+            group_name = f"k_{k[0]}_{k[1]}_{k[2]}"
+            dset_name = f"E_{e:.6f}"
+            grp = f.require_group(group_name)
+            if dset_name in grp:
+                log.warning(f"Dataset {dset_name} already exists in group {group_name}. Passing it.")
+                continue 
+            grp.create_dataset(dset_name, data=se.cpu().numpy(), compression="gzip")
+            print(f"Written self-energy for kpoint {k} and energy {e} to {h5_path}.")
+        f.flush()
+
+
+def read_from_hdf5(h5_path, kpoint, energy):
+    with h5py.File(h5_path, "r") as f:
+        group_name = f"k_{kpoint[0]}_{kpoint[1]}_{kpoint[2]}"
+        dset_name = f"E_{energy:.6f}"
+        if group_name in f and dset_name in f[group_name]:
+            return f[group_name][dset_name][:]
+        else:
+            raise KeyError(f"Data for kpoint {kpoint} and energy {energy} not found.")
