@@ -9,6 +9,8 @@ import numpy as np
 from dpnegf.negf.bloch import Bloch
 import torch.profiler
 import ase
+from dpnegf.utils.tools import self_energy_worker
+from joblib import Parallel, delayed
 
 log = logging.getLogger(__name__)
 
@@ -128,11 +130,11 @@ class LeadProperty(object):
             energy = torch.tensor(energy) # Energy relative to Ef
         
         if save_path is None:
-            save_path = os.path.join(self.results_path,"self_energy",\
-                                        f"se_{self.tab}_k{kpoint[0]}_{kpoint[1]}_{kpoint[2]}_E{energy}.pth")
-            parent_dir = os.path.dirname(save_path)
-            if not os.path.exists(parent_dir): 
+            parent_dir = os.path.join(self.results_path, "self_energy")
+            if not os.path.exists(parent_dir):
                 os.makedirs(parent_dir)
+            save_path = os.path.join(parent_dir, f"se_{self.tab}_k{kpoint[0]}_{kpoint[1]}_{kpoint[2]}_E{energy}.pth")
+
 
         # If the .pth file in save_path exists, then directly load it    
         if os.path.exists(save_path):
@@ -315,3 +317,27 @@ class LeadProperty(object):
     @property
     def gamma(self):
         return self.sigmaLR2Gamma(self.se)
+    
+
+
+def compute_all_self_energy(eta, lead_L, lead_R, kpoints_grid, energy_grid, n_jobs=-1):
+    """
+    Compute the self-energy for all combinations of k-points and energy values in parallel using joblib.
+    Parameters:
+        eta (float): The broadening parameter for calculating lead surface green function.
+        lead_L (LeadProperty): The left lead object.
+        lead_R (LeadProperty): The right lead object.
+        kpoints_grid (Iterable): An iterable of k-point values to compute self-energy for.
+        energy_grid (Iterable): An iterable of energy values to compute self-energy for.
+        n_jobs (int, optional): The number of parallel jobs to run. Defaults to -1 (use all available cores).
+    Notes:
+        This method uses joblib's Parallel to distribute the computation of self-energy across multiple processes.
+        The worker function `self_energy_worker` must be serializable and defined at the top level.
+    """
+    # joblib's Parallel and delayed are used to parallelize the self-energy computation
+    # joblib requires worker function to be top-level or serializable
+    Parallel(n_jobs=n_jobs, backend="loky")(
+        delayed(self_energy_worker)(k, e, eta, lead_L, lead_R)
+        for k in kpoints_grid
+        for e in energy_grid
+    )
