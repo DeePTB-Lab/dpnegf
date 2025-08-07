@@ -385,7 +385,6 @@ def compute_all_self_energy(eta, lead_L, lead_R, kpoints_grid, energy_grid, n_jo
     save_path_R = os.path.join(lead_R.results_path, "self_energy", "self_energy_leadR.h5")
     
     total_tasks = [(k, e) for k in kpoints_grid for e in energy_grid]
-    print("Total tasks to compute:", len(total_tasks))
     if len(total_tasks) <= batch_size:
         results = Parallel(n_jobs=n_jobs, backend="loky")(
             delayed(self_energy_worker)(k, e, eta, lead_L, lead_R)
@@ -400,7 +399,6 @@ def compute_all_self_energy(eta, lead_L, lead_R, kpoints_grid, energy_grid, n_jo
     else:
         for i in range(0, len(total_tasks), batch_size):
             batch = total_tasks[i:i+batch_size]
-            print("batch idx:", i , "Batch:", batch)
             results = Parallel(n_jobs=n_jobs, backend="loky")(
                 delayed(self_energy_worker)(k, e, eta, lead_L, lead_R)
                 for k, e in batch
@@ -429,7 +427,6 @@ def write_to_hdf5(h5_path, results):
                 log.warning(f"Dataset {dset_name} already exists in group {group_name}. Passing it.")
                 continue 
             grp.create_dataset(dset_name, data=se.cpu().numpy(), compression="gzip")
-            print(f"Written self-energy for kpoint {k} and energy {e} to {h5_path}.")
         f.flush()
 
 
