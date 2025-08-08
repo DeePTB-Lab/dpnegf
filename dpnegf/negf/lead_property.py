@@ -422,7 +422,7 @@ def write_to_hdf5(h5_path, k, e, se):
         dset_name = f"k_{k[0]}_{k[1]}_{k[2]}"
         grp = f.require_group(group_name)
         if dset_name in grp:
-            log.warning(f"Dataset {dset_name} already exists in group {group_name}. Passing it.")
+            log.warning(f"Dataset {dset_name} already exists in group {group_name}. Skipping it.")
         grp.create_dataset(dset_name, data=se.cpu().numpy(), compression="gzip")
         f.flush()
 
