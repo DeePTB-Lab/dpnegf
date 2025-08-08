@@ -354,26 +354,6 @@ class LeadProperty(object):
     
 
 
-# def compute_all_self_energy(eta, lead_L, lead_R, kpoints_grid, energy_grid, n_jobs=-1):
-#     """
-#     Compute the self-energy for all combinations of k-points and energy values in parallel using joblib.
-#     Parameters:
-#         eta (float): The broadening parameter for calculating lead surface green function.
-#         lead_L (LeadProperty): The left lead object.
-#         lead_R (LeadProperty): The right lead object.
-#         kpoints_grid (Iterable): An iterable of k-point values to compute self-energy for.
-#         energy_grid (Iterable): An iterable of energy values to compute self-energy for.
-#         n_jobs (int, optional): The number of parallel jobs to run. Defaults to -1 (use all available cores).
-#     Notes:
-#         This method uses joblib's Parallel to distribute the computation of self-energy across multiple processes.
-#         The worker function `self_energy_worker` must be serializable and defined at the top level.
-#     """
-#     # joblib's Parallel and delayed are used to parallelize the self-energy computation
-#     # joblib requires worker function to be top-level or serializable
-#     Parallel(n_jobs=n_jobs, backend="loky")(
-#         delayed(self_energy_worker)(k, e, eta, lead_L, lead_R)
-#         for k in kpoints_grid
-#         for e in energy_grid
 #     )
 
 
