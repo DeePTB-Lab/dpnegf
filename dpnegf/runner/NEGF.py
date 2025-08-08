@@ -523,6 +523,7 @@ class NEGF(object):
         if hasattr(self, "uni_grid"): self.out["uni_grid"] = self.uni_grid
 
         # self energy calculation
+        log.info(msg="------Self-energy calculation------")
         selfen_parent_dir = os.path.join(self.results_path,"self_energy")
         if not os.path.exists(selfen_parent_dir): 
             os.makedirs(selfen_parent_dir)
@@ -539,7 +540,9 @@ class NEGF(object):
             # In non-scf case, the self-energy of the leads is calculated for each energy point in the energy grid.
             compute_all_self_energy(self.eta_lead, self.deviceprop.lead_L, self.deviceprop.lead_R,
                                     self.kpoints, self.uni_grid)
-    
+        log.info(msg="-----------------------------------\n")
+
+
         for ik, k in enumerate(self.kpoints):
 
             self.out['k'].append(k)

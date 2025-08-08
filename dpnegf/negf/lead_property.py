@@ -421,8 +421,8 @@ def self_energy_worker(k, e, eta, lead_L, lead_R):
 
 def write_to_hdf5(h5_path, k, e, se):
     with h5py.File(h5_path, "a") as f:
-        group_name = f"k_{k[0]}_{k[1]}_{k[2]}"
-        dset_name = f"E_{e:.8f}"
+        group_name = f"E_{e:.8f}"
+        dset_name = f"k_{k[0]}_{k[1]}_{k[2]}"
         grp = f.require_group(group_name)
         if dset_name in grp:
             log.warning(f"Dataset {dset_name} already exists in group {group_name}. Passing it.")
@@ -431,14 +431,14 @@ def write_to_hdf5(h5_path, k, e, se):
 
 
 
-def read_from_hdf5(h5_path, kpoint, energy):
+def read_from_hdf5(h5_path, k, e):
     with h5py.File(h5_path, "r") as f:
-        group_name = f"k_{kpoint[0]}_{kpoint[1]}_{kpoint[2]}"
-        dset_name = f"E_{energy:.8f}"
+        group_name = f"E_{e:.8f}"
+        dset_name = f"k_{k[0]}_{k[1]}_{k[2]}"
         if group_name in f and dset_name in f[group_name]:
             return f[group_name][dset_name][:]
         else:
-            raise KeyError(f"Data for kpoint {kpoint} and energy {energy} not found.")
+            raise KeyError(f"Data for kpoint {k} and energy {e} not found.")
 
 
 
