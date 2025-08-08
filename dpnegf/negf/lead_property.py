@@ -10,10 +10,10 @@ from dpnegf.negf.bloch import Bloch
 import torch.profiler
 import ase
 from joblib import Parallel, delayed
-from multiprocessing import Process, Queue
+from multiprocessing import Lock
 import h5py
 
-
+write_lock = Lock()
 log = logging.getLogger(__name__)
 
 # """The data output of the intermidiate result should be like this:
@@ -383,57 +383,69 @@ def compute_all_self_energy(eta, lead_L, lead_R, kpoints_grid, energy_grid, n_jo
 
     save_path_L = os.path.join(lead_L.results_path, "self_energy", "self_energy_leadL.h5")
     save_path_R = os.path.join(lead_R.results_path, "self_energy", "self_energy_leadR.h5")
-    
+
+    # 在主进程中执行（不在 worker 中做）
+    if not os.path.exists(save_path_L):
+        with h5py.File(save_path_L, 'w') as f:
+            pass  # 创建空文件
+    else:
+        log.warning(f"File {save_path_L} already exists. It will be overwritten.")
+        os.remove(save_path_L)
+
+    if not os.path.exists(save_path_R):
+        with h5py.File(save_path_R, 'w') as f:
+            pass # 创建空文件
+    else:
+        log.warning(f"File {save_path_R} already exists. It will be overwritten.")
+        os.remove(save_path_R)
+
+
     total_tasks = [(k, e) for k in kpoints_grid for e in energy_grid]
     if len(total_tasks) <= batch_size:
-        results = Parallel(n_jobs=n_jobs, backend="loky")(
-            delayed(self_energy_worker)(k, e, eta, lead_L, lead_R)
+        Parallel(n_jobs=n_jobs, backend="loky")(
+            delayed(self_energy_worker)(k, e, eta, lead_L, lead_R, save_path_L, save_path_R)
             for k, e in total_tasks
         )
-        results_L = [(k, e, sigma_L) for (k, e, sigma_L, _) in results]
-        results_R = [(k, e, sigma_R) for (k, e, _, sigma_R) in results]
-
-        write_to_hdf5(save_path_L, results_L)
-        write_to_hdf5(save_path_R, results_R)
     
     else:
         for i in range(0, len(total_tasks), batch_size):
             batch = total_tasks[i:i+batch_size]
-            results = Parallel(n_jobs=n_jobs, backend="loky")(
-                delayed(self_energy_worker)(k, e, eta, lead_L, lead_R)
+            Parallel(n_jobs=n_jobs, backend="loky")(
+                delayed(self_energy_worker)(k, e, eta, lead_L, lead_R, save_path_L, save_path_R)
                 for k, e in batch
             )
 
-            results_L = [(k, e, sigma_L) for (k, e, sigma_L, _) in results]
-            results_R = [(k, e, sigma_R) for (k, e, _, sigma_R) in results]
-
-            write_to_hdf5(save_path_L, results_L)
-            write_to_hdf5(save_path_R, results_R)
 
 
 
-def self_energy_worker(k, e, eta, lead_L, lead_R):
+def self_energy_worker(k, e, eta, lead_L, lead_R, save_path_L, save_path_R):
+
     seL = lead_L.self_energy_cal(kpoint=k, energy=e, eta_lead=eta)
     seR = lead_R.self_energy_cal(kpoint=k, energy=e, eta_lead=eta)
-    return k, e, seL, seR
 
-def write_to_hdf5(h5_path, results):
+    with write_lock:
+
+        write_to_hdf5(save_path_L, k, e, seL)
+        write_to_hdf5(save_path_R, k, e, seR)
+
+
+
+def write_to_hdf5(h5_path, k, e, se):
     with h5py.File(h5_path, "a") as f:
-        for k, e, se in results:
-            group_name = f"k_{k[0]}_{k[1]}_{k[2]}"
-            dset_name = f"E_{e:.6f}"
-            grp = f.require_group(group_name)
-            if dset_name in grp:
-                log.warning(f"Dataset {dset_name} already exists in group {group_name}. Passing it.")
-                continue 
-            grp.create_dataset(dset_name, data=se.cpu().numpy(), compression="gzip")
+        group_name = f"k_{k[0]}_{k[1]}_{k[2]}"
+        dset_name = f"E_{e:.8f}"
+        grp = f.require_group(group_name)
+        if dset_name in grp:
+            log.warning(f"Dataset {dset_name} already exists in group {group_name}. Passing it.")
+        grp.create_dataset(dset_name, data=se.cpu().numpy(), compression="gzip")
         f.flush()
+
 
 
 def read_from_hdf5(h5_path, kpoint, energy):
     with h5py.File(h5_path, "r") as f:
         group_name = f"k_{kpoint[0]}_{kpoint[1]}_{kpoint[2]}"
-        dset_name = f"E_{energy:.6f}"
+        dset_name = f"E_{energy:.8f}"
         if group_name in f and dset_name in f[group_name]:
             return f[group_name][dset_name][:]
         else:
