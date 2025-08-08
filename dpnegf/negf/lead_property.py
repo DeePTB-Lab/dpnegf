@@ -2,19 +2,16 @@ import torch
 from typing import List
 from dpnegf.negf.surface_green import selfEnergy
 import logging
-from dpnegf.negf.negf_utils import update_kmap, update_temp_file
 import os
 from dpnegf.utils.constants import Boltzmann, eV2J
 import numpy as np
 from dpnegf.negf.bloch import Bloch
-import torch.profiler
 import ase
 from joblib import Parallel, delayed
-from multiprocessing import Lock
 import h5py
 import glob
 
-write_lock = Lock()
+
 log = logging.getLogger(__name__)
 
 # """The data output of the intermidiate result should be like this:
