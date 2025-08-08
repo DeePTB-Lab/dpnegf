@@ -12,6 +12,7 @@ import ase
 from joblib import Parallel, delayed
 from multiprocessing import Lock
 import h5py
+import glob
 
 write_lock = Lock()
 log = logging.getLogger(__name__)
@@ -381,29 +382,10 @@ class LeadProperty(object):
 
 def compute_all_self_energy(eta, lead_L, lead_R, kpoints_grid, energy_grid, n_jobs=-1, batch_size=200):
 
-    save_path_L = os.path.join(lead_L.results_path, "self_energy", "self_energy_leadL.h5")
-    save_path_R = os.path.join(lead_R.results_path, "self_energy", "self_energy_leadR.h5")
-
-    # 在主进程中执行（不在 worker 中做）
-    if not os.path.exists(save_path_L):
-        with h5py.File(save_path_L, 'w') as f:
-            pass  # 创建空文件
-    else:
-        log.warning(f"File {save_path_L} already exists. It will be overwritten.")
-        os.remove(save_path_L)
-
-    if not os.path.exists(save_path_R):
-        with h5py.File(save_path_R, 'w') as f:
-            pass # 创建空文件
-    else:
-        log.warning(f"File {save_path_R} already exists. It will be overwritten.")
-        os.remove(save_path_R)
-
-
     total_tasks = [(k, e) for k in kpoints_grid for e in energy_grid]
     if len(total_tasks) <= batch_size:
         Parallel(n_jobs=n_jobs, backend="loky")(
-            delayed(self_energy_worker)(k, e, eta, lead_L, lead_R, save_path_L, save_path_R)
+            delayed(self_energy_worker)(k, e, eta, lead_L, lead_R)
             for k, e in total_tasks
         )
     
@@ -411,23 +393,30 @@ def compute_all_self_energy(eta, lead_L, lead_R, kpoints_grid, energy_grid, n_jo
         for i in range(0, len(total_tasks), batch_size):
             batch = total_tasks[i:i+batch_size]
             Parallel(n_jobs=n_jobs, backend="loky")(
-                delayed(self_energy_worker)(k, e, eta, lead_L, lead_R, save_path_L, save_path_R)
+                delayed(self_energy_worker)(k, e, eta, lead_L, lead_R)
                 for k, e in batch
             )
 
+    save_path_L = os.path.join(lead_L.results_path, "self_energy", "self_energy_leadL.h5")
+    save_path_R = os.path.join(lead_R.results_path, "self_energy", "self_energy_leadR.h5")
+
+    merge_hdf5_files(os.path.join(lead_L.results_path, "self_energy"), save_path_L, pattern="tmp_leadL_*.h5")
+    merge_hdf5_files(os.path.join(lead_R.results_path, "self_energy"), save_path_R, pattern="tmp_leadR_*.h5")
 
 
 
-def self_energy_worker(k, e, eta, lead_L, lead_R, save_path_L, save_path_R):
+
+
+def self_energy_worker(k, e, eta, lead_L, lead_R):
+
+    save_tmp_L = os.path.join(lead_L.results_path, "self_energy", f"tmp_leadL_k{k[0]}_{k[1]}_{k[2]}_E{e:.8f}.h5")
+    save_tmp_R = os.path.join(lead_R.results_path, "self_energy", f"tmp_leadR_k{k[0]}_{k[1]}_{k[2]}_E{e:.8f}.h5")
 
     seL = lead_L.self_energy_cal(kpoint=k, energy=e, eta_lead=eta)
     seR = lead_R.self_energy_cal(kpoint=k, energy=e, eta_lead=eta)
 
-    with write_lock:
-
-        write_to_hdf5(save_path_L, k, e, seL)
-        write_to_hdf5(save_path_R, k, e, seR)
-
+    write_to_hdf5(save_tmp_L, k, e, seL)
+    write_to_hdf5(save_tmp_R, k, e, seR)
 
 
 def write_to_hdf5(h5_path, k, e, se):
@@ -450,3 +439,36 @@ def read_from_hdf5(h5_path, kpoint, energy):
             return f[group_name][dset_name][:]
         else:
             raise KeyError(f"Data for kpoint {kpoint} and energy {energy} not found.")
+
+
+
+def merge_hdf5_files(tmp_dir, output_path, pattern, remove=True):
+
+    tmp_paths = sorted(glob.glob(os.path.join(tmp_dir, pattern)))
+    if not tmp_paths:
+        raise ValueError(f"No files matched pattern '{pattern}' in '{tmp_dir}'")
+
+    log.info(f"Merging {len(tmp_paths)} tmp self energy files into {output_path}")
+
+    with h5py.File(output_path, 'a') as fout:
+        for path in tmp_paths:
+            with h5py.File(path, 'r') as fin:
+                for group_name in fin:
+                    fin_group = fin[group_name]
+                    fout_group = fout.require_group(group_name)
+
+                    for dset_name in fin_group:
+                        if dset_name in fout_group:
+                            log.warning(f"Dataset '{dset_name}' already exists in group '{group_name}'. Skipping.")
+                            continue
+                        fin_group.copy(dset_name, fout_group)
+
+    log.info("Merge complete.")
+
+    if remove:
+        for path in tmp_paths:
+            try:
+                os.remove(path)
+                # log.info(f"Deleted tmp file: {path}")
+            except Exception as e:
+                log.warning(f"Failed to delete {path}: {e}")

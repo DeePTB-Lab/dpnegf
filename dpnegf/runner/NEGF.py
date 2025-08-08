@@ -409,7 +409,7 @@ class NEGF(object):
             # profiler.stop()
             # output_path = os.path.join(self.results_path, "profile_report.html")
             # with open(output_path, 'w') as report_file:
-            #     report_file.write(profiler.output_html())
+                # report_file.write(profiler.output_html())
 
     def poisson_negf_scf(self,interface_poisson,atom_gridpoint_index,err=1e-6,max_iter=1000,
                          mix_method:str='linear', mix_rate:float=0.3, tolerance:float=1e-7,Gaussian_sigma:float=3.0):
