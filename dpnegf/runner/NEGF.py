@@ -6,7 +6,7 @@ from dpnegf.negf.negf_hamiltonian_init import NEGFHamiltonianInit
 from dpnegf.utils.elec_struc_cal import ElecStruCal
 from dpnegf.negf.density import Ozaki,Fiori
 from dpnegf.negf.device_property import DeviceProperty
-from dpnegf.negf.lead_property import LeadProperty
+from dpnegf.negf.lead_property import LeadProperty, compute_all_self_energy
 from dpnegf.negf.negf_utils import is_fully_covered
 import ase
 from dpnegf.utils.constants import Boltzmann, eV2J
@@ -20,8 +20,7 @@ from typing import Optional, Union
 from dpnegf.utils.tools import apply_gaussian_filter_3d
 from pyinstrument import Profiler
 import os
-from dpnegf.utils.tools import self_energy_worker
-from joblib import Parallel, delayed
+
 
 log = logging.getLogger(__name__)
 
@@ -517,38 +516,14 @@ class NEGF(object):
         #         report_file.write(profiler.output_html())
     
 
-    def compute_all_self_energy(self, kpoints_grid, energy_grid, n_jobs=-1):
-        """
-        Compute the self-energy for all combinations of k-points and energy values in parallel using joblib.
-        Parameters:
-            kpoints_grid (Iterable): An iterable of k-point values to compute self-energy for.
-            energy_grid (Iterable): An iterable of energy values to compute self-energy for.
-            n_jobs (int, optional): The number of parallel jobs to run. Defaults to -1 (use all available cores).
-        Notes:
-            This method uses joblib's Parallel to distribute the computation of self-energy across multiple processes.
-            The worker function `self_energy_worker` must be serializable and defined at the top level.
-        """
-        eta = self.eta_lead
-        lead_L = self.deviceprop.lead_L
-        lead_R = self.deviceprop.lead_R
-        # joblib's Parallel and delayed are used to parallelize the self-energy computation
-        # joblib requires worker function to be top-level or serializable
-        Parallel(n_jobs=n_jobs, backend="loky")(
-            delayed(self_energy_worker)(k, e, eta, lead_L, lead_R)
-            for k in kpoints_grid
-            for e in energy_grid
-        )
-
     def negf_compute(self,scf_require=False,Vbias=None):
         
-    
         assert scf_require is not None, "scf_require should be set to True or False"
-
         self.out['k']=[];self.out['wk']=[]
         if hasattr(self, "uni_grid"): self.out["uni_grid"] = self.uni_grid
 
-
-
+        # self energy calculation
+        log.info(msg="------Self-energy calculation------")
         selfen_parent_dir = os.path.join(self.results_path,"self_energy")
         if not os.path.exists(selfen_parent_dir): 
             os.makedirs(selfen_parent_dir)
@@ -559,11 +534,15 @@ class NEGF(object):
             #     for e in self.density.integrate_range:
             #         self.deviceprop.lead_L.self_energy(kpoint=k, energy=e, eta_lead=self.eta_lead, save=True)
             #         self.deviceprop.lead_R.self_energy(kpoint=k, energy=e, eta_lead=self.eta_lead, save=True)
-            self.compute_all_self_energy(self.kpoints, self.density.integrate_range)
+            compute_all_self_energy(self.eta_lead, self.deviceprop.lead_L, self.deviceprop.lead_R,
+                                    self.kpoints, self.density.integrate_range)
         elif not self.scf:
             # In non-scf case, the self-energy of the leads is calculated for each energy point in the energy grid.
-            self.compute_all_self_energy(self.kpoints, self.uni_grid)
-    
+            compute_all_self_energy(self.eta_lead, self.deviceprop.lead_L, self.deviceprop.lead_R,
+                                    self.kpoints, self.uni_grid)
+        log.info(msg="-----------------------------------\n")
+
+
         for ik, k in enumerate(self.kpoints):
 
             self.out['k'].append(k)

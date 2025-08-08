@@ -2,13 +2,15 @@ import torch
 from typing import List
 from dpnegf.negf.surface_green import selfEnergy
 import logging
-from dpnegf.negf.negf_utils import update_kmap, update_temp_file
 import os
 from dpnegf.utils.constants import Boltzmann, eV2J
 import numpy as np
 from dpnegf.negf.bloch import Bloch
-import torch.profiler
 import ase
+from joblib import Parallel, delayed
+import h5py
+import glob
+
 
 log = logging.getLogger(__name__)
 
@@ -66,9 +68,9 @@ class LeadProperty(object):
         calculate the Gamma function from the self energy.
 
     '''
-    def __init__(self, tab, hamiltonian, structure, results_path, voltage, \
-                 structure_leads_fold:ase.Atoms=None,bloch_sorted_indice:torch.Tensor=None, useBloch: bool=False, \
-                    bloch_factor: List[int]=[1,1,1],bloch_R_list:List=None,\
+    def __init__(self, tab, hamiltonian, structure, results_path, voltage,
+                 structure_leads_fold:ase.Atoms=None,bloch_sorted_indice:torch.Tensor=None, useBloch: bool=False,
+                    bloch_factor: List[int]=[1,1,1],bloch_R_list:List=None,
                     e_T=300, efermi:float=0.0, E_ref:float=None) -> None:
         self.hamiltonian = hamiltonian
         self.structure = structure
@@ -98,8 +100,13 @@ class LeadProperty(object):
             assert self.bloch_factor is not None
             assert self.structure_leads_fold is not None
 
-    def self_energy(self, kpoint, energy, eta_lead: float=1e-5, method: str="Lopez-Sancho", \
-                    save: bool=False, save_path: str=None, se_info_display: bool=False,
+    def self_energy(self, kpoint, energy, 
+                    eta_lead: float=1e-5,
+                    method: str="Lopez-Sancho",
+                    save: bool=False, 
+                    save_path: str=None, 
+                    save_format: str="h5",
+                    se_info_display: bool=False,
                     HS_inmem: bool=True):
         '''calculate and loads the self energy and surface green function at the given kpoint and energy.
         
@@ -128,28 +135,65 @@ class LeadProperty(object):
             energy = torch.tensor(energy) # Energy relative to Ef
         
         if save_path is None:
-            save_path = os.path.join(self.results_path,"self_energy",\
-                                        f"se_{self.tab}_k{kpoint[0]}_{kpoint[1]}_{kpoint[2]}_E{energy}.pth")
-            parent_dir = os.path.dirname(save_path)
-            if not os.path.exists(parent_dir): 
+            parent_dir = os.path.join(self.results_path, "self_energy")
+            if not os.path.exists(parent_dir):
                 os.makedirs(parent_dir)
+            if save_format == "pth":
+                save_path = os.path.join(parent_dir, 
+                                         f"se_{self.tab}_k{kpoint[0]}_{kpoint[1]}_{kpoint[2]}_E{energy}.pth")
+            elif save_format == "h5":
+                if self.tab == "lead_L":
+                    save_path = os.path.join(parent_dir, "self_energy_leadL.h5")
+                elif self.tab == "lead_R":
+                    save_path = os.path.join(parent_dir, "self_energy_leadR.h5")
+                else:
+                    raise ValueError(f"Unsupported tab {self.tab} for saving self energy.")
+            else:
+                raise ValueError(f"Unsupported save format {save_format}. Only 'pth' and 'h5' are supported.")
 
-        # If the .pth file in save_path exists, then directly load it    
+        # If the file in save_path exists, then directly load it    
         if os.path.exists(save_path):
-            if se_info_display: log.info(f"Loading self energy from {save_path}")     
-            if not save_path.endswith(".pth"):
+            if se_info_display: 
+                log.info(f"Loading self energy from {save_path}")   
+
+            if os.path.isdir(save_path):
+                if save_format == "pth":
+                    save_path = os.path.join(save_path, f"se_{self.tab}_k{kpoint[0]}_{kpoint[1]}_{kpoint[2]}_E{energy}.pth")
+                elif save_format == "h5":
+                    save_path = os.path.join(save_path, f"self_energy_{self.tab}.h5")
+                else:
+                    raise ValueError(f"Unsupported save format {save_format}. Only 'pth' and 'h5' are supported.")
+                
+
+            assert os.path.exists(save_path), f"Cannot find the self energy file {save_path}"
+            if save_path.endswith(".pth"):
                 # if the save_path is a directory, then the self energy file is stored in the directory
-                save_path = os.path.join(save_path, \
-                                        f"se_{self.tab}_k{kpoint[0]}_{kpoint[1]}_{kpoint[2]}_E{energy}.pth")
-                assert os.path.exists(save_path), f"Cannot find the self energy file {save_path}"
-            self.se = torch.load(save_path,weights_only=False)
+                self.se = torch.load(save_path, weights_only=False)
+            elif save_path.endswith(".h5"):
+                try:
+                    self.se = read_from_hdf5(save_path, kpoint, energy)
+                    self.se = torch.from_numpy(self.se)
+                except KeyError as e:
+                    log.error(f"Cannot find the self energy for kpoint {kpoint} and energy {energy} in {save_path}.")
+                    raise e
+
             return
+            
         else:
             if se_info_display:
                 log.info("-"*50)
                 log.info(f"Not find stored {self.tab} self energy. Calculating it at kpoint {kpoint} and energy {energy}.")
                 log.info("-"*50)
+        
+        self.self_energy_cal(kpoint, energy, eta_lead=eta_lead, method=method,HS_inmem=HS_inmem)
 
+    def self_energy_cal(self, 
+                        kpoint, 
+                        energy, 
+                        eta_lead: float=1e-5,
+                        method: str="Lopez-Sancho",
+                        HS_inmem: bool=True):
+        
         subblocks = self.hamiltonian.get_hs_device(kpoint, only_subblocks=True)
         # calculate self energy
         if not self.useBloch:
@@ -230,15 +274,7 @@ class LeadProperty(object):
         if not HS_inmem:
             del self.HLk, self.HLLk, self.HDLk, self.SLk, self.SLLk, self.SDLk
 
-
-        if save:
-            assert save_path is not None, "Please specify the path to save the self energy."
-            if se_info_display: log.info(f"Saving self energy to {save_path}")
-            torch.save(self.se, save_path)
-            # if self.useBloch:
-            #     torch.save(self.se, os.path.join(self.results_path, f"se_bloch_k{kpoint[0]}_{kpoint[1]}_{kpoint[2]}_{energy}.pth"))
-            # else:
-            #     torch.save(self.se, os.path.join(self.results_path, f"se_nobloch_k{kpoint[0]}_{kpoint[1]}_{kpoint[2]}_{energy}.pth"))
+        return self.se
 
     @staticmethod
     def HDL_reduced(HDL: torch.Tensor, SDL: torch.Tensor, subblocks: np.ndarray) -> torch.Tensor:
@@ -315,3 +351,101 @@ class LeadProperty(object):
     @property
     def gamma(self):
         return self.sigmaLR2Gamma(self.se)
+    
+
+
+#     )
+
+
+def compute_all_self_energy(eta, lead_L, lead_R, kpoints_grid, energy_grid, n_jobs=-1, batch_size=200):
+
+    total_tasks = [(k, e) for k in kpoints_grid for e in energy_grid]
+    if len(total_tasks) <= batch_size:
+        Parallel(n_jobs=n_jobs, backend="loky")(
+            delayed(self_energy_worker)(k, e, eta, lead_L, lead_R)
+            for k, e in total_tasks
+        )
+    
+    else:
+        for i in range(0, len(total_tasks), batch_size):
+            batch = total_tasks[i:i+batch_size]
+            Parallel(n_jobs=n_jobs, backend="loky")(
+                delayed(self_energy_worker)(k, e, eta, lead_L, lead_R)
+                for k, e in batch
+            )
+
+    save_path_L = os.path.join(lead_L.results_path, "self_energy", "self_energy_leadL.h5")
+    save_path_R = os.path.join(lead_R.results_path, "self_energy", "self_energy_leadR.h5")
+
+    merge_hdf5_files(os.path.join(lead_L.results_path, "self_energy"), save_path_L, pattern="tmp_leadL_*.h5")
+    merge_hdf5_files(os.path.join(lead_R.results_path, "self_energy"), save_path_R, pattern="tmp_leadR_*.h5")
+
+
+
+
+
+def self_energy_worker(k, e, eta, lead_L, lead_R):
+
+    save_tmp_L = os.path.join(lead_L.results_path, "self_energy", f"tmp_leadL_k{k[0]}_{k[1]}_{k[2]}_E{e:.8f}.h5")
+    save_tmp_R = os.path.join(lead_R.results_path, "self_energy", f"tmp_leadR_k{k[0]}_{k[1]}_{k[2]}_E{e:.8f}.h5")
+
+    seL = lead_L.self_energy_cal(kpoint=k, energy=e, eta_lead=eta)
+    seR = lead_R.self_energy_cal(kpoint=k, energy=e, eta_lead=eta)
+
+    write_to_hdf5(save_tmp_L, k, e, seL)
+    write_to_hdf5(save_tmp_R, k, e, seR)
+
+
+def write_to_hdf5(h5_path, k, e, se):
+    with h5py.File(h5_path, "a") as f:
+        group_name = f"E_{e:.8f}"
+        dset_name = f"k_{k[0]}_{k[1]}_{k[2]}"
+        grp = f.require_group(group_name)
+        if dset_name in grp:
+            log.warning(f"Dataset {dset_name} already exists in group {group_name}. Skipping it.")
+        grp.create_dataset(dset_name, data=se.cpu().numpy(), compression="gzip")
+        f.flush()
+
+
+
+def read_from_hdf5(h5_path, k, e):
+    with h5py.File(h5_path, "r") as f:
+        group_name = f"E_{e:.8f}"
+        dset_name = f"k_{k[0]}_{k[1]}_{k[2]}"
+        if group_name in f and dset_name in f[group_name]:
+            return f[group_name][dset_name][:]
+        else:
+            raise KeyError(f"Data for kpoint {k} and energy {e} not found.")
+
+
+
+def merge_hdf5_files(tmp_dir, output_path, pattern, remove=True):
+
+    tmp_paths = sorted(glob.glob(os.path.join(tmp_dir, pattern)))
+    if not tmp_paths:
+        raise ValueError(f"No files matched pattern '{pattern}' in '{tmp_dir}'")
+
+    log.info(f"Merging {len(tmp_paths)} tmp self energy files into {output_path}")
+
+    with h5py.File(output_path, 'a') as fout:
+        for path in tmp_paths:
+            with h5py.File(path, 'r') as fin:
+                for group_name in fin:
+                    fin_group = fin[group_name]
+                    fout_group = fout.require_group(group_name)
+
+                    for dset_name in fin_group:
+                        if dset_name in fout_group:
+                            log.warning(f"Dataset '{dset_name}' already exists in group '{group_name}'. Skipping.")
+                            continue
+                        fin_group.copy(dset_name, fout_group)
+
+    log.info("Merge complete.")
+
+    if remove:
+        for path in tmp_paths:
+            try:
+                os.remove(path)
+                # log.info(f"Deleted tmp file: {path}")
+            except Exception as e:
+                log.warning(f"Failed to delete {path}: {e}")

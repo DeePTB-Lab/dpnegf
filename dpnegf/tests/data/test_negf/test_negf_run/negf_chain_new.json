@@ -36,8 +36,8 @@
         },
         "sgf_solver": "Sancho-Rubio",
         "espacing": 0.01,
-        "emin": -2,
-        "emax": 2,
+        "emin": -0.2,
+        "emax": 0.2,
         "e_fermi": -13.638587951660156,
         "density_options": {
             "method": "Ozaki",
