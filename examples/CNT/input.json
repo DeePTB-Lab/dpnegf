@@ -1,0 +1,89 @@
+{
+    "task_options": {
+        "task": "negf",
+        "scf": false,
+        "block_tridiagonal": true,
+        "ele_T": 300,
+        "unit": "eV",
+        "scf_options":{
+            "mode": "PDIIS",
+            "mixing_period": 3,
+            "step_size": 0.05,
+            "n_history": 6,
+            "abs_err": 1e-6,
+            "rel_err": 1e-4,
+            "max_iter": 100
+        },
+        "stru_options":{
+            "gamma_center": true,
+            "time_reversal_symmetry": true,
+            "nel_atom": {"C": 4.0},
+            "kmesh":[1,1,1],
+            "pbc":[true, true, false],
+            "device":{
+                "id":"56-574",
+                "sort": true
+            },
+            "lead_L":{
+                "id":"0-56",
+                "voltage":0,
+                "useBloch": false,
+                "kmesh_lead_Ef": [1,1,10]
+            },
+            "lead_R":{
+                "id":"574-630",
+                "voltage":0,
+                "useBloch": false,
+                "kmesh_lead_Ef": [1,1,10]
+            }
+        },
+        "poisson_options": {
+            "solver": "scipy",
+            "err": 1e-2,
+            "tolerance":1e-5,
+            "max_iter":1000,
+            "mix_rate":0.2,
+            "grid":{
+                "x_range":"-20:20:9",
+                "y_range":"-20:20:9",
+                "z_range":"8.6:88:2"
+                },
+            "gate_top":{
+                "x_range": "-20:-20",
+                "y_range": "-20:20",
+                "z_range": "38.64:58.64",
+                "voltage": 0
+            },
+            "gate_bottom":{
+                "x_range": "20:20",
+                "y_range": "-20:20",
+                "z_range": "38.64:58.64",
+                "voltage": 0
+            },
+            "dielectric_region":{            
+             "x_range": "-20:20",
+             "y_range": "-20:20",
+             "z_range": "8.6:88",
+             "relative permittivity": 20            
+            }
+
+        },
+        "sgf_solver": "Sancho-Rubio",
+        "espacing": 0.05,
+        "emin": -3,
+        "emax": 3,
+        "density_options": {
+            "method": "Fiori",
+            "integrate_way": "direct"
+        },
+        "eta_lead":1e-5,
+        "eta_device":1e-5,
+        "out_dos": true,
+        "out_tc": true,
+        "out_ldos": false,
+        "out_current_nscf": true,
+        "out_density": true
+},
+"structure": "./ready_struct.xyz",
+"AtomicData_options" : {"r_max": 4.6}
+}
