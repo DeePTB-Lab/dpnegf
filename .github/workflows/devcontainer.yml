@@ -55,7 +55,7 @@ jobs:
         uses: docker/build-push-action@v6
         with:
           # 指定 Dockerfile 的路径
-          file: Dockerfile.${{ matrix.dockerfile }}
+          file: Dockerfile
           # 设为 true，执行推送
           push: true
           # 使用元数据步骤生成的、经过清理的标签和元数据
