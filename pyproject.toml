@@ -32,6 +32,7 @@ lmdb = "1.4.1"
 pyfiglet = "1.0.2"
 tensorboard = "*"
 numba = "*"
+joblib = "*"
 pyinstrument = "*"
 
 [tool.poetry.group.dev.dependencies]
