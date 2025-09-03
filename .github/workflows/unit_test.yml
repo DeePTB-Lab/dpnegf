@@ -1,0 +1,35 @@
+name: DeePTB-UniSK Tests
+
+on:
+  pull_request:
+    paths-ignore:
+      - 'docs/**'
+  push:
+    branches:
+      - main
+    paths-ignore:
+      - 'docs/**'
+      - 'examples/**'
+  workflow_dispatch: 
+  
+jobs: 
+  run-tests:
+    runs-on: ubuntu-latest
+    if: github.repository_owner == 'DeePTB-Lab'
+    # 使用由 'Container' 工作流构建的开发镜像
+    container: ghcr.io/deeptb-lab/dpnegf-main:latest
+    steps: 
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Add git safe directory
+        # 当在容器内操作由外部挂载的工作区时，需要这个命令来避免 git 权限问题
+        run: |
+          git config --global --add safe.directory ${GITHUB_WORKSPACE}
+          
+      - name: Run Unit Tests
+        # 这个脚本应该包含所有测试命令
+        run: |
+          bash ut.sh
