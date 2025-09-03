@@ -1,0 +1,67 @@
+name: Container
+
+on:
+  push:
+    # 只有 main 分支的 push 会触发
+    branches:
+      - main
+    # 如果 push 只修改了 docs/ 目录下的文件，则不触发
+    paths-ignore:
+      - 'docs/**'
+      - 'examples/**'
+      - 'README.md'
+
+jobs:
+  build_and_push_container:
+    runs-on: ubuntu-latest
+    if: github.repository_owner == 'DeePTB-Lab'
+
+    # 允许 GITHUB_TOKEN 有写入软件包（Packages）的权限，这是推送到 ghcr.io 所必需的
+    permissions:
+      contents: read
+      packages: write
+
+    strategy:
+      matrix:
+        dockerfile: ["main"]
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # ✅ 新增步骤：此 action 会创建有效、小写的 Docker 标签
+      - name: Extract Docker metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          # 提供基础镜像名，此 action 会自动处理大小写
+          images: ghcr.io/${{ github.repository_owner }}/dpnegf-${{ matrix.dockerfile }}
+          tags: |
+            type=raw,value=latest
+
+      # ✏️ 修改步骤：现在使用上面 'meta' 步骤的输出来代替手动拼接
+      - name: Build and push Docker image
+        id: build-and-push
+        uses: docker/build-push-action@v6
+        with:
+          # 指定 Dockerfile 的路径
+          file: Dockerfile
+          # 设为 true，执行推送
+          push: true
+          # 使用元数据步骤生成的、经过清理的标签和元数据
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          # [重要] 缓存引用也必须使用清理过的、正确的小写标签
+          cache-from: type=registry,ref=${{ steps.meta.outputs.tags }}
+          # 推荐使用 gha 作为缓存后端，性能更好
+          cache-to: type=gha

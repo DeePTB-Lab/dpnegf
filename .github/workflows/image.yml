@@ -1,0 +1,57 @@
+name: Build and Push Release Image
+
+on:
+  # 允许在 GitHub UI 上手动触发
+  workflow_dispatch:
+  # 当一个以 "v" 开头的 tag (e.g., v1.0, v2.3.4) 被推送到仓库时触发
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  build_and_push_release:
+    runs-on: ubuntu-latest
+    if: github.repository_owner == 'DeePTB-Lab'
+    
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Checkout repository with full history
+        uses: actions/checkout@v4
+        with:
+          # ✅ 关键修改：获取所有历史记录和标签，以便动态版本控制能够工作
+          fetch-depth: 0
+
+      - name: Extract Docker metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          # metadata-action 会自动处理组织名的大小写问题
+          images: |
+            ghcr.io/${{ github.repository_owner }}/dpnegf
+          tags: |
+            # 从 Git 标签中提取语义化版本 (e.g., v1.2.3 -> 1.2.3, 1.2, 1)
+            type=semver,pattern={{version}}
+            # 只有在手动触发时，才添加 'latest' 标签
+            type=raw,value=latest,enable=${{ github.event_name == 'workflow_dispatch' }}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v6
+        with:
+          # 使用上面步骤生成的动态标签和元数据
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          file: Dockerfile
+          push: true
