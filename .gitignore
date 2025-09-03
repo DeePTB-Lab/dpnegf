@@ -1,5 +1,6 @@
 test*.ipynb
 **/processed*/*
+dpnegf/tests/data/test_negf/**/*.xyz
 dpnegf/tests/**/*.yaml
 dpnegf/tests/**/pre_*.pt
 dpnegf/tests/**/*.pth
