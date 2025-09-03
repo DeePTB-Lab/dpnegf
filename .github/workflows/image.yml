@@ -1,4 +1,4 @@
-name: Build and Push Release Image
+name: Build Release Image
 
 on:
   # 允许在 GitHub UI 上手动触发
