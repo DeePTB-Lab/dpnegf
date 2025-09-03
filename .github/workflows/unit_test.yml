@@ -1,4 +1,4 @@
-name: DeePTB-UniSK Tests
+name: DPNEGF Tests
 
 on:
   pull_request:
