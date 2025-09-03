@@ -31,6 +31,8 @@ h5py = ">=3.7.0,<=3.11.0,!=3.10.0"
 lmdb = "1.4.1"
 pyfiglet = "1.0.2"
 tensorboard = "*"
+numba = "*"
+pyinstrument = "*"
 
 [tool.poetry.group.dev.dependencies]
 pytest = ">=7.2.0"
@@ -56,7 +58,7 @@ pyfiglet = "1.0.2"
 tensorboard = "*"
 numba = "*"
 joblib = "*"
-
+pyinstrument = "*"
 
 [tool.poetry.group.pybinding]
 optional = true
