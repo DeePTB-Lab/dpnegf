@@ -1,11 +1,12 @@
-name: Build and Deploy Docs
+name: Publishing Docs
 
 on:
   push:
     branches: [ main ]  # 或者您的默认分支名
-  pull_request:
-    branches: [ main ]
-
+    paths:
+      - '.github/**'
+      - 'docs/**'
+      - 'examples/**'
 jobs:
   build:
     if: github.repository == 'DeePTB-Lab/dpnegf'
