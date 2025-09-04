@@ -19,7 +19,7 @@ jobs:
 
     steps:
       - name: Checkout repository with full history
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           # ✅ 关键修改：获取所有历史记录和标签，以便动态版本控制能够工作
           fetch-depth: 0
