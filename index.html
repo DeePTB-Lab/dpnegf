@@ -351,26 +351,13 @@ document.write(`
                   
   <section id="dpnegf-documentation">
 <h1>DPNEGF Documentation<a class="headerlink" href="#dpnegf-documentation" title="Link to this heading">#</a></h1>
-<p><strong>DPNEGF</strong> is a Python package that integrates the Deep Learning Tight-Binding (<strong>DeePTB</strong>) approach with the Non-Equilibrium Green’s Function (<strong>NEGF</strong>) method, establishing an efficient quantum transport simulation framework <strong>DeePTB-NEGF</strong> with first-principles accuracy.</p>
+<p><strong>DPNEGF</strong> is a Python package that integrates the Deep Learning Tight-Binding (<strong>DeePTB</strong>) approach with the Non-Equilibrium Green’s Function (<strong>NEGF</strong>) method,
+establishing an efficient quantum transport simulation framework <strong>DeePTB-NEGF</strong> with first-principles accuracy.</p>
 <section id="key-features">
 <h2>Key Features:<a class="headerlink" href="#key-features" title="Link to this heading">#</a></h2>
-<p>DeePTB contains two main components:</p>
-<ol class="arabic simple">
-<li><p><strong>DeePTB-SK</strong>: deep learning based local environment dependent Slater-Koster TB.</p>
-<ul class="simple">
-<li><p>Customizable Slater-Koster parameterization with neural network corrections.</p></li>
-<li><p>Flexible basis and exchange-correlation functional choices.</p></li>
-<li><p>Handle systems with strong spin-orbit coupling (SOC) effects.</p></li>
-</ul>
-</li>
-<li><p><strong>DeePTB-E3</strong>: E3-equivariant neural networks for representing quantum operators.</p>
-<ul class="simple">
-<li><p>Construct DFT Hamiltonians/density and overlap matrices under full LCAO basis.</p></li>
-<li><p>Utilize (<strong>S</strong>trictly) <strong>L</strong>ocalized <strong>E</strong>quivariant <strong>M</strong>essage-passing (<strong>(S)LEM</strong>) model for high data-efficiency and accuracy.</p></li>
-<li><p>Employs SO(2) convolution for efficient handling of higher-order orbitals in LCAO basis.</p></li>
-</ul>
-</li>
-</ol>
+<p>By using DeePTB-SK or DeePTB-E3—both available within the DeePTB package—DeePTB-NEGF can compute quantum transport
+properties in open-boundary systems with either environment-corrected Slater-Koster(SK) TB Hamiltonian
+or linear combination of atomic orbitals (LCAO) Kohn-Sham Hamiltonian.</p>
 <p>For more details, see our papers:</p>
 <ul class="simple">
 <li><p><a class="reference external" href="https://arxiv.org/abs/2411.08800v2">DeePTB-NEGF: arXiv:2411.08800</a></p></li>
@@ -384,7 +371,6 @@ document.write(`
 <li class="toctree-l2"><a class="reference internal" href="easy_install.html#prerequisites">Prerequisites</a></li>
 <li class="toctree-l2"><a class="reference internal" href="easy_install.html#installation-methods">Installation Methods</a></li>
 <li class="toctree-l2"><a class="reference internal" href="easy_install.html#contributing">Contributing</a></li>
-<li class="toctree-l2"><a class="reference internal" href="easy_install.html#license">License</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="hands_on/index.html">A quick Example</a><ul>

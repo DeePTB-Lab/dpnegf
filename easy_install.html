@@ -337,12 +337,10 @@ document.write(`
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#prerequisites">Prerequisites</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#installation-methods">Installation Methods</a><ul class="nav section-nav flex-column">
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#from-source">From Source</a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#from-pypi">From PyPi</a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#additional-tips">Additional Tips</a></li>
 </ul>
 </li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#contributing">Contributing</a></li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#license">License</a></li>
 </ul>
             </nav>
         </div>
@@ -356,75 +354,31 @@ document.write(`
                   
   <section class="tex2jax_ignore mathjax_ignore" id="installation-guide">
 <h1>Installation Guide<a class="headerlink" href="#installation-guide" title="Link to this heading">#</a></h1>
-<p>This guide will help you install DeePTB, a Python package that utilizes deep learning to construct electronic tight-binding Hamiltonians.</p>
+<p>This guide will help you install DPNEGF, a Python package that integrates the Deep Learning Tight-Binding (<strong>DeePTB</strong>) approach with the Non-Equilibrium Green’s Function (<strong>NEGF</strong>) method.</p>
 <section id="prerequisites">
 <h2>Prerequisites<a class="headerlink" href="#prerequisites" title="Link to this heading">#</a></h2>
-<p>Before installing DeePTB, ensure you have the following prerequisites:</p>
+<p>Before installing DPNEGF, ensure you have the following prerequisites:</p>
 <ul class="simple">
 <li><p>Git</p></li>
 <li><p>Python 3.9 to 3.12.</p></li>
 <li><p>Torch 2.0.0 to 2.5.1 (<a class="reference external" href="https://pytorch.org/get-started/locally">PyTorch Installation</a>).</p></li>
-<li><p>ifermi (optional, for 3D fermi-surface plotting).</p></li>
-<li><p>TBPLaS (optional).</p></li>
+<li><p><a class="reference external" href="https://github.com/deepmodeling/DeePTB">DeePTB</a> ≥ 2.1.1</p></li>
 </ul>
 </section>
 <section id="installation-methods">
 <h2>Installation Methods<a class="headerlink" href="#installation-methods" title="Link to this heading">#</a></h2>
 <section id="from-source">
 <h3>From Source<a class="headerlink" href="#from-source" title="Link to this heading">#</a></h3>
-<p>Highly recommended to install DeePTB from source to get the latest features and bug fixes.</p>
+<p>We recommend installing <strong>DPNEGF</strong> within a dedicated virtual environment to manage dependencies effectively. Ensure that both DPNEGF and DeePTB are installed in the same environment for compatibility.</p>
 <ol class="arabic">
-<li><p><strong>Setup Python environment</strong>:</p>
-<p>Using conda (recommended, python &gt;=3.9, &lt;=3.12 ), e.g.,</p>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>conda<span class="w"> </span>create<span class="w"> </span>-n<span class="w"> </span>dptb_venv<span class="w"> </span><span class="nv">python</span><span class="o">=</span><span class="m">3</span>.10
-conda<span class="w"> </span>activate<span class="w"> </span>dptb_venv
-</pre></div>
-</div>
-<p>or using venv (make sure python &gt;=3.9,&lt;=3.12)</p>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>python<span class="w"> </span>-m<span class="w"> </span>venv<span class="w"> </span>dptb_venv
-<span class="nb">source</span><span class="w"> </span>dptb_venv/bin/activate
+<li><p>Clone the repository:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>git<span class="w"> </span>clone<span class="w"> </span>https://github.com/DeePTB-Lab/dpnegf.git
 </pre></div>
 </div>
 </li>
-<li><p><strong>Clone DeePTB and  Navigate to the root directory</strong>:</p>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>git<span class="w"> </span>clone<span class="w"> </span>https://github.com/deepmodeling/DeePTB.git
-<span class="nb">cd</span><span class="w"> </span>DeePTB
-</pre></div>
-</div>
-</li>
-<li><p><strong>Install <code class="docutils literal notranslate"><span class="pre">torch</span></code></strong>:</p>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>pip<span class="w"> </span>install<span class="w"> </span><span class="s2">&quot;torch&gt;=2.0.0,&lt;=2.5.0&quot;</span>
-</pre></div>
-</div>
-</li>
-<li><p><strong>Install <code class="docutils literal notranslate"><span class="pre">torch-scatter</span></code></strong> (two ways):</p>
-<ul>
-<li><p><strong>Recommended</strong>: Install torch and torch-scatter using the following commands:</p>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="w"> </span>python<span class="w"> </span>docs/auto_install_torch_scatter.py
-</pre></div>
-</div>
-</li>
-<li><p><strong>Manual</strong>: Install torch and torch-scatter manually:</p>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>pip<span class="w"> </span>install<span class="w"> </span>torch-scatter<span class="w"> </span>-f<span class="w"> </span>https://data.pyg.org/whl/torch-<span class="si">${</span><span class="nv">version</span><span class="si">}</span>+<span class="si">${</span><span class="nv">CUDA</span><span class="si">}</span>.html
-</pre></div>
-</div>
-<p>where <code class="docutils literal notranslate"><span class="pre">${version}</span></code> is the version of torch, e.g., 2.5.0, and <code class="docutils literal notranslate"><span class="pre">${CUDA}</span></code> is the CUDA version, e.g., cpu, cu118, cu121, cu124. See <a class="reference external" href="https://github.com/rusty1s/pytorch_scatter">torch_scatter doc</a> for more details.</p>
-</li>
-</ul>
-</li>
-<li><p><strong>Install DeePTB</strong>:</p>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>pip<span class="w"> </span>install<span class="w"> </span>.
-</pre></div>
-</div>
-</li>
-</ol>
-</section>
-<section id="from-pypi">
-<h3>From PyPi<a class="headerlink" href="#from-pypi" title="Link to this heading">#</a></h3>
-<ol class="arabic">
-<li><p>Install PyTorch first by following the instructions on <a class="reference external" href="https://pytorch.org/get-started/locally">PyTorch: Get Started</a>.</p></li>
-<li><p>Install DeePTB using pip:</p>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>pip<span class="w"> </span>install<span class="w"> </span>dptb
+<li><p>Navigate to the root directory and install DPNEGF:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="nb">cd</span><span class="w"> </span>dpnegf
+pip<span class="w"> </span>install<span class="w"> </span>.
 </pre></div>
 </div>
 </li>
@@ -433,18 +387,17 @@ conda<span class="w"> </span>activate<span class="w"> </span>dptb_venv
 <section id="additional-tips">
 <h3>Additional Tips<a class="headerlink" href="#additional-tips" title="Link to this heading">#</a></h3>
 <ul class="simple">
-<li><p>Keep your DeePTB installation up-to-date by pulling the latest changes from the repository and re-installing.</p></li>
-<li><p>If you encounter any issues during installation, consult the <a class="reference external" href="https://deeptb.readthedocs.io/en/latest/">DeePTB documentation</a> or seek help from the community.</p></li>
+<li><p>Keep your DPNEGF installation up-to-date by pulling the latest changes from the repository and re-installing.</p></li>
+<li><p>If you encounter any issues during installation, consult the <a class="reference external" href="https://deeptb-lab.github.io/dpnegf/">DPNEGF documentation</a> or seek help from the community.</p></li>
 </ul>
 </section>
 </section>
 <section id="contributing">
 <h2>Contributing<a class="headerlink" href="#contributing" title="Link to this heading">#</a></h2>
-<p>We welcome contributions to DeePTB. If you are interested in contributing, please read our <a class="reference external" href="https://deeptb.readthedocs.io/en/latest/community/contribution_guide.html">contributing guidelines</a>.</p>
-</section>
-<section id="license">
-<h2>License<a class="headerlink" href="#license" title="Link to this heading">#</a></h2>
-<p>DeePTB is open-source software released under the <a class="reference external" href="https://github.com/deepmodeling/DeePTB/blob/main/LICENSE">LGPL-3.0</a> provided in the repository.</p>
+<p>We welcome contributions to DeePTB. If you are interested in contributing, please read our <a class="reference external" href="https://deeptb-lab.github.io/dpnegf/CONTRIBUTING.html">contributing guidelines</a>.</p>
+<!-- ## License
+
+DPNEGF is open-source software released under the [LGPL-3.0](https://github.com/deepmodeling/DeePTB/blob/main/LICENSE) provided in the repository. -->
 </section>
 </section>
 
@@ -496,12 +449,10 @@ conda<span class="w"> </span>activate<span class="w"> </span>dptb_venv
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#prerequisites">Prerequisites</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#installation-methods">Installation Methods</a><ul class="nav section-nav flex-column">
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#from-source">From Source</a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#from-pypi">From PyPi</a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#additional-tips">Additional Tips</a></li>
 </ul>
 </li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#contributing">Contributing</a></li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#license">License</a></li>
 </ul>
   </nav></div>
 
