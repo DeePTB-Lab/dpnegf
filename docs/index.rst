@@ -6,25 +6,16 @@
 DPNEGF Documentation
 =================================================
 
-**DPNEGF** is a Python package that integrates the Deep Learning Tight-Binding (**DeePTB**) approach with the Non-Equilibrium Green’s Function (**NEGF**) method, establishing an efficient quantum transport simulation framework **DeePTB-NEGF** with first-principles accuracy. 
+**DPNEGF** is a Python package that integrates the Deep Learning Tight-Binding (**DeePTB**) approach with the Non-Equilibrium Green's Function (**NEGF**) method, 
+establishing an efficient quantum transport simulation framework **DeePTB-NEGF** with first-principles accuracy. 
 
 --------------
 Key Features:
 --------------
 
-DeePTB contains two main components: 
-
-1. **DeePTB-SK**: deep learning based local environment dependent Slater-Koster TB.
-
-   - Customizable Slater-Koster parameterization with neural network corrections.
-   - Flexible basis and exchange-correlation functional choices.
-   - Handle systems with strong spin-orbit coupling (SOC) effects.
-
-2. **DeePTB-E3**: E3-equivariant neural networks for representing quantum operators.
-
-   - Construct DFT Hamiltonians/density and overlap matrices under full LCAO basis.
-   - Utilize (**S**\ trictly) **L**\ ocalized **E**\ quivariant **M**\ essage-passing (**(S)LEM**) model for high data-efficiency and accuracy.
-   - Employs SO(2) convolution for efficient handling of higher-order orbitals in LCAO basis.
+By using DeePTB-SK or DeePTB-E3—both available within the DeePTB package—DeePTB-NEGF can compute quantum transport 
+properties in open-boundary systems with either environment-corrected Slater-Koster(SK) TB Hamiltonian 
+or linear combination of atomic orbitals (LCAO) Kohn-Sham Hamiltonian.
 
 
 For more details, see our papers:
