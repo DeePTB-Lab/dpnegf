@@ -35,7 +35,7 @@ We recommend installing **DPNEGF** within a dedicated virtual environment to man
 
 We welcome contributions to DeePTB. If you are interested in contributing, please read our [contributing guidelines](https://deeptb-lab.github.io/dpnegf/CONTRIBUTING.html).
 
-<!-- ## License
+## License
 
-DPNEGF is open-source software released under the [LGPL-3.0](https://github.com/deepmodeling/DeePTB/blob/main/LICENSE) provided in the repository. -->
+DPNEGF is open-source software released under the [LGPL-3.0](https://github.com/DeePTB-Lab/dpnegf/blob/main/LICENSE) provided in the repository.
 
