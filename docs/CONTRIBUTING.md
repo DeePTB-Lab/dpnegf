@@ -4,10 +4,9 @@ We heartily welcome contributions to the DPNEGF project. This guide provides tec
 
 
 
-## Table of Contents
-
+## Table of Content
 - [Contributing to DPNEGF](#contributing-to-dpnegf)
-  - [Table of Contents](#table-of-contents)
+  - [Table of Content](#table-of-content)
   - [Got a question?](#got-a-question)
   - [Project Structure](#project-structure)
   - [Submitting an Issue](#submitting-an-issue)
@@ -25,21 +24,18 @@ For questions and discussions about DPNEGF, use our [GitHub Discussions](https:/
 
 ## Project Structure
 
-DeePTB is organized into several modules. Here's a brief overview:
+DPNEGF is organized into several modules. Here's a brief overview:
 
 - `data`: Data processing module.
 - `entrypoints`: Entry points for the command-line interface.
-- `negf`: Nonequilibrium Green's Function (NEGF) module.
-- `nn`: Neural network model module.
-- `nnops`: Neural network operations module.
-- `plugins`: Plugins for various functionalities.
-- `postprocess`: Post-processing module.
-- `tests`: Unit tests for DeePTB.
-- `utils`: Utility module with tools and constants.
+- `negf`: Nonequilibrium Green's Function (NEGF) methods.
+- `runner`: Main entry point for executing NEGF calculations.
+- `tests`: Unit tests for the DPNEGF project.
+- `utils`: Utility functions, tools, and constants used throughout the codebase.
 
 ## Submitting an Issue
 
-Before you submit an issue, please search the issue tracker, and maybe your problem has been discussed and fixed. You can [submit new issues](https://github.com/deepmodeling/DeePTB/issues/new/choose) by filling our issue forms.
+Before you submit an issue, please search the issue tracker, and maybe your problem has been discussed and fixed. You can [submit new issues](https://github.com/DeePTB-Lab/dpnegf/issues) by filling our issue forms.
 To help us reproduce and confirm a bug, please provide a test case and building environment in your issue.
 
 
@@ -63,18 +59,18 @@ When contributing a new feature or fixing a bug, it's important to include tests
 To run all unit tests, use the following command in the project root directory:
 
 ```bash
-pytest ./dptb/tests
+pytest ./dpnegf/tests
 ```
 
 To run a specific test, use:
 
 ```bash
-pytest ./dptb/tests/test_file.py
+pytest ./dpnegf/tests/test_file.py
 ```
 
 ## Submitting a Pull Request
 
-1. [Fork](https://docs.github.com/en/github/getting-started-with-github/fork-a-repo) the [DeePTB repository](https://github.com/deepmodeling/DeePTB). If you already had an existing fork, [sync](https://docs.github.com/en/pull-requests/collaborating-with-pull-requests/working-with-forks/syncing-a-fork) the fork to keep your modification up-to-date.
+1. [Fork](https://docs.github.com/en/github/getting-started-with-github/fork-a-repo) the [DPNEGF  repository](https://github.com/DeePTB-Lab/dpnegf). If you already had an existing fork, [sync](https://docs.github.com/en/pull-requests/collaborating-with-pull-requests/working-with-forks/syncing-a-fork) the fork to keep your modification up-to-date.
 2. Create a new branch for your changes.
      ```shell
      git checkout -b my-fix-branch
@@ -82,7 +78,7 @@ pytest ./dptb/tests/test_file.py
 3. Make your changes, including tests and documentation updates.
 4. Commit your changes with a [proper commit message](#commit-message-guidelines).
 5. Push your branch to your fork on GitHub.
-6. Submit a pull request (PR) with `deepmodeling/DeePTB:main` as the base repository. It is required to document your PR following [our guidelines](#commit-message-guidelines).
+6. Submit a pull request (PR) with `DeePTB-Lab/dpnegf:main` as the base repository. It is required to document your PR following [our guidelines](#commit-message-guidelines).
 
 ### After Your Pull Request is Merged
 
