@@ -1,6 +1,6 @@
 # How to Cite
 
-The following references are required to be cited when using DeePTB. Specifically:
+The following references are required to be cited when using DPNEGF. 
 
 - **For DPNEGF:**
   
@@ -16,6 +16,7 @@ The following references are required to be cited when using DeePTB. Specificall
       url={https://arxiv.org/abs/2411.08800}}     
     ```
 
+DPNEGF is compatible with both modeling strategies available in DeePTB: **DeePTB-SK** and **DeePTB-E3**. Specifically:
 
 - **For DeePTB-SK:**
   
