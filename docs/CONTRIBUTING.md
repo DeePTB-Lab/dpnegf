@@ -1,23 +1,27 @@
-# Contributing to DeePTB
+# Contributing to DPNEGF
 
-We heartily welcome contributions to the DeePTB project. This guide provides technical and non-technical guidelines to help you contribute effectively.
+We heartily welcome contributions to the DPNEGF project. This guide provides technical and non-technical guidelines to help you contribute effectively.
+
+
 
 ## Table of Contents
 
-- [Got a question?](#got-a-question)
-- [Project Structure](#project-structure)
-- [Submitting an Issue](#submitting-an-issue)
-- [Comment Style for Documentation](#comment-style-for-documentation)
-- [Code Formatting Style](#code-formatting-style)
-- [Adding a Unit Test](#adding-a-unit-test)
-- [Running Unit Tests](#running-unit-tests)
-- [Submitting a Pull Request](#submitting-a-pull-request)
-- [After Your Pull Request is Merged](#after-your-pull-request-is-merged)
-- [Commit Message Guidelines](#commit-message-guidelines)
+- [Contributing to DPNEGF](#contributing-to-dpnegf)
+  - [Table of Contents](#table-of-contents)
+  - [Got a question?](#got-a-question)
+  - [Project Structure](#project-structure)
+  - [Submitting an Issue](#submitting-an-issue)
+  - [Comment Style for Documentation](#comment-style-for-documentation)
+  - [Code Formatting Style](#code-formatting-style)
+  - [Adding a Unit Test](#adding-a-unit-test)
+  - [Running Unit Tests](#running-unit-tests)
+  - [Submitting a Pull Request](#submitting-a-pull-request)
+    - [After Your Pull Request is Merged](#after-your-pull-request-is-merged)
+  - [Commit Message Guidelines](#commit-message-guidelines)
 
 ## Got a question?
 
-For questions and discussions about DeePTB, use our [GitHub Discussions](https://github.com/deepmodeling/DeePTB/discussions). If you find a bug or want to propose a new feature, please use the [issue tracker](https://github.com/deepmodeling/DeePTB/issues/new/choose).
+For questions and discussions about DPNEGF, use our [GitHub Discussions](https://github.com/DeePTB-Lab/dpnegf/discussions). If you find a bug or want to propose a new feature, please use the [issue tracker](https://github.com/DeePTB-Lab/dpnegf/issues).
 
 ## Project Structure
 
