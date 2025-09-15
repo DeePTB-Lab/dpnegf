@@ -70,7 +70,7 @@ pytest ./dpnegf/tests/test_file.py
 
 ## Submitting a Pull Request
 
-1. [Fork](https://docs.github.com/en/github/getting-started-with-github/fork-a-repo) the [DPNEGF  repository](https://github.com/DeePTB-Lab/dpnegf). If you already had an existing fork, [sync](https://docs.github.com/en/pull-requests/collaborating-with-pull-requests/working-with-forks/syncing-a-fork) the fork to keep your modification up-to-date.
+1. [Fork](https://docs.github.com/en/github/getting-started-with-github/fork-a-repo) the [DPNEGF repository](https://github.com/DeePTB-Lab/dpnegf). If you already had an existing fork, [sync](https://docs.github.com/en/pull-requests/collaborating-with-pull-requests/working-with-forks/syncing-a-fork) the fork to keep your modification up-to-date.
 2. Create a new branch for your changes.
      ```shell
      git checkout -b my-fix-branch
