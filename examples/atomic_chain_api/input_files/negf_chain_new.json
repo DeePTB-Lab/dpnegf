@@ -42,9 +42,9 @@
             "err": 1e-5
         },
         "sgf_solver": "Sancho-Rubio",
-        "espacing": 0.01,
-        "emin": -2,
-        "emax": 2,
+        "espacing": 0.02,
+        "emin": -1.5,
+        "emax": 1.5,
         "density_options": {
             "method": "Fiori",
             "integrate_way": "direct"
@@ -54,10 +54,10 @@
         "out_dos": true,
         "out_tc": true,
         "out_ldos": true,
-        "out_current_nscf": true
+        "out_current_nscf": false
 },    
 "AtomicData_options" :{
-    "r_max": 2.0
+    "r_max": 3.0
 },
 "structure":"./chain.vasp"
 }
