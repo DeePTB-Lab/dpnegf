@@ -1,0 +1,1068 @@
+
+<!DOCTYPE html>
+
+
+<html lang="en" data-content_root="../" >
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>Tutorial 1: Quantum Transport in a One-Dimensional Chain &#8212; DPNEGF  documentation</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "";
+  </script>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="../_static/styles/theme.css?digest=dfe6caa3a7d634c4db9b" rel="stylesheet" />
+<link href="../_static/styles/bootstrap.css?digest=dfe6caa3a7d634c4db9b" rel="stylesheet" />
+<link href="../_static/styles/pydata-sphinx-theme.css?digest=dfe6caa3a7d634c4db9b" rel="stylesheet" />
+
+  
+  <link href="../_static/vendor/fontawesome/6.5.2/css/all.min.css?digest=dfe6caa3a7d634c4db9b" rel="stylesheet" />
+  <link rel="preload" as="font" type="font/woff2" crossorigin href="../_static/vendor/fontawesome/6.5.2/webfonts/fa-solid-900.woff2" />
+<link rel="preload" as="font" type="font/woff2" crossorigin href="../_static/vendor/fontawesome/6.5.2/webfonts/fa-brands-400.woff2" />
+<link rel="preload" as="font" type="font/woff2" crossorigin href="../_static/vendor/fontawesome/6.5.2/webfonts/fa-regular-400.woff2" />
+
+    <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=8f2a1f02" />
+    <link rel="stylesheet" type="text/css" href="../_static/styles/sphinx-book-theme.css?v=eba8b062" />
+    <link rel="stylesheet" type="text/css" href="../_static/mystnb.8ecb98da25f57f5357bf6f572d296f466b2cfe2517ffebfabe82451661e28f02.css" />
+  
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="../_static/scripts/bootstrap.js?digest=dfe6caa3a7d634c4db9b" />
+<link rel="preload" as="script" href="../_static/scripts/pydata-sphinx-theme.js?digest=dfe6caa3a7d634c4db9b" />
+  <script src="../_static/vendor/fontawesome/6.5.2/js/all.min.js?digest=dfe6caa3a7d634c4db9b"></script>
+
+    <script src="../_static/documentation_options.js?v=9eb32ce0"></script>
+    <script src="../_static/doctools.js?v=9bcbadda"></script>
+    <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../_static/scripts/sphinx-book-theme.js?v=887ef09a"></script>
+    <script>window.MathJax = {"options": {"processHtmlClass": "tex2jax_process|mathjax_process|math|output_area"}}</script>
+    <script defer="defer" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/3.2.0/es5/tex-mml-chtml.min.js"></script>
+    <script>DOCUMENTATION_OPTIONS.pagename = 'hands_on/tutorial1_c_chain';</script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="docsearch:language" content="en"/>
+  </head>
+  
+  
+  <body data-bs-spy="scroll" data-bs-target=".bd-toc-nav" data-offset="180" data-bs-root-margin="0px 0px -60%" data-default-mode="">
+
+  
+  
+  <div id="pst-skip-link" class="skip-link d-print-none"><a href="#main-content">Skip to main content</a></div>
+  
+  <div id="pst-scroll-pixel-helper"></div>
+  
+  <button type="button" class="btn rounded-pill" id="pst-back-to-top">
+    <i class="fa-solid fa-arrow-up"></i>Back to top</button>
+
+  
+  <input type="checkbox"
+          class="sidebar-toggle"
+          id="pst-primary-sidebar-checkbox"/>
+  <label class="overlay overlay-primary" for="pst-primary-sidebar-checkbox"></label>
+  
+  <input type="checkbox"
+          class="sidebar-toggle"
+          id="pst-secondary-sidebar-checkbox"/>
+  <label class="overlay overlay-secondary" for="pst-secondary-sidebar-checkbox"></label>
+  
+  <div class="search-button__wrapper">
+    <div class="search-button__overlay"></div>
+    <div class="search-button__search-container">
+<form class="bd-search d-flex align-items-center"
+      action="../search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         id="search-input"
+         placeholder="Search..."
+         aria-label="Search..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form></div>
+  </div>
+
+  <div class="pst-async-banner-revealer d-none">
+  <aside id="bd-header-version-warning" class="d-none d-print-none" aria-label="Version warning"></aside>
+</div>
+
+  
+    <header class="bd-header navbar navbar-expand-lg bd-navbar d-print-none">
+    </header>
+  
+
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      
+      
+        
+      
+      <div class="bd-sidebar-primary bd-sidebar">
+        
+
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+    
+    
+  </div>
+  
+    <div class="sidebar-primary-items__start sidebar-primary__section">
+        <div class="sidebar-primary-item">
+
+  
+    
+  
+
+<a class="navbar-brand logo" href="../index.html">
+  
+  
+  
+  
+  
+    
+    
+      
+    
+    
+    <img src="../_static/deeptb-logo.svg" class="logo__image only-light" alt="DPNEGF  documentation - Home"/>
+    <script>document.write(`<img src="../_static/deeptb-logo.svg" class="logo__image only-dark" alt="DPNEGF  documentation - Home"/>`);</script>
+  
+  
+</a></div>
+        <div class="sidebar-primary-item">
+
+ <script>
+ document.write(`
+   <button class="btn search-button-field search-button__button" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <i class="fa-solid fa-magnifying-glass"></i>
+    <span class="search-button__default-text">Search</span>
+    <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+   </button>
+ `);
+ </script></div>
+        <div class="sidebar-primary-item"><nav class="bd-links bd-docs-nav" aria-label="Main">
+    <div class="bd-toc-item navbar-nav active">
+        <p aria-level="2" class="caption" role="heading"><span class="caption-text">Quick Start</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="../easy_install.html">Installation Guide</a></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="index.html">A quick Example</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="tutorial1_base_sk.html">Tutorial 1: deeptb-sk baseline model</a></li>
+</ul>
+</details></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">INPUT TAG</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1 has-children"><a class="reference internal" href="../input_params/index.html">Full Input Parameters</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="../input_params/common_options.html">Common Options</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../input_params/train_options.html">Train Options</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../input_params/model_options.html">Model Options</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../input_params/data_options.html">Data Options</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../input_params/run_options.html">Run Options</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../input_params/set_info.html">Set Info</a></li>
+</ul>
+</details></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Citing DeePTB-NEGF</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="../CITATIONS.html">How to Cite</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Developing Team</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="../DevelopingTeam.html">Development Team</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Community</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="../CONTRIBUTING.html">Contributing to DPNEGF</a></li>
+</ul>
+
+    </div>
+</nav></div>
+    </div>
+  
+  
+  <div class="sidebar-primary-items__end sidebar-primary__section">
+  </div>
+  
+  <div id="rtd-footer-container"></div>
+
+
+      </div>
+      
+      <main id="main-content" class="bd-main" role="main">
+        
+        
+
+<div class="sbt-scroll-pixel-helper"></div>
+
+          <div class="bd-content">
+            <div class="bd-article-container">
+              
+              <div class="bd-header-article d-print-none">
+<div class="header-article-items header-article__inner">
+  
+    <div class="header-article-items__start">
+      
+        <div class="header-article-item"><button class="sidebar-toggle primary-toggle btn btn-sm" title="Toggle primary sidebar" data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <span class="fa-solid fa-bars"></span>
+</button></div>
+      
+    </div>
+  
+  
+    <div class="header-article-items__end">
+      
+        <div class="header-article-item">
+
+<div class="article-header-buttons">
+
+
+
+
+
+<div class="dropdown dropdown-download-buttons">
+  <button class="btn dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Download this page">
+    <i class="fas fa-download"></i>
+  </button>
+  <ul class="dropdown-menu">
+      
+      
+      
+      <li><a href="../_sources/hands_on/tutorial1_c_chain.ipynb" target="_blank"
+   class="btn btn-sm btn-download-source-button dropdown-item"
+   title="Download source file"
+   data-bs-placement="left" data-bs-toggle="tooltip"
+>
+  
+
+<span class="btn__icon-container">
+  <i class="fas fa-file"></i>
+  </span>
+<span class="btn__text-container">.ipynb</span>
+</a>
+</li>
+      
+      
+      
+      
+      <li>
+<button onclick="window.print()"
+  class="btn btn-sm btn-download-pdf-button dropdown-item"
+  title="Print to PDF"
+  data-bs-placement="left" data-bs-toggle="tooltip"
+>
+  
+
+<span class="btn__icon-container">
+  <i class="fas fa-file-pdf"></i>
+  </span>
+<span class="btn__text-container">.pdf</span>
+</button>
+</li>
+      
+  </ul>
+</div>
+
+
+
+
+<button onclick="toggleFullScreen()"
+  class="btn btn-sm btn-fullscreen-button"
+  title="Fullscreen mode"
+  data-bs-placement="bottom" data-bs-toggle="tooltip"
+>
+  
+
+<span class="btn__icon-container">
+  <i class="fas fa-expand"></i>
+  </span>
+
+</button>
+
+
+
+<script>
+document.write(`
+  <button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button" title="light/dark" aria-label="light/dark" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <i class="theme-switch fa-solid fa-sun fa-lg" data-mode="light"></i>
+    <i class="theme-switch fa-solid fa-moon fa-lg" data-mode="dark"></i>
+    <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"></i>
+  </button>
+`);
+</script>
+
+
+<script>
+document.write(`
+  <button class="btn btn-sm pst-navbar-icon search-button search-button__button" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <i class="fa-solid fa-magnifying-glass fa-lg"></i>
+  </button>
+`);
+</script>
+<button class="sidebar-toggle secondary-toggle btn btn-sm" title="Toggle secondary sidebar" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <span class="fa-solid fa-list"></span>
+</button>
+</div></div>
+      
+    </div>
+  
+</div>
+</div>
+              
+              
+
+<div id="jb-print-docs-body" class="onlyprint">
+    <h1>Tutorial 1:  Quantum Transport in a One-Dimensional Chain</h1>
+    <!-- Table of contents -->
+    <div id="print-main-content">
+        <div id="jb-print-toc">
+            
+            <div>
+                <h2> Contents </h2>
+            </div>
+            <nav aria-label="Page">
+                <ul class="visible nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#introduction">Introduction</a><ul class="nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#learning-objectives">Learning Objectives</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#requirement">Requirement</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warm-up-a-short-introduction-to-negf"><em>WARM UP</em>: A short introduction to NEGF</a><ul class="nav section-nav flex-column">
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#partitioning-the-system">1. Partitioning the system</a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#greens-function-of-the-device">2. Green’s function of the device</a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#transmission-function">3. Transmission function</a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#current-landauerbuttiker-formula">4. Current (Landauer–Büttiker formula)</a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#key-physical-quantities">5. Key physical quantities</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#model-loading-and-band-plotting">1. Model loading and band plotting</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#negf-calculation">2. NEGF calculation</a><ul class="nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#running-negf-from-api">Running NEGF from API</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#running-negf-from-the-command-line">Running NEGF from the Command Line</a></li>
+</ul>
+</li>
+</ul>
+            </nav>
+        </div>
+    </div>
+</div>
+
+              
+                
+<div id="searchbox"></div>
+                <article class="bd-article">
+                  
+  <section class="tex2jax_ignore mathjax_ignore" id="tutorial-1-quantum-transport-in-a-one-dimensional-chain">
+<h1>Tutorial 1:  Quantum Transport in a One-Dimensional Chain<a class="headerlink" href="#tutorial-1-quantum-transport-in-a-one-dimensional-chain" title="Link to this heading">#</a></h1>
+<p>A quick start for DeePTB-NEGF.</p>
+<section id="introduction">
+<h2>Introduction<a class="headerlink" href="#introduction" title="Link to this heading">#</a></h2>
+<p><strong>DPNEGF</strong> is a Python package that integrates the Deep Learning Tight-Binding (<strong>DeePTB</strong>) approach with the Non-Equilibrium Green’s Function (<strong>NEGF</strong>) method,
+establishing an efficient quantum transport simulation framework <strong>DeePTB-NEGF</strong> with first-principles accuracy.</p>
+<p>Based on the accurate electronic structure prediction in large-scale and complex systems, DPNEGF implements the
+high-efficiency algorithm for high-throughput and large-scale quantum transport simulations in nanoelectronics.</p>
+<section id="learning-objectives">
+<h3>Learning Objectives<a class="headerlink" href="#learning-objectives" title="Link to this heading">#</a></h3>
+<p>In this tutorial, you will learn</p>
+<ol class="arabic simple">
+<li><p>how to load DeePTB model and plot band structure</p></li>
+<li><p>how to calculate the tranmission spectrum</p></li>
+</ol>
+<p>For demonstration, we use a one-dimensional chain as an example.</p>
+</section>
+<section id="requirement">
+<h3>Requirement<a class="headerlink" href="#requirement" title="Link to this heading">#</a></h3>
+<p>DeePTB and DPNEGF installed. Detailed installation instructions can be found in README.</p>
+</section>
+<section id="warm-up-a-short-introduction-to-negf">
+<h3><em>WARM UP</em>: A short introduction to NEGF<a class="headerlink" href="#warm-up-a-short-introduction-to-negf" title="Link to this heading">#</a></h3>
+<p>The <strong>Non-Equilibrium Green’s Function (NEGF)</strong> method is a widely used theoretical framework
+for studying quantum transport in nanoscale devices (molecular junctions, nanowires, CNT-FETs, etc.).<br />
+It provides a rigorous way to compute current, density of states (DOS), and transmission by combining
+quantum mechanics with open boundary conditions.</p>
+<section id="partitioning-the-system">
+<h4>1. Partitioning the system<a class="headerlink" href="#partitioning-the-system" title="Link to this heading">#</a></h4>
+<p>We divide the full system into three regions:</p>
+<ul class="simple">
+<li><p><strong>Left electrode (L)</strong>: semi-infinite periodic lead</p></li>
+<li><p><strong>Device region (D)</strong>: finite scattering region of interest</p></li>
+<li><p><strong>Right electrode ®</strong>: semi-infinite periodic lead</p></li>
+</ul>
+<p>The Hamiltonian of the total system can be written schematically as:</p>
+<div class="math notranslate nohighlight">
+\[\begin{split}
+H = \begin{bmatrix}
+H_L &amp; V_{LD} &amp; 0 \\
+V_{DL} &amp; H_D &amp; V_{DR} \\
+0 &amp; V_{RD} &amp; H_R
+\end{bmatrix}
+\end{split}\]</div>
+</section>
+<section id="greens-function-of-the-device">
+<h4>2. Green’s function of the device<a class="headerlink" href="#greens-function-of-the-device" title="Link to this heading">#</a></h4>
+<p>The central object is the <strong>retarded Green’s function</strong> of the device region:</p>
+<div class="math notranslate nohighlight">
+\[
+G^r(E) = \Big[ E S - H_D - \Sigma_L^r(E) - \Sigma_R^r(E) \Big]^{-1},
+\]</div>
+<p>where:</p>
+<ul class="simple">
+<li><p><span class="math notranslate nohighlight">\(H_D\)</span>: device Hamiltonian,</p></li>
+<li><p><span class="math notranslate nohighlight">\(\Sigma_{L/R}^r(E)\)</span>: electrode retarded self-energies, describing the coupling between device and semi-infinite electrodes.</p></li>
+</ul>
+<p>The <strong>self-energy</strong> contains information about level broadening induced by the leads.</p>
+</section>
+<section id="transmission-function">
+<h4>3. Transmission function<a class="headerlink" href="#transmission-function" title="Link to this heading">#</a></h4>
+<p>The <strong>transmission probability</strong> at energy (E) is given by:</p>
+<div class="math notranslate nohighlight">
+\[
+T(E) = \mathrm{Tr} \big[ \Gamma_L(E) \, G^r(E) \, \Gamma_R(E) \, G^a(E) \big],
+\]</div>
+<p>with:</p>
+<ul class="simple">
+<li><p><span class="math notranslate nohighlight">\(\Gamma_{L/R}(E) = i \big[ \Sigma_{L/R}^r(E) - \Sigma_{L/R}^a(E) \big]\)</span>
+(level broadening matrices),</p></li>
+<li><p><span class="math notranslate nohighlight">\(G^a(E) = \big(G^r(E)\big)^\dagger\)</span>.</p></li>
+</ul>
+</section>
+<section id="current-landauerbuttiker-formula">
+<h4>4. Current (Landauer–Büttiker formula)<a class="headerlink" href="#current-landauerbuttiker-formula" title="Link to this heading">#</a></h4>
+<p>The current under bias voltage <span class="math notranslate nohighlight">\(V\)</span> is obtained by integrating the transmission over energy:</p>
+<div class="math notranslate nohighlight">
+\[
+I(V) = \frac{2e}{h} \int dE \, T(E, V) \, \big[ f_L(E) - f_R(E) \big],
+\]</div>
+<p>where <span class="math notranslate nohighlight">\(f_{L/R}(E)\)</span> are Fermi–Dirac distributions of the electrodes (shifted by bias).</p>
+</section>
+<section id="key-physical-quantities">
+<h4>5. Key physical quantities<a class="headerlink" href="#key-physical-quantities" title="Link to this heading">#</a></h4>
+<ul class="simple">
+<li><p><strong>DOS</strong>: density of states, related to the spectral function <span class="math notranslate nohighlight">\(A(E) = i(G^r - G^a)\)</span>.</p></li>
+<li><p><strong>LDOS</strong>: local density of states, giving spatially resolved information inside the device.</p></li>
+<li><p><strong>Transmission spectrum</strong>: energy-resolved measure of electron transport capability.</p></li>
+</ul>
+<p>NEGF connects <em>microscopic Hamiltonians</em> (from first principles or tight-binding) with <em>observable transport quantities</em> (DOS,  current), incorporating the quantum effects naturally.
+This makes it an essential tool for nanoelectronics and quantum device simulations.</p>
+</section>
+</section>
+</section>
+<section id="model-loading-and-band-plotting">
+<h2>1. Model loading and band plotting<a class="headerlink" href="#model-loading-and-band-plotting" title="Link to this heading">#</a></h2>
+<p>In this section we will:</p>
+<ul class="simple">
+<li><p>Load a pretrained DeePTB model for a linear atomic chain,</p></li>
+<li><p>Plot the band structure (expected: a cosine-like dispersion for a single orbital 1D chain).</p></li>
+</ul>
+<p>For demonstration, here we prepare a Slater-Koster Tight-Binding model with one single orbital at each atomic site.</p>
+<p>Since there is a built-in baseline model covering the periodic table, for any target system of your interest, you can extract the corresponding model from this built-in baseline model. For more details about DeePTB and the built-in baseline model, please see <a class="reference external" href="https://deeptb.readthedocs.io/en/latest/quick_start/hands_on/tutorial1_base_sk.html">DeePTB-Tutorial 1: DeePTB-SK Baseline Model</a>.</p>
+<p>Switch to the tutorial input directory. The examples and input files used in this tutorial are stored under <code class="docutils literal notranslate"><span class="pre">examples/atomic_chain_api/input_files</span></code>.</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
+<span class="n">workdir</span><span class="o">=</span><span class="s1">&#39;../../examples/atomic_chain_api/input_files&#39;</span>
+<span class="n">os</span><span class="o">.</span><span class="n">chdir</span><span class="p">(</span><span class="n">workdir</span><span class="p">)</span>
+<span class="o">!</span>tree<span class="w"> </span>-L<span class="w"> </span><span class="m">1</span><span class="w"> </span>./
+</pre></div>
+</div>
+</div>
+<div class="cell_output docutils container">
+<div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span><span class=" -Color -Color-Bold -Color-Bold-Blue">./</span>
+├── chain.vasp
+├── negf_chain_new.json
+└── nnsk_C_new.json
+
+0 directories, 3 files
+</pre></div>
+</div>
+</div>
+</div>
+<p>The logging settings.</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">dpnegf.utils.loggers</span><span class="w"> </span><span class="kn">import</span> <span class="n">set_log_handles</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">logging</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
+<span class="n">results_path</span> <span class="o">=</span> <span class="s1">&#39;../band_plot&#39;</span>
+<span class="n">log_path</span> <span class="o">=</span> <span class="n">results_path</span><span class="o">+</span><span class="s1">&#39;/log&#39;</span>
+<span class="n">log_level</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">INFO</span>
+<span class="n">set_log_handles</span><span class="p">(</span><span class="n">log_level</span><span class="p">,</span> <span class="n">Path</span><span class="p">(</span><span class="n">log_path</span><span class="p">)</span> <span class="k">if</span> <span class="n">log_path</span> <span class="k">else</span> <span class="kc">None</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="cell_output docutils container">
+<div class="output traceback highlight-ipythontb notranslate"><div class="highlight"><pre><span></span><span class="gt">---------------------------------------------------------------------------</span>
+<span class="ne">ModuleNotFoundError</span><span class="g g-Whitespace">                       </span>Traceback (most recent call last)
+<span class="n">Cell</span> <span class="n">In</span><span class="p">[</span><span class="mi">2</span><span class="p">],</span> <span class="n">line</span> <span class="mi">1</span>
+<span class="ne">----&gt; </span><span class="mi">1</span> <span class="kn">from</span><span class="w"> </span><span class="nn">dpnegf.utils.loggers</span><span class="w"> </span><span class="kn">import</span> <span class="n">set_log_handles</span>
+<span class="g g-Whitespace">      </span><span class="mi">2</span> <span class="kn">import</span><span class="w"> </span><span class="nn">logging</span>
+<span class="g g-Whitespace">      </span><span class="mi">3</span> <span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
+
+<span class="ne">ModuleNotFoundError</span>: No module named &#39;dpnegf&#39;
+</pre></div>
+</div>
+</div>
+</div>
+<p>Load model from file.</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">dptb.nn.build</span><span class="w"> </span><span class="kn">import</span> <span class="n">build_model</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">json</span>
+<span class="n">model</span> <span class="o">=</span>  <span class="s2">&quot;nnsk_C_new.json&quot;</span> <span class="c1"># the model for demonsration</span>
+<span class="n">model_json</span> <span class="o">=</span> <span class="n">json</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="nb">open</span><span class="p">(</span><span class="n">model</span><span class="p">))</span>
+<span class="n">model</span> <span class="o">=</span> <span class="n">build_model</span><span class="p">(</span><span class="n">model</span><span class="p">,</span>
+                    <span class="n">model_options</span><span class="o">=</span> <span class="n">model_json</span><span class="p">[</span><span class="s1">&#39;model_options&#39;</span><span class="p">],</span>
+                    <span class="n">common_options</span><span class="o">=</span><span class="n">model_json</span><span class="p">[</span><span class="s1">&#39;common_options&#39;</span><span class="p">])</span>
+</pre></div>
+</div>
+</div>
+<div class="cell_output docutils container">
+<div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>DPNEGF WARNING The model option atomic_radius in nnsk is not defined in input model_options, set to v1.
+</pre></div>
+</div>
+</div>
+</div>
+<p>After the model is loaded, bands for specific structures can be ploted.</p>
+<p>Here we load the full system and split it into unit cell.</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">ase.io</span><span class="w"> </span><span class="kn">import</span> <span class="n">read</span>
+<span class="n">structure</span> <span class="o">=</span>  <span class="s2">&quot;chain.vasp&quot;</span> 
+<span class="n">atoms</span> <span class="o">=</span> <span class="n">read</span><span class="p">(</span><span class="n">structure</span><span class="p">)</span>
+<span class="n">atoms</span>
+</pre></div>
+</div>
+</div>
+<div class="cell_output docutils container">
+<div class="output text_plain highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>Atoms(symbols=&#39;C12&#39;, pbc=True, cell=[10.0, 10.0, 19.2])
+</pre></div>
+</div>
+</div>
+</div>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">uni_cell_atoms</span> <span class="o">=</span> <span class="n">atoms</span><span class="p">[</span><span class="mi">0</span><span class="p">:</span><span class="mi">1</span><span class="p">]</span>
+<span class="n">uni_cell_atoms</span><span class="o">.</span><span class="n">cell</span><span class="p">[</span><span class="mi">2</span><span class="p">][</span><span class="mi">2</span><span class="p">]</span> <span class="o">=</span> <span class="n">atoms</span><span class="o">.</span><span class="n">cell</span><span class="p">[</span><span class="mi">2</span><span class="p">][</span><span class="mi">2</span><span class="p">]</span><span class="o">/</span><span class="nb">len</span><span class="p">(</span><span class="n">atoms</span><span class="p">)</span>
+<span class="n">uni_cell_atoms</span>
+</pre></div>
+</div>
+</div>
+<div class="cell_output docutils container">
+<div class="output text_plain highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>Atoms(symbols=&#39;C&#39;, pbc=True, cell=[10.0, 10.0, 1.5999999999999999])
+</pre></div>
+</div>
+</div>
+</div>
+<p>Because we only consider one orbital per atomic site, each atom contributes a single valence electron in the model.</p>
+<p>As visible in the band diagram, the characteristic cosine-like dispersion of a one-dimensional chain appears.</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">dptb.postprocess.bandstructure.band</span><span class="w"> </span><span class="kn">import</span> <span class="n">Band</span>
+ 
+<span class="n">task_options</span> <span class="o">=</span> <span class="p">{</span>
+        <span class="s2">&quot;task&quot;</span><span class="p">:</span> <span class="s2">&quot;band&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;kline_type&quot;</span><span class="p">:</span><span class="s2">&quot;abacus&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;kpath&quot;</span><span class="p">:[[</span><span class="mf">0.0</span><span class="p">,</span>   <span class="mf">0.0</span><span class="p">,</span>   <span class="mf">0.5</span><span class="p">,</span>   <span class="mi">50</span><span class="p">],</span>   
+                 <span class="p">[</span><span class="mf">0.0</span><span class="p">,</span>   <span class="mf">0.0</span><span class="p">,</span>   <span class="mf">0.0</span><span class="p">,</span>   <span class="mi">50</span><span class="p">],</span>               
+                 <span class="p">[</span><span class="mf">0.0</span><span class="p">,</span>   <span class="mf">0.0</span><span class="p">,</span>  <span class="o">-</span><span class="mf">0.5</span><span class="p">,</span>   <span class="mi">1</span><span class="p">]</span>
+                <span class="p">],</span>
+        <span class="s2">&quot;klabels&quot;</span><span class="p">:[</span><span class="s2">&quot;X&quot;</span><span class="p">,</span><span class="s2">&quot;G&quot;</span><span class="p">,</span><span class="s2">&quot;X&quot;</span><span class="p">],</span>
+        <span class="s2">&quot;emin&quot;</span><span class="p">:</span><span class="o">-</span><span class="mf">1.5</span><span class="p">,</span>
+        <span class="s2">&quot;emax&quot;</span><span class="p">:</span> <span class="mf">1.5</span><span class="p">,</span>
+        <span class="s2">&quot;nel_atom&quot;</span><span class="p">:{</span><span class="s2">&quot;C&quot;</span><span class="p">:</span> <span class="mi">1</span><span class="p">}</span> 
+
+       <span class="p">}</span>
+
+<span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">results_path</span><span class="p">):</span>
+    <span class="n">os</span><span class="o">.</span><span class="n">system</span><span class="p">(</span><span class="s1">&#39;rm -r </span><span class="si">%s</span><span class="s1">&#39;</span> <span class="o">%</span> <span class="n">results_path</span><span class="p">)</span>
+
+
+<span class="n">band</span> <span class="o">=</span> <span class="n">Band</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="n">results_path</span><span class="p">)</span>
+<span class="n">AtomicData_options</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;r_max&quot;</span><span class="p">:</span> <span class="mf">3.0</span><span class="p">,</span> <span class="s2">&quot;pbc&quot;</span><span class="p">:</span> <span class="kc">True</span><span class="p">}</span>
+<span class="n">band</span><span class="o">.</span><span class="n">get_bands</span><span class="p">(</span><span class="n">data</span> <span class="o">=</span> <span class="n">uni_cell_atoms</span><span class="p">,</span> 
+               <span class="n">kpath_kwargs</span> <span class="o">=</span> <span class="n">task_options</span><span class="p">,</span>
+               <span class="n">AtomicData_options</span> <span class="o">=</span> <span class="n">AtomicData_options</span><span class="p">)</span>
+<span class="n">band</span><span class="o">.</span><span class="n">band_plot</span><span class="p">(</span><span class="n">emin</span> <span class="o">=</span> <span class="n">task_options</span><span class="p">[</span><span class="s1">&#39;emin&#39;</span><span class="p">],</span>
+               <span class="n">emax</span> <span class="o">=</span> <span class="n">task_options</span><span class="p">[</span><span class="s1">&#39;emax&#39;</span><span class="p">])</span>
+</pre></div>
+</div>
+</div>
+<div class="cell_output docutils container">
+<div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>DPNEGF ERROR   TBPLaS is not installed. Thus the TBPLaS is not available, Please install it first.
+rm: cannot remove &#39;../band_plot&#39;: Directory not empty
+DPNEGF WARNING Overwrite the r_max setting in the model with the r_max setting in the AtomicData_options: 3.0
+DPNEGF WARNING This is very dangerous, please make sure you know what you are doing.
+/opt/mamba/envs/dpnegf-dev/lib/python3.10/site-packages/torch/nested/__init__.py:107: UserWarning: The PyTorch API of nested tensors is in prototype stage and will change in the near future. (Triggered internally at ../aten/src/ATen/NestedTensorImpl.cpp:178.)
+  return torch._nested_tensor_from_tensor_list(ts, dtype, None, device, None)
+DPNEGF WARNING eig_solver is not set, using default &#39;torch&#39;.
+DPNEGF INFO    KPOINTS  klist: 101 kpoints
+DPNEGF INFO    The eigenvalues are already in data. will use them.
+DPNEGF INFO    Calculating Fermi energy in the case of spin-degeneracy.
+DPNEGF INFO    Fermi energy converged after 18 iterations.
+DPNEGF INFO    q_cal: 0.9999982678381729, total_electrons: 1.0, diff q: 1.7321618270838002e-06
+DPNEGF INFO    Estimated E_fermi: -13.65731141812973 based on the valence electrons setting nel_atom : {&#39;C&#39;: 1} .
+DPNEGF INFO    No Fermi energy provided, using estimated value: -13.6573 eV
+</pre></div>
+</div>
+<img alt="../_images/18b1e923a5de8f08a34102868c9acdfbba55f9a6ea3a1962b62faff40e46e2e0.png" src="../_images/18b1e923a5de8f08a34102868c9acdfbba55f9a6ea3a1962b62faff40e46e2e0.png" />
+</div>
+</div>
+</section>
+<section id="negf-calculation">
+<h2>2. NEGF calculation<a class="headerlink" href="#negf-calculation" title="Link to this heading">#</a></h2>
+<p>After the model is loaded, we can calculate the transmission spectrum for the one-dimension chain.</p>
+<p>A sample input file <code class="docutils literal notranslate"><span class="pre">negf_chain_new.json</span></code> is provided and can be loaded directly.</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="k">try</span><span class="p">:</span>
+    <span class="kn">from</span><span class="w"> </span><span class="nn">dpnegf.runner.NEGF</span><span class="w"> </span><span class="kn">import</span> <span class="n">NEGF</span>
+<span class="k">except</span> <span class="ne">ImportError</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+    <span class="k">raise</span> <span class="ne">ImportError</span><span class="p">(</span><span class="s2">&quot;dpnegf not found. Please install firstly.&quot;</span><span class="p">)</span> <span class="kn">from</span><span class="w"> </span><span class="nn">e</span>
+
+<span class="n">negf_input_file</span> <span class="o">=</span>  <span class="s2">&quot;negf_chain_new.json&quot;</span> 
+<span class="n">structure</span> <span class="o">=</span>  <span class="s2">&quot;chain.vasp&quot;</span> 
+<span class="n">output</span> <span class="o">=</span> <span class="s2">&quot;../negf_output&quot;</span>  
+<span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">output</span><span class="p">):</span>
+    <span class="n">os</span><span class="o">.</span><span class="n">system</span><span class="p">(</span><span class="s1">&#39;rm -rf </span><span class="si">%s</span><span class="s1">&#39;</span> <span class="o">%</span> <span class="n">output</span><span class="p">)</span>
+<span class="n">os</span><span class="o">.</span><span class="n">makedirs</span><span class="p">(</span><span class="n">output</span><span class="p">)</span>
+<span class="n">negf_json</span> <span class="o">=</span> <span class="n">json</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="nb">open</span><span class="p">(</span><span class="n">negf_input_file</span><span class="p">))</span>
+</pre></div>
+</div>
+</div>
+<div class="cell_output docutils container">
+<div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>DPNEGF INFO    Numba is available and JIT functions are compiled.
+</pre></div>
+</div>
+</div>
+</div>
+<p>This input file contains:</p>
+<ul class="simple">
+<li><p>Energy range and step for the transmission calculation,</p></li>
+<li><p>Structural information that determines how to divide the system into device and electrode regions (left and right),</p></li>
+<li><p>Other important  parameters such as the number of valence electrons per element (the <code class="docutils literal notranslate"><span class="pre">nel_atom</span></code> field), which affects charge counting and Fermi level.</p></li>
+</ul>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># Energy step and range for transmission calculation</span>
+<span class="n">negf_json</span><span class="p">[</span><span class="s1">&#39;task_options&#39;</span><span class="p">][</span><span class="s1">&#39;espacing&#39;</span><span class="p">],</span> <span class="n">negf_json</span><span class="p">[</span><span class="s1">&#39;task_options&#39;</span><span class="p">][</span><span class="s1">&#39;emin&#39;</span><span class="p">],</span> <span class="n">negf_json</span><span class="p">[</span><span class="s1">&#39;task_options&#39;</span><span class="p">][</span><span class="s1">&#39;emax&#39;</span><span class="p">]</span>
+</pre></div>
+</div>
+</div>
+<div class="cell_output docutils container">
+<div class="output text_plain highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>(0.02, -1.5, 1.5)
+</pre></div>
+</div>
+</div>
+</div>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># Structural information for device and electrodes</span>
+<span class="n">negf_json</span><span class="p">[</span><span class="s1">&#39;task_options&#39;</span><span class="p">][</span><span class="s2">&quot;stru_options&quot;</span><span class="p">]</span>
+</pre></div>
+</div>
+</div>
+<div class="cell_output docutils container">
+<div class="output text_plain highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>{&#39;gamma_center&#39;: True,
+ &#39;time_reversal_symmetry&#39;: True,
+ &#39;nel_atom&#39;: {&#39;C&#39;: 1.0},
+ &#39;kmesh&#39;: [1, 1, 1],
+ &#39;pbc&#39;: [False, False, False],
+ &#39;device&#39;: {&#39;id&#39;: &#39;4-8&#39;, &#39;sort&#39;: True},
+ &#39;lead_L&#39;: {&#39;id&#39;: &#39;0-4&#39;,
+  &#39;voltage&#39;: 0.0,
+  &#39;kmesh_lead_Ef&#39;: [1, 1, 20],
+  &#39;useBloch&#39;: False},
+ &#39;lead_R&#39;: {&#39;id&#39;: &#39;8-12&#39;,
+  &#39;voltage&#39;: 0.0,
+  &#39;kmesh_lead_Ef&#39;: [1, 1, 20],
+  &#39;useBloch&#39;: False}}
+</pre></div>
+</div>
+</div>
+</div>
+<section id="running-negf-from-api">
+<h3>Running NEGF from API<a class="headerlink" href="#running-negf-from-api" title="Link to this heading">#</a></h3>
+<p>Note that the calculation of self-energy files may take some time.</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">output</span><span class="p">):</span>
+    <span class="n">os</span><span class="o">.</span><span class="n">system</span><span class="p">(</span><span class="s1">&#39;rm -r </span><span class="si">%s</span><span class="s1">&#39;</span> <span class="o">%</span> <span class="n">output</span><span class="p">)</span>
+<span class="n">os</span><span class="o">.</span><span class="n">makedirs</span><span class="p">(</span><span class="n">output</span><span class="p">)</span>
+
+<span class="n">negf</span> <span class="o">=</span> <span class="n">NEGF</span><span class="p">(</span>
+    <span class="n">model</span><span class="o">=</span><span class="n">model</span><span class="p">,</span>
+    <span class="n">AtomicData_options</span><span class="o">=</span><span class="n">negf_json</span><span class="p">[</span><span class="s1">&#39;AtomicData_options&#39;</span><span class="p">],</span>
+    <span class="n">structure</span><span class="o">=</span><span class="n">structure</span><span class="p">,</span>
+    <span class="n">results_path</span><span class="o">=</span><span class="n">output</span><span class="p">,</span>  
+    <span class="o">**</span><span class="n">negf_json</span><span class="p">[</span><span class="s1">&#39;task_options&#39;</span><span class="p">]</span>
+<span class="p">)</span>
+   
+<span class="n">negf</span><span class="o">.</span><span class="n">compute</span><span class="p">()</span>
+</pre></div>
+</div>
+</div>
+<div class="cell_output docutils container">
+<div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>DPNEGF INFO    ------ k-point for NEGF -----
+DPNEGF INFO    Gamma Center: True
+DPNEGF INFO    Time Reversal: True
+DPNEGF INFO    k-points Num: 1
+</pre></div>
+</div>
+<div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>DPNEGF INFO    k-points: [[0 0 0]]
+DPNEGF INFO    k-points weights: [1.]
+DPNEGF INFO    --------------------------------
+DPNEGF WARNING AtomicData_options is extracted from input file. This may be not consistent with the model options. Please be careful and check the cutoffs.
+DPNEGF INFO    The AtomicData_options is:
+               {
+                   &quot;r_max&quot;: 3.0
+               }
+DPNEGF INFO    Lead principal layers translational equivalence error (on average): 1.732052e-10 (threshold: 1.000000e-05)
+DPNEGF INFO    Lead principal layers translational equivalence error (on average): 1.732051e-10 (threshold: 1.000000e-05)
+DPNEGF INFO    The coupling width of lead_L is 1.
+DPNEGF INFO    The coupling width of lead_R is 1.
+DPNEGF INFO    --------------------------------------------------------------------------------
+DPNEGF INFO    The Hamiltonian has been initialized by model.
+DPNEGF INFO    ================================================================================
+DPNEGF INFO    -------------Fermi level calculation-------------
+DPNEGF WARNING No doping detected in lead_L, fixed_charge = 0
+DPNEGF WARNING No doping detected in lead_R, fixed_charge = 0
+DPNEGF INFO    Number of electrons in lead_L: {&#39;C&#39;: 1.0}
+DPNEGF INFO    Number of electrons in lead_R: {&#39;C&#39;: 1.0}
+DPNEGF INFO    -----Calculating Fermi level for lead_L-----
+DPNEGF INFO    KPOINTS  kmesh sampling: 11 kpoints
+DPNEGF WARNING Overwrite the r_max setting in the model with the r_max setting in the AtomicData_options: 3.0
+DPNEGF WARNING This is very dangerous, please make sure you know what you are doing.
+DPNEGF INFO    Getting eigenvalues from the model.
+DPNEGF INFO    Calculating Fermi energy in the case of spin-degeneracy.
+DPNEGF WARNING Fermi level bisection did not converge under tolerance 1e-10 after 51 iterations.
+DPNEGF INFO    q_cal: 3.999994485346824, total_electrons: 4.0, diff q: 5.514653175886508e-06
+DPNEGF INFO    Estimated E_fermi: -13.638588428497314 based on the valence electrons setting nel_atom : {&#39;C&#39;: 1.0} .
+DPNEGF INFO    -----Calculating Fermi level for lead_R-----
+DPNEGF INFO    KPOINTS  kmesh sampling: 11 kpoints
+DPNEGF WARNING Overwrite the r_max setting in the model with the r_max setting in the AtomicData_options: 3.0
+DPNEGF WARNING This is very dangerous, please make sure you know what you are doing.
+DPNEGF INFO    Getting eigenvalues from the model.
+DPNEGF INFO    Calculating Fermi energy in the case of spin-degeneracy.
+DPNEGF WARNING Fermi level bisection did not converge under tolerance 1e-10 after 51 iterations.
+DPNEGF INFO    q_cal: 4.000002782981872, total_electrons: 4.0, diff q: 2.7829818716185173e-06
+DPNEGF INFO    Estimated E_fermi: -13.638587474822998 based on the valence electrons setting nel_atom : {&#39;C&#39;: 1.0} .
+DPNEGF INFO    -------------------------------------------------
+DPNEGF INFO    Zero bias case detected.
+DPNEGF INFO    Fermi level for lead_L: -13.638588428497314
+DPNEGF INFO    Fermi level for lead_R: -13.638587474822998
+DPNEGF INFO    Electrochemical potential for lead_L: -13.638588428497314
+DPNEGF INFO    Electrochemical potential for lead_R: -13.638587474822998
+DPNEGF INFO    Reference energy E_ref: -13.638588428497314
+DPNEGF INFO    =================================================
+
+DPNEGF INFO    Merging 150 tmp self energy files into ../negf_output/self_energy/self_energy_leadL.h5
+DPNEGF INFO    Merge complete.
+DPNEGF INFO    Merging 150 tmp self energy files into ../negf_output/self_energy/self_energy_leadR.h5
+DPNEGF INFO    Merge complete.
+DPNEGF INFO    Properties computation at k = [0.0000,0.0000,0.0000]
+DPNEGF INFO    computing green&#39;s function at e = -1.500
+DPNEGF INFO    computing green&#39;s function at e = -1.198
+DPNEGF INFO    computing green&#39;s function at e = -0.896
+DPNEGF INFO    computing green&#39;s function at e = -0.594
+DPNEGF INFO    computing green&#39;s function at e = -0.292
+DPNEGF INFO    computing green&#39;s function at e = 0.010
+DPNEGF INFO    computing green&#39;s function at e = 0.312
+DPNEGF INFO    computing green&#39;s function at e = 0.614
+DPNEGF INFO    computing green&#39;s function at e = 0.916
+DPNEGF INFO    computing green&#39;s function at e = 1.218
+</pre></div>
+</div>
+</div>
+</div>
+</section>
+<section id="running-negf-from-the-command-line">
+<h3>Running NEGF from the Command Line<a class="headerlink" href="#running-negf-from-the-command-line" title="Link to this heading">#</a></h3>
+<p>The NEGF calculation can also be executed via the command-line interface (CLI). This allows batch runs and straightforward integration with job scripts on HPC systems.</p>
+<p>See the example CLI commands below.</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># Command line for DPNEGF</span>
+<span class="o">!</span><span class="w"> </span>pwd
+<span class="o">!</span><span class="w"> </span><span class="o">[</span><span class="w"> </span>-d<span class="w"> </span><span class="s2">&quot;../negf_output_cli&quot;</span><span class="w"> </span><span class="o">]</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span>rm<span class="w"> </span>-r<span class="w"> </span>../negf_output_cli
+<span class="o">!</span><span class="w"> </span>dpnegf<span class="w"> </span>run<span class="w"> </span>negf_chain_new.json<span class="w">  </span>-i<span class="w"> </span>nnsk_C_new.json<span class="w"> </span>-stu<span class="w"> </span>chain.vasp<span class="w"> </span>-o<span class="w"> </span>../negf_output_cli
+</pre></div>
+</div>
+</div>
+<div class="cell_output docutils container">
+<div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>/personal/DeepTB/dptb_Zjj/dpnegf/examples/atomic_chain_api/input_files
+sisl is not installed.Thus the input for TBtrans can not be generated, please install it first!
+tbtrans is not in the Environment PATH. Thus the input for TBtrans can be generated but not run.
+================================================================================
+            _______  .______   .__   __.  _______   _______  _______            
+           |       \ |   _  \  |  \ |  | |   ____| /  _____||   ____|           
+           |  .--.  ||  |_)  | |   \|  | |  |__   |  |  __  |  |__              
+           |  |  |  ||   ___/  |  . `  | |   __|  |  | |_ | |   __|             
+           |  &#39;--&#39;  ||  |      |  |\   | |  |____ |  |__| | |  |                
+             |_______/ | _|      |__| \__| |_______| \______| |__|              
+--------------------------------------------------------------------------------
+                       DPNEGF version 0.1.1.dev97+bccd946                       
+================================================================================
+DPNEGF INFO    ================================================================================
+DPNEGF INFO                                      Version Info                                  
+DPNEGF INFO    --------------------------------------------------------------------------------
+DPNEGF INFO    DPNEGF               : 0.1.1.dev97+bccd946
+DPNEGF INFO    DeePTB               : 2.1.2.dev53+5b97981
+DPNEGF INFO    ================================================================================
+
+DPNEGF WARNING The model option atomic_radius in nnsk is not defined in input model_options, set to v1.
+DPNEGF INFO    ------ k-point for NEGF -----
+DPNEGF INFO    Gamma Center: True
+DPNEGF INFO    Time Reversal: True
+DPNEGF INFO    k-points Num: 1
+DPNEGF INFO    k-points: [[0 0 0]]
+DPNEGF INFO    k-points weights: [1.]
+DPNEGF INFO    --------------------------------
+DPNEGF WARNING AtomicData_options is extracted from input file. This may be not consistent with the model options. Please be careful and check the cutoffs.
+DPNEGF INFO    The AtomicData_options is:
+               {
+                   &quot;r_max&quot;: 3.0,
+                   &quot;er_max&quot;: null,
+                   &quot;oer_max&quot;: null
+               }
+DPNEGF INFO    Lead principal layers translational equivalence error (on average): 1.732052e-10 (threshold: 1.000000e-05)
+DPNEGF INFO    Lead principal layers translational equivalence error (on average): 1.732051e-10 (threshold: 1.000000e-05)
+/opt/mamba/envs/dpnegf-dev/lib/python3.10/site-packages/torch/nested/__init__.py:107: UserWarning: The PyTorch API of nested tensors is in prototype stage and will change in the near future. (Triggered internally at ../aten/src/ATen/NestedTensorImpl.cpp:178.)
+  return torch._nested_tensor_from_tensor_list(ts, dtype, None, device, None)
+DPNEGF INFO    The coupling width of lead_L is 1.
+DPNEGF INFO    The coupling width of lead_R is 1.
+DPNEGF INFO    --------------------------------------------------------------------------------
+DPNEGF INFO    The Hamiltonian has been initialized by model.
+DPNEGF INFO    ================================================================================
+DPNEGF INFO    -------------Fermi level calculation-------------
+DPNEGF WARNING No doping detected in lead_L, fixed_charge = 0.0
+DPNEGF WARNING No doping detected in lead_R, fixed_charge = 0.0
+DPNEGF INFO    Number of electrons in lead_L: {&#39;C&#39;: 1.0}
+DPNEGF INFO    Number of electrons in lead_R: {&#39;C&#39;: 1.0}
+DPNEGF INFO    -----Calculating Fermi level for lead_L-----
+DPNEGF INFO    KPOINTS  kmesh sampling: 11 kpoints
+DPNEGF WARNING Overwrite the r_max setting in the model with the r_max setting in the AtomicData_options: 3.0
+DPNEGF WARNING This is very dangerous, please make sure you know what you are doing.
+DPNEGF INFO    Getting eigenvalues from the model.
+DPNEGF INFO    Calculating Fermi energy in the case of spin-degeneracy.
+DPNEGF WARNING Fermi level bisection did not converge under tolerance 1e-10 after 51 iterations.
+DPNEGF INFO    q_cal: 3.999994485346824, total_electrons: 4.0, diff q: 5.514653175886508e-06
+DPNEGF INFO    Estimated E_fermi: -13.638588428497314 based on the valence electrons setting nel_atom : {&#39;C&#39;: 1.0} .
+DPNEGF INFO    -----Calculating Fermi level for lead_R-----
+DPNEGF INFO    KPOINTS  kmesh sampling: 11 kpoints
+DPNEGF WARNING Overwrite the r_max setting in the model with the r_max setting in the AtomicData_options: 3.0
+DPNEGF WARNING This is very dangerous, please make sure you know what you are doing.
+DPNEGF INFO    Getting eigenvalues from the model.
+DPNEGF INFO    Calculating Fermi energy in the case of spin-degeneracy.
+DPNEGF WARNING Fermi level bisection did not converge under tolerance 1e-10 after 51 iterations.
+DPNEGF INFO    q_cal: 4.000002782981872, total_electrons: 4.0, diff q: 2.7829818716185173e-06
+DPNEGF INFO    Estimated E_fermi: -13.638587474822998 based on the valence electrons setting nel_atom : {&#39;C&#39;: 1.0} .
+DPNEGF INFO    -------------------------------------------------
+DPNEGF INFO    Zero bias case detected.
+DPNEGF INFO    Fermi level for lead_L: -13.638588428497314
+DPNEGF INFO    Fermi level for lead_R: -13.638587474822998
+DPNEGF INFO    Electrochemical potential for lead_L: -13.638588428497314
+DPNEGF INFO    Electrochemical potential for lead_R: -13.638587474822998
+DPNEGF INFO    Reference energy E_ref: -13.638588428497314
+DPNEGF INFO    =================================================
+
+DPNEGF INFO    Merging 150 tmp self energy files into /personal/DeepTB/dptb_Zjj/dpnegf/examples/atomic_chain_api/input_files/../negf_output_cli/results/self_energy/self_energy_leadL.h5
+DPNEGF INFO    Merge complete.
+DPNEGF INFO    Merging 150 tmp self energy files into /personal/DeepTB/dptb_Zjj/dpnegf/examples/atomic_chain_api/input_files/../negf_output_cli/results/self_energy/self_energy_leadR.h5
+DPNEGF INFO    Merge complete.
+DPNEGF INFO    Properties computation at k = [0.0000,0.0000,0.0000]
+DPNEGF INFO    computing green&#39;s function at e = -1.500
+DPNEGF INFO    computing green&#39;s function at e = -1.198
+DPNEGF INFO    computing green&#39;s function at e = -0.896
+DPNEGF INFO    computing green&#39;s function at e = -0.594
+DPNEGF INFO    computing green&#39;s function at e = -0.292
+DPNEGF INFO    computing green&#39;s function at e = 0.010
+DPNEGF INFO    computing green&#39;s function at e = 0.312
+DPNEGF INFO    computing green&#39;s function at e = 0.614
+DPNEGF INFO    computing green&#39;s function at e = 0.916
+DPNEGF INFO    computing green&#39;s function at e = 1.218
+DPNEGF INFO    negf calculation successfully completed.
+
+</pre></div>
+</div>
+</div>
+</div>
+<p>We can inspect the outputs of the NEGF run by loading the results file (<code class="docutils literal notranslate"><span class="pre">negf.out.pth</span></code>). The output  contains:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">T_avg</span></code>: the total transmission as a function of energy,</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">T_k</span></code>: k-point resolved transmission (if k-sampling is used),</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">DOS</span></code>: density of states on the energy grid,</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">LDOS</span></code>: local density of states defined for each atomic site.</p></li>
+</ul>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">torch</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">matplotlib.pyplot</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">plt</span>
+<span class="n">results_path</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">output</span><span class="p">,</span> <span class="s1">&#39;negf.out.pth&#39;</span><span class="p">)</span>
+<span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">results_path</span><span class="p">)</span> <span class="ow">is</span> <span class="kc">False</span><span class="p">:</span>
+    <span class="k">raise</span> <span class="ne">FileNotFoundError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Results file </span><span class="si">{</span><span class="n">results_path</span><span class="si">}</span><span class="s2"> not found. Please check if the NEGF calculation was successful.&quot;</span><span class="p">)</span>
+<span class="n">negf_out</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">results_path</span><span class="p">,</span><span class="n">weights_only</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+</div>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">negf_out</span><span class="o">.</span><span class="n">keys</span><span class="p">()</span>
+</pre></div>
+</div>
+</div>
+<div class="cell_output docutils container">
+<div class="output text_plain highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>dict_keys([&#39;k&#39;, &#39;wk&#39;, &#39;uni_grid&#39;, &#39;DOS&#39;, &#39;T_k&#39;, &#39;LDOS&#39;, &#39;T_avg&#39;])
+</pre></div>
+</div>
+</div>
+</div>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">negf_out</span><span class="p">[</span><span class="s1">&#39;uni_grid&#39;</span><span class="p">],</span> <span class="n">negf_out</span><span class="p">[</span><span class="s1">&#39;DOS&#39;</span><span class="p">][</span><span class="nb">str</span><span class="p">(</span><span class="n">negf_out</span><span class="p">[</span><span class="s1">&#39;k&#39;</span><span class="p">][</span><span class="mi">0</span><span class="p">])])</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">xlabel</span><span class="p">(</span><span class="s1">&#39;Energy (eV)&#39;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">ylabel</span><span class="p">(</span><span class="s1">&#39;DOS&#39;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">title</span><span class="p">(</span><span class="s1">&#39;DOS vs Energy&#39;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">grid</span><span class="p">()</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+</pre></div>
+</div>
+</div>
+<div class="cell_output docutils container">
+<img alt="../_images/1fc49737427338f3f6d15da7e516baf5f6b6064042cefa73412e0b016696427d.png" src="../_images/1fc49737427338f3f6d15da7e516baf5f6b6064042cefa73412e0b016696427d.png" />
+</div>
+</div>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">negf_out</span><span class="p">[</span><span class="s1">&#39;uni_grid&#39;</span><span class="p">],</span> <span class="n">negf_out</span><span class="p">[</span><span class="s1">&#39;T_avg&#39;</span><span class="p">])</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">xlabel</span><span class="p">(</span><span class="s1">&#39;Energy (eV)&#39;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">ylabel</span><span class="p">(</span><span class="s1">&#39;Transmission&#39;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">title</span><span class="p">(</span><span class="s1">&#39;Transmission vs Energy&#39;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">grid</span><span class="p">()</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+</pre></div>
+</div>
+</div>
+<div class="cell_output docutils container">
+<img alt="../_images/c2eb6fccef6bf298a804249204b9e6ad0f6ced92707486dfb07eeccac2c02db5.png" src="../_images/c2eb6fccef6bf298a804249204b9e6ad0f6ced92707486dfb07eeccac2c02db5.png" />
+</div>
+</div>
+</section>
+</section>
+</section>
+
+
+                </article>
+              
+
+              
+              
+              
+              
+                <footer class="prev-next-footer d-print-none">
+                  
+<div class="prev-next-area">
+</div>
+                </footer>
+              
+            </div>
+            
+            
+              
+                <div class="bd-sidebar-secondary bd-toc"><div class="sidebar-secondary-items sidebar-secondary__inner">
+
+
+  <div class="sidebar-secondary-item">
+  <div class="page-toc tocsection onthispage">
+    <i class="fa-solid fa-list"></i> Contents
+  </div>
+  <nav class="bd-toc-nav page-toc">
+    <ul class="visible nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#introduction">Introduction</a><ul class="nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#learning-objectives">Learning Objectives</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#requirement">Requirement</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warm-up-a-short-introduction-to-negf"><em>WARM UP</em>: A short introduction to NEGF</a><ul class="nav section-nav flex-column">
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#partitioning-the-system">1. Partitioning the system</a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#greens-function-of-the-device">2. Green’s function of the device</a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#transmission-function">3. Transmission function</a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#current-landauerbuttiker-formula">4. Current (Landauer–Büttiker formula)</a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#key-physical-quantities">5. Key physical quantities</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#model-loading-and-band-plotting">1. Model loading and band plotting</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#negf-calculation">2. NEGF calculation</a><ul class="nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#running-negf-from-api">Running NEGF from API</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#running-negf-from-the-command-line">Running NEGF from the Command Line</a></li>
+</ul>
+</li>
+</ul>
+  </nav></div>
+
+</div></div>
+              
+            
+          </div>
+          <footer class="bd-footer-content">
+            
+<div class="bd-footer-content__inner container">
+  
+  <div class="footer-item">
+    
+<p class="component-author">
+By DPNEGF
+</p>
+
+  </div>
+  
+  <div class="footer-item">
+    
+
+  <p class="copyright">
+    
+      © Copyright 2025, DPNEGF.
+      <br/>
+    
+  </p>
+
+  </div>
+  
+  <div class="footer-item">
+    
+  </div>
+  
+  <div class="footer-item">
+    
+  </div>
+  
+</div>
+          </footer>
+        
+
+      </main>
+    </div>
+  </div>
+  
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script src="../_static/scripts/bootstrap.js?digest=dfe6caa3a7d634c4db9b"></script>
+<script src="../_static/scripts/pydata-sphinx-theme.js?digest=dfe6caa3a7d634c4db9b"></script>
+
+  <footer class="bd-footer">
+  </footer>
+  </body>
+</html>

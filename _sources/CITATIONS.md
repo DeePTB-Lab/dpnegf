@@ -1,6 +1,22 @@
 # How to Cite
 
-The following references are required to be cited when using DeePTB. Specifically:
+The following references are required to be cited when using DPNEGF. 
+
+- **For DPNEGF:**
+  
+    Zou J, Zhouyin Z, Lin D, et al. Deep learning accelerated quantum transport simulations in nanoelectronics: From break junctions to field-effect transistors[J]. arXiv preprint arXiv:2411.08800, 2024.
+    ```latex
+    @article{zou2025deep,
+      title={Deep Learning Accelerated Quantum Transport Simulations in Nanoelectronics: From Break Junctions to Field-Effect Transistors}, 
+      author={Jijie Zou and Zhanghao Zhouyin and Dongying Lin and Yike Huang and Linfeng Zhang and Shimin Hou and Qiangqiang Gu},
+      year={2025},
+      eprint={2411.08800},
+      archivePrefix={arXiv},
+      primaryClass={cond-mat.mes-hall},
+      url={https://arxiv.org/abs/2411.08800}}     
+    ```
+
+DPNEGF is compatible with both modeling strategies available in DeePTB: **DeePTB-SK** and **DeePTB-E3**. Specifically:
 
 - **For DeePTB-SK:**
   
