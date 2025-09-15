@@ -110,6 +110,14 @@ class NEGF(object):
             self.kpoints,self.wk = kmesh_sampling_negf(self.stru_options["kmesh"], 
                                                        self.stru_options["gamma_center"],
                                                      self.stru_options["time_reversal_symmetry"])
+
+        if 'override_overlap' in kwargs:
+            assert isinstance(kwargs['override_overlap'], str)
+            self.override_overlap = kwargs['override_overlap']
+            log.info(msg="Using external calculated overlap overriding!")
+        else:
+            self.override_overlap = None
+
         log.info(msg="------ k-point for NEGF -----")
         log.info(msg="Gamma Center: {0}".format(self.stru_options["gamma_center"]))
         log.info(msg="Time Reversal: {0}".format(self.stru_options["time_reversal_symmetry"]))
@@ -179,7 +187,7 @@ class NEGF(object):
         e_fermi = {}; chemiPot = {}
         # calculate Fermi level
         if  self.e_fermi is None:        
-            elec_cal = ElecStruCal(model=model,device=self.torch_device)
+            elec_cal = ElecStruCal(model=model, device=self.torch_device, override_overlap=self.override_overlap)
             nel_atom_lead = self.get_nel_atom_lead(
                                 struct_leads, 
                                 charge={lead_tag: self.stru_options[lead_tag].get("charge", 0) for lead_tag in ["lead_L", "lead_R"]}
