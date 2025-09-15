@@ -3,4 +3,4 @@ A quick Example
 =================================================
 
 .. toctree::
-   tutorial1_base_sk
+   tutorial1_c_chain
