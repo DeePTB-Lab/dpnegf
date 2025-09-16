@@ -34,11 +34,11 @@ For more details, see our papers:
    easy_install
    hands_on/index
 
-.. toctree::
-   :maxdepth: 2
-   :caption: INPUT TAG
+.. .. toctree::
+..    :maxdepth: 2
+..    :caption: INPUT TAG
    
-   input_params/index
+..    input_params/index
 
 .. toctree::
    :maxdepth: 2
