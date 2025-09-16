@@ -3,7 +3,9 @@ def render_argument(arg, indent=0):
     ind = "    " * indent
     out = []
 
-    # 一级标题 (参数名)
+    if isinstance(arg, str):
+        return f"{ind}{arg}"
+
     out.append(f"{ind}{arg.name}:")
     out.append(f"{ind}    | type: ``{arg.dtype}``")
 
@@ -31,6 +33,7 @@ def render_argument(arg, indent=0):
 
     return "\n".join(out)
 
+
 import os
 from dpnegf.utils import argcheck
 
@@ -43,6 +46,8 @@ def generate_rst_from_argcheck(output_dir="docs/input_params"):
     }
 
     for name, func in modules.items():
+        arg = func() if callable(func) else func
+        print(f"[DEBUG] {name} returned:", arg, type(arg))
         arg = func()
         rst = f"""
 ========================================
