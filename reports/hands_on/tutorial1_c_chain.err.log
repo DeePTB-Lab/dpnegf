@@ -28,8 +28,10 @@ nbclient.exceptions.CellExecutionError: An error occurred while executing the fo
 from dpnegf.utils.loggers import set_log_handles
 import logging
 from pathlib import Path
+
+
 results_path = '../band_plot'
-log_path = results_path+'/log'
+log_path = os.path.join(results_path, 'log')
 log_level = logging.INFO
 set_log_handles(log_level, Path(log_path) if log_path else None)
 ------------------
