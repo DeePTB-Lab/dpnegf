@@ -10,9 +10,11 @@ DPNEGF Documentation
 establishing an efficient quantum transport simulation framework **DeePTB-NEGF** with first-principles accuracy. 
 
 --------------
-Key Features:
+Overview
 --------------
 
+Key Features:
+~~~~~~~~~~~~~
 By using DeePTB-SK or DeePTB-E3—both available within the DeePTB package—DeePTB-NEGF can compute quantum transport 
 properties in open-boundary systems with either environment-corrected Slater-Koster(SK) TB Hamiltonian 
 or linear combination of atomic orbitals (LCAO) Kohn-Sham Hamiltonian.
