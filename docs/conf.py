@@ -95,7 +95,7 @@ latex_elements = {
     'extraclassoptions':'openany,oneside'
 }
 
-# -- Auto-generate input docs from argcheck ---------------------
-def setup(app):
-    from dpnegf.utils import gen_input_docs
-    gen_input_docs.main()
+# # -- Auto-generate input docs from argcheck ---------------------
+# def setup(app):
+#     from dpnegf.utils import gen_input_docs
+#     gen_input_docs.main()

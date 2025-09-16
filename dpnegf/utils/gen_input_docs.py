@@ -42,12 +42,13 @@ def generate_rst_from_argcheck(output_dir="docs/input_params"):
 
     # 这里你可以写死，也可以动态扫描
     modules = {
-        "common_options": argcheck.common_options
+        "common_options": argcheck.common_options,
+        "run_options": argcheck.run_options,
     }
 
     for name, func in modules.items():
-        arg = func() if callable(func) else func
-        print(f"[DEBUG] {name} returned:", arg, type(arg))
+        # arg = func() if callable(func) else func
+        # print(f"[DEBUG] {name} returned:", arg, type(arg))
         arg = func()
         rst = f"""
 ========================================
