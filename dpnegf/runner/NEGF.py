@@ -49,7 +49,7 @@ class NEGF(object):
                 sgf_solver: str,
                 e_fermi: float=None,
                 use_saved_HS: bool=False, saved_HS_path: str=None,
-                self_energy_save_path: str=None, se_info_display: bool=False,
+                use_saved_se: bool=False, self_energy_save_path: str=None, se_info_display: bool=False,
                 out_tc: bool=False,out_dos: bool=False,out_density: bool=False,out_potential: bool=False,
                 out_current: bool=False,out_current_nscf: bool=False,out_ldos: bool=False,out_lcurrent: bool=False,
                 results_path: Optional[str]=None,
@@ -80,6 +80,7 @@ class NEGF(object):
         self.saved_HS_path = saved_HS_path
 
         self.sgf_solver = sgf_solver
+        self.use_saved_se = use_saved_se
         self.self_energy_save_path = self_energy_save_path
         self.se_info_display = se_info_display
         self.pbc = self.stru_options["pbc"]
@@ -526,20 +527,23 @@ class NEGF(object):
         if  self.self_energy_save_path is None:
             self.self_energy_save_path = os.path.join(self.results_path, "self_energy") 
         os.makedirs(self.self_energy_save_path, exist_ok=True)
-        
-        if scf_require and self.poisson_options["with_Dirichlet_leads"]:
-            # For the Dirichlet leads, the self-energy of the leads is only calculated once and saved.
-            # In each iteration, the self-energy of the leads is not updated.
-            # for ik, k in enumerate(self.kpoints):
-            #     for e in self.density.integrate_range:
-            #         self.deviceprop.lead_L.self_energy(kpoint=k, energy=e, eta_lead=self.eta_lead, save=True)
-            #         self.deviceprop.lead_R.self_energy(kpoint=k, energy=e, eta_lead=self.eta_lead, save=True)
-            compute_all_self_energy(self.eta_lead, self.deviceprop.lead_L, self.deviceprop.lead_R,
-                                    self.kpoints, self.density.integrate_range, self.self_energy_save_path)
-        elif not self.scf:
-            # In non-scf case, the self-energy of the leads is calculated for each energy point in the energy grid.
-            compute_all_self_energy(self.eta_lead, self.deviceprop.lead_L, self.deviceprop.lead_R,
-                                    self.kpoints, self.uni_grid, self.self_energy_save_path)
+
+        if self.use_saved_se:
+            log.info(msg="Using saved self-energy from {}".format(self.self_energy_save_path))
+        else:
+            if scf_require and self.poisson_options["with_Dirichlet_leads"]:
+                # For the Dirichlet leads, the self-energy of the leads is only calculated once and saved.
+                # In each iteration, the self-energy of the leads is not updated.
+                # for ik, k in enumerate(self.kpoints):
+                #     for e in self.density.integrate_range:
+                #         self.deviceprop.lead_L.self_energy(kpoint=k, energy=e, eta_lead=self.eta_lead, save=True)
+                #         self.deviceprop.lead_R.self_energy(kpoint=k, energy=e, eta_lead=self.eta_lead, save=True)
+                compute_all_self_energy(self.eta_lead, self.deviceprop.lead_L, self.deviceprop.lead_R,
+                                        self.kpoints, self.density.integrate_range, self.self_energy_save_path)
+            elif not self.scf:
+                # In non-scf case, the self-energy of the leads is calculated for each energy point in the energy grid.
+                compute_all_self_energy(self.eta_lead, self.deviceprop.lead_L, self.deviceprop.lead_R,
+                                        self.kpoints, self.uni_grid, self.self_energy_save_path)
         log.info(msg="-----------------------------------\n")
 
 
