@@ -49,7 +49,7 @@ class NEGF(object):
                 sgf_solver: str,
                 e_fermi: float=None,
                 use_saved_HS: bool=False, saved_HS_path: str=None,
-                self_energy_save: bool=False, self_energy_save_path: str=None, se_info_display: bool=False,
+                self_energy_save_path: str=None, se_info_display: bool=False,
                 out_tc: bool=False,out_dos: bool=False,out_density: bool=False,out_potential: bool=False,
                 out_current: bool=False,out_current_nscf: bool=False,out_ldos: bool=False,out_lcurrent: bool=False,
                 results_path: Optional[str]=None,
@@ -80,7 +80,6 @@ class NEGF(object):
         self.saved_HS_path = saved_HS_path
 
         self.sgf_solver = sgf_solver
-        self.self_energy_save = self_energy_save
         self.self_energy_save_path = self_energy_save_path
         self.se_info_display = se_info_display
         self.pbc = self.stru_options["pbc"]
@@ -524,9 +523,10 @@ class NEGF(object):
 
         # self energy calculation
         log.info(msg="------Self-energy calculation------")
-        selfen_parent_dir = os.path.join(self.results_path,"self_energy")
-        if not os.path.exists(selfen_parent_dir): 
-            os.makedirs(selfen_parent_dir)
+        if  self.self_energy_save_path is None:
+            self.self_energy_save_path = os.path.join(self.results_path, "self_energy") 
+        os.makedirs(self.self_energy_save_path, exist_ok=True)
+        
         if scf_require and self.poisson_options["with_Dirichlet_leads"]:
             # For the Dirichlet leads, the self-energy of the leads is only calculated once and saved.
             # In each iteration, the self-energy of the leads is not updated.
@@ -535,11 +535,11 @@ class NEGF(object):
             #         self.deviceprop.lead_L.self_energy(kpoint=k, energy=e, eta_lead=self.eta_lead, save=True)
             #         self.deviceprop.lead_R.self_energy(kpoint=k, energy=e, eta_lead=self.eta_lead, save=True)
             compute_all_self_energy(self.eta_lead, self.deviceprop.lead_L, self.deviceprop.lead_R,
-                                    self.kpoints, self.density.integrate_range)
+                                    self.kpoints, self.density.integrate_range, self.self_energy_save_path)
         elif not self.scf:
             # In non-scf case, the self-energy of the leads is calculated for each energy point in the energy grid.
             compute_all_self_energy(self.eta_lead, self.deviceprop.lead_L, self.deviceprop.lead_R,
-                                    self.kpoints, self.uni_grid)
+                                    self.kpoints, self.uni_grid, self.self_energy_save_path)
         log.info(msg="-----------------------------------\n")
 
 
@@ -627,7 +627,6 @@ class NEGF(object):
                                         kpoint=k, 
                                         eta_lead=self.eta_lead,
                                         method=self.sgf_solver,
-                                        save=self.self_energy_save,
                                         save_path=self.self_energy_save_path,
                                         se_info_display=self.se_info_display
                                         )
@@ -641,7 +640,6 @@ class NEGF(object):
                                         kpoint=k, 
                                         eta_lead=self.eta_lead,
                                         method=self.sgf_solver,
-                                        save=self.self_energy_save,
                                         save_path=self.self_energy_save_path,
                                         se_info_display=self.se_info_display
                                         )                                
@@ -736,7 +734,6 @@ class NEGF(object):
                                         kpoint=k, 
                                         eta_lead=self.eta_lead,
                                         method=self.sgf_solver,
-                                        save=self.self_energy_save,
                                         save_path=self.self_energy_save_path,
                                         se_info_display=self.se_info_display
                                         )
