@@ -531,6 +531,7 @@ class NEGF(object):
         if self.use_saved_se:
             log.info(msg="Using saved self-energy from {}".format(self.self_energy_save_path))
         else:
+            log.info(msg="Calculating self-energy and saving to {}".format(self.self_energy_save_path))
             if scf_require and self.poisson_options["with_Dirichlet_leads"]:
                 # For the Dirichlet leads, the self-energy of the leads is only calculated once and saved.
                 # In each iteration, the self-energy of the leads is not updated.
