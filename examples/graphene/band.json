@@ -1,0 +1,18 @@
+{   
+    "structure":"train/data/POSCAR",
+    "task_options": {
+        "task": "band",
+        "kline_type":"abacus",
+        "kpath":[
+            [0, 0, 0, 50],
+            [0.5, 0, 0, 50],
+            [0.3333333, 0.3333333, 0, 50],
+            [0, 0, 0, 1]
+        ],
+        "nkpoints":151,
+        "klabels":["G", "M", "K", "G"],
+        "emin":-20,
+        "emax":20,
+        "nel_atom":{"C":4}
+    }
+}
