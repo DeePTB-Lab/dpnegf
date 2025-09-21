@@ -134,6 +134,7 @@ class LeadProperty(object):
             energy = torch.tensor(energy) # Energy relative to Ef
         
         save_path = self._get_save_path(kpoint, energy, save_format, save_path)
+        # log.info(f"Self energy save path: {save_path}")
 
         # Try load
         if os.path.isfile(save_path):
@@ -185,7 +186,10 @@ class LeadProperty(object):
                     return os.path.join(save_path,
                                         f"se_{self.tab}_k{kx:.4f}_{ky:.4f}_{kz:.4f}_E{energy_val:.6f}.pth")
                 elif save_format == "h5":
-                    return os.path.join(save_path, f"self_energy_{self.tab}.h5")
+                    if self.tab == "lead_L":
+                        return os.path.join(save_path, "self_energy_leadL.h5")
+                    elif self.tab == "lead_R":
+                        return os.path.join(save_path, "self_energy_leadR.h5")
                 else:
                     raise ValueError(f"Unsupported save_format {save_format}")
             return save_path  # direct file path given by user

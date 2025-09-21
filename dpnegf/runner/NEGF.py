@@ -403,13 +403,13 @@ class NEGF(object):
             self.negf_compute(scf_require=False,Vbias=self.potential_at_orb)
         
         else:
-            # profiler = Profiler()
-            # profiler.start() 
+            profiler = Profiler()
+            profiler.start() 
             self.negf_compute(scf_require=False,Vbias=None)
-            # profiler.stop()
-            # output_path = os.path.join(self.results_path, "profile_report.html")
-            # with open(output_path, 'w') as report_file:
-                # report_file.write(profiler.output_html())
+            profiler.stop()
+            output_path = os.path.join(self.results_path, "profile_report.html")
+            with open(output_path, 'w') as report_file:
+                report_file.write(profiler.output_html())
 
     def poisson_negf_scf(self,interface_poisson,atom_gridpoint_index,err=1e-6,max_iter=1000,
                          mix_method:str='linear', mix_rate:float=0.3, tolerance:float=1e-7,Gaussian_sigma:float=3.0):
@@ -529,6 +529,7 @@ class NEGF(object):
         os.makedirs(self.self_energy_save_path, exist_ok=True)
 
         if self.use_saved_se:
+            # TODO: check if the saved self-energy exists or not
             log.info(msg="Using saved self-energy from {}".format(self.self_energy_save_path))
         else:
             log.info(msg="Calculating self-energy and saving to {}".format(self.self_energy_save_path))
