@@ -134,58 +134,128 @@ class LeadProperty(object):
         if not isinstance(energy, torch.Tensor):
             energy = torch.tensor(energy) # Energy relative to Ef
         
-        if save_path is None:
-            parent_dir = os.path.join(self.results_path, "self_energy")
-            if not os.path.exists(parent_dir):
-                os.makedirs(parent_dir)
-            if save_format == "pth":
-                save_path = os.path.join(parent_dir, 
-                                         f"se_{self.tab}_k{kpoint[0]}_{kpoint[1]}_{kpoint[2]}_E{energy}.pth")
-            elif save_format == "h5":
-                if self.tab == "lead_L":
-                    save_path = os.path.join(parent_dir, "self_energy_leadL.h5")
-                elif self.tab == "lead_R":
-                    save_path = os.path.join(parent_dir, "self_energy_leadR.h5")
-                else:
-                    raise ValueError(f"Unsupported tab {self.tab} for saving self energy.")
-            else:
-                raise ValueError(f"Unsupported save format {save_format}. Only 'pth' and 'h5' are supported.")
+        save_path = self._get_save_path(kpoint, energy, save_format, save_path)
 
-        # If the file in save_path exists, then directly load it    
-        if os.path.exists(save_path):
-            if se_info_display: 
-                log.info(f"Loading self energy from {save_path}")   
+        # Try load
+        if os.path.isfile(save_path):
+            if se_info_display:
+                log.info(f"Loading {self.tab} self-energy from {save_path}")
+            self.se = self._load_self_energy(save_path, kpoint, energy, save_format)
+            return
+        
+        # If not loaded, just compute
+        if se_info_display:
+            log.info(f"Computing {self.tab} self-energy (method={method}) "
+                    f"at k={kpoint}, E={energy.item():.6f}")
 
+        self.se = self.self_energy_cal( kpoint, 
+                                        energy,
+                                        eta_lead=eta_lead, 
+                                        method=method,
+                                        HS_inmem=HS_inmem)
+
+    def _get_save_path(self, kpoint, energy, save_format: str, save_path: str = None):
+        """
+        Generate the save path for self-energy files.
+
+        Parameters
+        ----------
+        kpoint : array-like
+            The k-point (length 3).
+        energy : torch.Tensor or float
+            Energy value.
+        save_format : str
+            File format, supports "pth" or "h5".
+        save_path : str, optional
+            User-specified save path. If None, use default under results_path/self_energy.
+
+        Returns
+        -------
+        str
+            Full path to the save file.
+        """
+        # Ensure kpoint is array for string formatting
+        kx, ky, kz = np.asarray(kpoint, dtype=float).reshape(3)
+        energy_val = energy.item() if hasattr(energy, "item") else float(energy)
+
+        # Case 1: User provided save_path
+        if save_path is not None:
+            # If it's a directory, append default filename
             if os.path.isdir(save_path):
                 if save_format == "pth":
-                    save_path = os.path.join(save_path, f"se_{self.tab}_k{kpoint[0]}_{kpoint[1]}_{kpoint[2]}_E{energy}.pth")
+                    return os.path.join(save_path,
+                                        f"se_{self.tab}_k{kx:.4f}_{ky:.4f}_{kz:.4f}_E{energy_val:.6f}.pth")
                 elif save_format == "h5":
-                    save_path = os.path.join(save_path, f"self_energy_{self.tab}.h5")
+                    return os.path.join(save_path, f"self_energy_{self.tab}.h5")
                 else:
-                    raise ValueError(f"Unsupported save format {save_format}. Only 'pth' and 'h5' are supported.")
-                
+                    raise ValueError(f"Unsupported save_format {save_format}")
+            return save_path  # direct file path given by user
 
-            assert os.path.exists(save_path), f"Cannot find the self energy file {save_path}"
-            if save_path.endswith(".pth"):
-                # if the save_path is a directory, then the self energy file is stored in the directory
-                self.se = torch.load(save_path, weights_only=False)
-            elif save_path.endswith(".h5"):
-                try:
-                    self.se = read_from_hdf5(save_path, kpoint, energy)
-                    self.se = torch.from_numpy(self.se)
-                except KeyError as e:
-                    log.error(f"Cannot find the self energy for kpoint {kpoint} and energy {energy} in {save_path}.")
-                    raise e
+        # Case 2: Default path under results_path
+        parent_dir = os.path.join(self.results_path, "self_energy")
+        os.makedirs(parent_dir, exist_ok=True)
 
-            return
-            
+        if save_format == "pth":
+            return os.path.join(parent_dir,
+                                f"se_{self.tab}_k{kx:.4f}_{ky:.4f}_{kz:.4f}_E{energy_val:.6f}.pth")
+
+        elif save_format == "h5":
+            if self.tab == "lead_L":
+                return os.path.join(parent_dir, "self_energy_leadL.h5")
+            elif self.tab == "lead_R":
+                return os.path.join(parent_dir, "self_energy_leadR.h5")
+            else:
+                raise ValueError(f"Unsupported tab {self.tab} for h5 save.")
+
         else:
-            if se_info_display:
-                log.info("-"*50)
-                log.info(f"Not find stored {self.tab} self energy. Calculating it at kpoint {kpoint} and energy {energy}.")
-                log.info("-"*50)
-        
-        self.self_energy_cal(kpoint, energy, eta_lead=eta_lead, method=method,HS_inmem=HS_inmem)
+            raise ValueError(f"Unsupported save_format {save_format}, only 'pth' and 'h5' are supported.")
+
+
+    def _load_self_energy(self, save_path: str, kpoint, energy, save_format: str):
+        """
+        Load self-energy from file.
+
+        Parameters
+        ----------
+        save_path : str
+            Path to the saved self-energy file.
+        kpoint : array-like
+            The k-point (length 3).
+        energy : torch.Tensor or float
+            Energy value.
+        save_format : str
+            File format, supports "pth" or "h5".
+
+        Returns
+        -------
+        torch.Tensor
+            Loaded self-energy tensor.
+        """
+        if save_format == "pth":
+            try:
+                se = torch.load(save_path, weights_only=False)
+            except Exception as e:
+                raise IOError(f"Failed to load self-energy from {save_path} (pth format).") from e
+
+        elif save_format == "h5":
+            try:
+                data = read_from_hdf5(save_path, kpoint, energy)
+                se = torch.as_tensor(data, dtype=torch.complex128)  # 自能一般是复数
+            except KeyError as e:
+                kx, ky, kz = np.asarray(kpoint, dtype=float).reshape(3)
+                ev = energy.item() if hasattr(energy, "item") else float(energy)
+                raise KeyError(
+                    f"Cannot find self-energy in {save_path} "
+                    f"for k=({kx:.4f},{ky:.4f},{kz:.4f}), E={ev:.6f}"
+                ) from e
+            except Exception as e:
+                raise IOError(f"Failed to read HDF5 self-energy from {save_path}.") from e
+
+        else:
+            raise ValueError(f"Unsupported save_format {save_format}, only 'pth' and 'h5' are supported.")
+
+        return se
+
 
     def self_energy_cal(self, 
                         kpoint, 
@@ -197,12 +267,14 @@ class LeadProperty(object):
         subblocks = self.hamiltonian.get_hs_device(kpoint, only_subblocks=True)
         # calculate self energy
         if not self.useBloch:
-            if not hasattr(self, "HL") or abs(self.voltage_old-self.voltage)>1e-6 or max(abs(self.kpoint-torch.tensor(kpoint)))>1e-6:
+            if  not hasattr(self, "HL") \
+                or abs(self.voltage_old-self.voltage)>1e-6 \
+                or max(abs(self.kpoint-torch.tensor(kpoint)))>1e-6:
+
                 self.HLk, self.HLLk, self.HDLk, self.SLk, self.SLLk, self.SDLk \
                     = self.hamiltonian.get_hs_lead(kpoint, tab=self.tab, v=self.voltage)
                 self.voltage_old = self.voltage
                 self.kpoint = torch.tensor(kpoint)
-
             
             HDL_reduced, SDL_reduced = self.HDL_reduced(self.HDLk, self.SDLk,subblocks)
             
