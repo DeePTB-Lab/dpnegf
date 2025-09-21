@@ -103,7 +103,6 @@ class LeadProperty(object):
     def self_energy(self, kpoint, energy, 
                     eta_lead: float=1e-5,
                     method: str="Lopez-Sancho",
-                    save: bool=False, 
                     save_path: str=None, 
                     save_format: str="h5",
                     se_info_display: bool=False,
@@ -429,37 +428,45 @@ class LeadProperty(object):
 #     )
 
 
-def compute_all_self_energy(eta, lead_L, lead_R, kpoints_grid, energy_grid, n_jobs=-1, batch_size=200):
+def compute_all_self_energy(eta, lead_L, lead_R, kpoints_grid, energy_grid, 
+                            self_energy_save_path=None, n_jobs=-1, batch_size=200):
+
+    if self_energy_save_path is None:
+        if lead_L.results_path != lead_R.results_path:
+            log.warning("The results_path of lead_L and lead_R are different. "
+                        "Self energy files will be saved in lead_L's results_path.")
+        self_energy_save_path = os.path.join(lead_L.results_path, "self_energy")
+
 
     total_tasks = [(k, e) for k in kpoints_grid for e in energy_grid]
     if len(total_tasks) <= batch_size:
         Parallel(n_jobs=n_jobs, backend="loky")(
-            delayed(self_energy_worker)(k, e, eta, lead_L, lead_R)
+            delayed(self_energy_worker)(k, e, eta, lead_L, lead_R, self_energy_save_path)
             for k, e in total_tasks
         )
-    
     else:
         for i in range(0, len(total_tasks), batch_size):
             batch = total_tasks[i:i+batch_size]
             Parallel(n_jobs=n_jobs, backend="loky")(
-                delayed(self_energy_worker)(k, e, eta, lead_L, lead_R)
+                delayed(self_energy_worker)(k, e, eta, lead_L, lead_R, self_energy_save_path)
                 for k, e in batch
             )
 
-    save_path_L = os.path.join(lead_L.results_path, "self_energy", "self_energy_leadL.h5")
-    save_path_R = os.path.join(lead_R.results_path, "self_energy", "self_energy_leadR.h5")
 
-    merge_hdf5_files(os.path.join(lead_L.results_path, "self_energy"), save_path_L, pattern="tmp_leadL_*.h5")
-    merge_hdf5_files(os.path.join(lead_R.results_path, "self_energy"), save_path_R, pattern="tmp_leadR_*.h5")
+    save_path_L = os.path.join(self_energy_save_path, "self_energy_leadL.h5")
+    save_path_R = os.path.join(self_energy_save_path, "self_energy_leadR.h5")
 
-
-
+    merge_hdf5_files(self_energy_save_path, save_path_L, pattern="tmp_leadL_*.h5")
+    merge_hdf5_files(self_energy_save_path, save_path_R, pattern="tmp_leadR_*.h5")
 
 
-def self_energy_worker(k, e, eta, lead_L, lead_R):
 
-    save_tmp_L = os.path.join(lead_L.results_path, "self_energy", f"tmp_leadL_k{k[0]}_{k[1]}_{k[2]}_E{e:.8f}.h5")
-    save_tmp_R = os.path.join(lead_R.results_path, "self_energy", f"tmp_leadR_k{k[0]}_{k[1]}_{k[2]}_E{e:.8f}.h5")
+
+
+def self_energy_worker(k, e, eta, lead_L, lead_R, self_energy_save_path):
+
+    save_tmp_L = os.path.join(self_energy_save_path, f"tmp_leadL_k{k[0]}_{k[1]}_{k[2]}_E{e:.8f}.h5")
+    save_tmp_R = os.path.join(self_energy_save_path, f"tmp_leadR_k{k[0]}_{k[1]}_{k[2]}_E{e:.8f}.h5")
 
     seL = lead_L.self_energy_cal(kpoint=k, energy=e, eta_lead=eta)
     seR = lead_R.self_energy_cal(kpoint=k, energy=e, eta_lead=eta)
