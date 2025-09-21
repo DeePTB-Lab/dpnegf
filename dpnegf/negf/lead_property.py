@@ -209,8 +209,8 @@ class LeadProperty(object):
         else:
             raise ValueError(f"Unsupported save_format {save_format}, only 'pth' and 'h5' are supported.")
 
-
-    def _load_self_energy(self, save_path: str, kpoint, energy, save_format: str):
+    @staticmethod
+    def _load_self_energy(save_path: str, kpoint, energy, save_format: str):
         """
         Load self-energy from file.
 
