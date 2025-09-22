@@ -75,8 +75,7 @@ def test_negf_Hamiltonian(root_directory):
             energy=e, 
             kpoint=kpoints[0], 
             eta_lead=negf_json['task_options']["eta_lead"],
-            method=negf_json['task_options']["sgf_solver"],
-            save=False
+            method=negf_json['task_options']["sgf_solver"]
             )
     print("lead_L self energy:",deviceprop.lead_L.se)
     print("lead_R self energy:",deviceprop.lead_R.se)
