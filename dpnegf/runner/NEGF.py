@@ -523,16 +523,9 @@ class NEGF(object):
         based on whether self-consistent field (SCF) calculations are required and whether Dirichlet boundary
         conditions are applied to the leads.
 
-        Args:
+        Parameters:
+        ----------
             scf_require (bool): Indicates whether SCF calculations are required.
-
-        Side Effects:
-            - Creates the directory for saving self-energy data if it does not exist.
-            - Loads or computes self-energy data and saves it to disk.
-            - Logs the progress and actions taken during self-energy preparation.
-
-        Raises:
-            AssertionError: If `use_saved_se` is True but no saved self-energy is found at the specified path.
         """
         # self energy calculation
         log.info(msg="------Self-energy calculation------")

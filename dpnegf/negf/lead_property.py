@@ -266,7 +266,33 @@ class LeadProperty(object):
                         eta_lead: float=1e-5,
                         method: str="Lopez-Sancho",
                         HS_inmem: bool=True):
-        
+        """
+        Calculates the self-energy for a lead in a quantum transport calculation.
+        This method computes the self-energy matrix for a given k-point and energy, 
+        using either the standard or Bloch-based approach depending on the object's configuration.
+        Parameters
+        ----------
+        kpoint : array-like
+            The k-point in reciprocal space at which to calculate the self-energy.
+        energy : float or torch.Tensor
+            The energy value at which to evaluate the self-energy.
+        eta_lead : float, optional
+            Small imaginary part added to the energy for numerical stability (default: 1e-5).
+        method : str, optional
+            The method used for self-energy calculation (default: "Lopez-Sancho").
+        HS_inmem : bool, optional
+            If False, deletes Hamiltonian and overlap matrices from memory after calculation (default: True).
+            This is useful for large systems to save memory.
+        Returns
+        -------
+        se : torch.Tensor
+            The calculated self-energy matrix for the specified k-point and energy.
+        Notes
+        -----
+        - If `useBloch` is True, the calculation unfolds the k-points and applies Bloch phase factors.
+        - The method caches Hamiltonian and overlap matrices for efficiency unless `HS_inmem` is False.
+        - The shape of the returned self-energy matrix is consistent with the reduced Hamiltonian blocks.
+        """      
         subblocks = self.hamiltonian.get_hs_device(kpoint, only_subblocks=True)
         # calculate self energy
         if not self.useBloch:
@@ -429,12 +455,39 @@ class LeadProperty(object):
     
 
 
-#     )
-
-
 def compute_all_self_energy(eta, lead_L, lead_R, kpoints_grid, energy_grid, 
                             self_energy_save_path=None, n_jobs=-1, batch_size=200):
+    """
+    Computes and saves self-energy matrices for all combinations of k-points and energy values
+    for left and right leads.
 
+    The self-energy calculations are performed in parallel batches, and results are saved as HDF5 files.
+    Temporary files are merged into final output files for each lead.
+
+    Parameters
+    ----------
+    eta : float
+        Small imaginary part added to energy for numerical stability.
+    lead_L : Lead
+        lead object containing Left lead Hamiltonian and results path.
+    lead_R : Lead
+        lead object containing Right lead Hamiltonian and results path.
+    kpoints_grid : array-like
+        List or array of k-points to compute self-energy for.
+    energy_grid : array-like
+        List or array of energy values to compute self-energy for.
+    self_energy_save_path : str or None, optional
+        Directory to save self-energy files. If None, uses lead_L's results_path.
+    n_jobs : int, optional
+        Number of parallel jobs to use. Default is -1 (use all available CPUs).
+    batch_size : int, optional
+        Number of (k, e) tasks per parallel batch. Default is 200.
+
+    Returns
+    -------
+    None
+        Results are saved to disk as HDF5 files.
+    """
     if self_energy_save_path is None:
         if lead_L.results_path != lead_R.results_path:
             log.warning("The results_path of lead_L and lead_R are different. "
@@ -468,6 +521,30 @@ def compute_all_self_energy(eta, lead_L, lead_R, kpoints_grid, energy_grid,
 
 
 def self_energy_worker(k, e, eta, lead_L, lead_R, self_energy_save_path):
+    """
+    Calculates the self-energy for left and right leads at a given k-point and energy,
+    and saves the results to HDF5 files.
+
+    Parameters
+    ----------
+    k : array-like
+        The k-point in reciprocal space, typically a 3-element array or list.
+    e : float
+        The energy value at which to calculate the self-energy.
+    eta : float
+        A small imaginary part added to the energy for numerical stability.
+    lead_L : object
+        The left lead object, which must implement a `self_energy_cal` method.
+    lead_R : object
+        The right lead object, which must implement a `self_energy_cal` method.
+    self_energy_save_path : str
+        Directory path where the self-energy HDF5 files will be saved.
+
+    Returns
+    -------
+    None
+        The function saves the calculated self-energies to files and does not return anything.
+    """
 
     save_tmp_L = os.path.join(self_energy_save_path, f"tmp_leadL_k{k[0]}_{k[1]}_{k[2]}_E{e:.8f}.h5")
     save_tmp_R = os.path.join(self_energy_save_path, f"tmp_leadR_k{k[0]}_{k[1]}_{k[2]}_E{e:.8f}.h5")
