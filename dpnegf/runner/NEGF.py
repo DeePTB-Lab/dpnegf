@@ -6,7 +6,7 @@ from dpnegf.negf.negf_hamiltonian_init import NEGFHamiltonianInit
 from dpnegf.utils.elec_struc_cal import ElecStruCal
 from dpnegf.negf.density import Ozaki,Fiori
 from dpnegf.negf.device_property import DeviceProperty
-from dpnegf.negf.lead_property import LeadProperty, compute_all_self_energy
+from dpnegf.negf.lead_property import LeadProperty, compute_all_self_energy, _has_saved_self_energy
 from dpnegf.negf.negf_utils import is_fully_covered
 import ase
 from dpnegf.utils.constants import Boltzmann, eV2J
@@ -20,7 +20,6 @@ from typing import Optional, Union
 from dpnegf.utils.tools import apply_gaussian_filter_3d
 from pyinstrument import Profiler
 import os
-
 
 log = logging.getLogger(__name__)
 
@@ -80,9 +79,9 @@ class NEGF(object):
         self.saved_HS_path = saved_HS_path
 
         self.sgf_solver = sgf_solver
-        self.use_saved_se = use_saved_se
-        self.self_energy_save_path = self_energy_save_path
-        self.se_info_display = se_info_display
+        self.use_saved_se = use_saved_se # whether to use the saved self-energy or not
+        self.self_energy_save_path = self_energy_save_path # The directory to save the self-energy or for saved self-energy
+        self.se_info_display = se_info_display # whether to display the self-energy information after calculation
         self.pbc = self.stru_options["pbc"]
 
         if  self.stru_options["lead_L"]["useBloch"] or self.stru_options["lead_R"]["useBloch"]:
@@ -513,15 +512,28 @@ class NEGF(object):
         # if iter_count <= max_iter: 
         #     profiler.stop()
         #     with open('profile_report.html', 'w') as report_file:
-        #         report_file.write(profiler.output_html())
-    
+        #         report_file.write(profiler.output_html())、
 
-    def negf_compute(self,scf_require=False,Vbias=None):
-        
-        assert scf_require is not None, "scf_require should be set to True or False"
-        self.out['k']=[];self.out['wk']=[]
-        if hasattr(self, "uni_grid"): self.out["uni_grid"] = self.uni_grid
+    def prepare_self_energy(self, scf_require: bool) -> None:
+        """
+        Prepares the self-energy for the NEGF calculation.
 
+        Depending on the calculation settings, this method either loads previously saved self-energy data
+        or computes and saves new self-energy values for the device leads. The computation method varies
+        based on whether self-consistent field (SCF) calculations are required and whether Dirichlet boundary
+        conditions are applied to the leads.
+
+        Args:
+            scf_require (bool): Indicates whether SCF calculations are required.
+
+        Side Effects:
+            - Creates the directory for saving self-energy data if it does not exist.
+            - Loads or computes self-energy data and saves it to disk.
+            - Logs the progress and actions taken during self-energy preparation.
+
+        Raises:
+            AssertionError: If `use_saved_se` is True but no saved self-energy is found at the specified path.
+        """
         # self energy calculation
         log.info(msg="------Self-energy calculation------")
         if  self.self_energy_save_path is None:
@@ -529,8 +541,9 @@ class NEGF(object):
         os.makedirs(self.self_energy_save_path, exist_ok=True)
 
         if self.use_saved_se:
-            # TODO: check if the saved self-energy exists or not
+            assert _has_saved_self_energy(self.self_energy_save_path), "No saved self-energy found in {}".format(self.self_energy_save_path)
             log.info(msg="Using saved self-energy from {}".format(self.self_energy_save_path))
+            log.info(msg="Ensure the saved self-energy is consistent with the current calculation setting!")
         else:
             log.info(msg="Calculating self-energy and saving to {}".format(self.self_energy_save_path))
             if scf_require and self.poisson_options["with_Dirichlet_leads"]:
@@ -548,6 +561,15 @@ class NEGF(object):
                                         self.kpoints, self.uni_grid, self.self_energy_save_path)
         log.info(msg="-----------------------------------\n")
 
+
+
+    def negf_compute(self,scf_require=False,Vbias=None):
+        
+        assert scf_require is not None, "scf_require should be set to True or False"
+        self.out['k']=[];self.out['wk']=[]
+        if hasattr(self, "uni_grid"): self.out["uni_grid"] = self.uni_grid
+
+        self.prepare_self_energy(scf_require)
 
         for ik, k in enumerate(self.kpoints):
 

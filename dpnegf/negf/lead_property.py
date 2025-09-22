@@ -532,3 +532,16 @@ def merge_hdf5_files(tmp_dir, output_path, pattern, remove=True):
                 # log.info(f"Deleted tmp file: {path}")
             except Exception as e:
                 log.warning(f"Failed to delete {path}: {e}")
+
+
+def _has_saved_self_energy(root: str) -> bool:
+        from pathlib import Path
+        p = Path(root) if root is not None else None
+        if p is None or not p.exists():
+            return False
+        
+        patterns = ("*.h5", "*.pth")
+        for pat in patterns:
+            if any(p.rglob(pat)):
+                return True
+        return False
