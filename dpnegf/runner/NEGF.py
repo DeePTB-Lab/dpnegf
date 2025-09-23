@@ -132,18 +132,8 @@ class NEGF(object):
             else:
                 assert self.stru_options[lead_tag]["voltage"] == 0, f"{lead_tag} voltage should be 0 in non-scf calculation"
 
-        if AtomicData_options is None:
-            from dptb.utils.argcheck import get_cutoffs_from_model_options
-            # get the cutoffs from model options
-            r_max, er_max, oer_max  = get_cutoffs_from_model_options(model.model_options)
-            AtomicData_options = {'r_max': r_max, 'er_max': er_max, 'oer_max': oer_max}
-        else:
-            log.warning(msg="AtomicData_options is extracted from input file. " \
-                            "This may be not consistent with the model options. " \
-                            "Please be careful and check the cutoffs.")
-        formatted = json.dumps(AtomicData_options, indent=4)
-        indented = '\n'.join(' ' * 15 + line for line in formatted.splitlines())
-        log.info("The AtomicData_options is:\n%s", indented)
+        # preparing AtomicData_options, including cutoffs
+        AtomicData_options = self.update_atomicdata_options(model,AtomicData_options)
 
         # computing the hamiltonian
         self.negf_hamiltonian = NEGFHamiltonianInit(model=model,
@@ -833,6 +823,41 @@ class NEGF(object):
                 nel_atom_lead[lead_tag] = {elem: nel_atom_lead[lead_tag][elem] + charge[lead_tag] for elem in nel_atom_lead[lead_tag]}
 
         return nel_atom_lead  
+
+    @staticmethod
+    def update_atomicdata_options(model,AtomicData_options: dict=None) -> dict:
+        """
+        Updates or initializes the AtomicData_options dictionary based on the provided model.
+
+        If AtomicData_options is not provided, it extracts cutoff values from the model's options
+        using `get_cutoffs_from_model_options` and constructs the dictionary. If AtomicData_options
+        is provided, a warning is logged to indicate potential inconsistency with the model options.
+
+        The function logs the resulting AtomicData_options in a formatted and indented manner.
+
+        Parameters:
+        ----------
+            model: The model object containing model_options used to extract cutoff values.
+            AtomicData_options (dict, optional): Dictionary of atomic data options. If None, it will be generated.
+
+        Returns:
+        -------
+            dict: The updated or initialized AtomicData_options dictionary.
+        """
+        if AtomicData_options is None:
+            from dptb.utils.argcheck import get_cutoffs_from_model_options
+            # get the cutoffs from model options
+            r_max, er_max, oer_max  = get_cutoffs_from_model_options(model.model_options)
+            AtomicData_options = {'r_max': r_max, 'er_max': er_max, 'oer_max': oer_max}
+        else:
+            log.warning(msg="AtomicData_options is extracted from NEGF input file. " \
+                            "This may be not consistent with the model options. " \
+                            "Please be careful and check the cutoffs.")
+        formatted = json.dumps(AtomicData_options, indent=4)
+        indented = '\n'.join(' ' * 15 + line for line in formatted.splitlines())
+        log.info("The AtomicData_options is:\n%s", indented)
+
+        return AtomicData_options
     
     def fermi_dirac(self, x) -> torch.Tensor:
         return 1 / (1 + torch.exp(x / self.kBT))
