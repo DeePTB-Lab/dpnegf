@@ -28,8 +28,8 @@ dpnegf/negf/check.ipynb
 dpnegf/tests/data/test_negf/show.ipynb
 dpnegf/tests/data/test_tbtrans/show.ipynb
 # tutorial files
-dpnegf/examples/graphene/negf_output_k20/self_energy/self_energy_leadL.h5
-dpnegf/examples/graphene/negf_output_k20/self_energy/self_energy_leadR.h5
+examples/graphene/negf_output_k20/self_energy/self_energy_leadL.h5
+examples/graphene/negf_output_k20/self_energy/self_energy_leadR.h5
 
 run_config.json
 dpnegf/nnet/__pycache__/
