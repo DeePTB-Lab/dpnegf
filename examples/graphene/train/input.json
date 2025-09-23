@@ -13,7 +13,7 @@
         "seed": 3982377700
     },
     "train_options": {
-        "num_epoch": 5000,
+        "num_epoch": 3000,
         "batch_size": 1,
         "optimizer": {
             "lr": 0.01,
@@ -41,7 +41,7 @@
     "model_options": {
         "nnsk": {
             "onsite": {
-                "method": "strain"
+                "method": "uniform"
             },
             "hopping": {
                 "method": "poly4pow",
