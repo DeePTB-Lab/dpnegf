@@ -858,6 +858,7 @@ class NEGF(object):
         log.info("The AtomicData_options is:\n%s", indented)
 
         return AtomicData_options
+
     
     def fermi_dirac(self, x) -> torch.Tensor:
         return 1 / (1 + torch.exp(x / self.kBT))

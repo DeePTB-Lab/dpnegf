@@ -304,7 +304,7 @@ class LeadProperty(object):
                     = self.hamiltonian.get_hs_lead(kpoint, tab=self.tab, v=self.voltage)
                 self.voltage_old = self.voltage
                 self.kpoint = torch.tensor(kpoint)
-            
+
             HDL_reduced, SDL_reduced = self.HDL_reduced(self.HDLk, self.SDLk,subblocks)
             
             self.se, _ = selfEnergy(
