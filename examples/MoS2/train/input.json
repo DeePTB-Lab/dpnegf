@@ -1,14 +1,14 @@
 {
     "common_options": {
         "basis": {
-            "B": [
-                "2s",
-                "2p",
-                "d*"
+            "Mo": [
+                "5s",
+                "5p",
+                "4d"
             ],
-            "N": [
-                "2s",
-                "2p",
+            "S": [
+                "3s",
+                "3p",
                 "d*"
             ]
         },
@@ -18,15 +18,15 @@
         "seed": 3982377700
     },
     "train_options": {
-        "num_epoch": 5000,
+        "num_epoch": 200,
         "batch_size": 1,
         "optimizer": {
-            "lr": 0.01,
+            "lr": 0.005,
             "type": "Adam"
         },
         "lr_scheduler": {
             "type": "exp",
-            "gamma": 0.9995
+            "gamma": 0.999
         },
         "loss_options": {
             "train": {
@@ -49,12 +49,12 @@
                 "method": "strain"
             },
             "hopping": {
-                "method": "poly2pow",
+                "method": "poly4pow",
                 "rs": {
-                    "B-B": 4.22,
-                    "B-N": 4.04,
-                    "N-B": 4.04,
-                    "N-N": 3.85
+                    "S-S": 5.66,
+                    "S-Mo": 5.85,
+                    "Mo-S": 5.85,
+                    "Mo-Mo": 6.03
                 },
                 "w": 0.2
             },
