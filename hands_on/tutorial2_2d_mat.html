@@ -46,6 +46,8 @@
     <script>DOCUMENTATION_OPTIONS.pagename = 'hands_on/tutorial2_2d_mat';</script>
     <link rel="index" title="Index" href="../genindex.html" />
     <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="How to Cite" href="../CITATIONS.html" />
+    <link rel="prev" title="Tutorial 1: Quantum Transport in a One-Dimensional Chain" href="tutorial1_c_chain.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
   </head>
@@ -108,8 +110,6 @@
       
       
       
-        
-      
       <div class="bd-sidebar-primary bd-sidebar">
         
 
@@ -158,10 +158,11 @@
         <div class="sidebar-primary-item"><nav class="bd-links bd-docs-nav" aria-label="Main">
     <div class="bd-toc-item navbar-nav active">
         <p aria-level="2" class="caption" role="heading"><span class="caption-text">Quick Start</span></p>
-<ul class="nav bd-sidenav">
+<ul class="current nav bd-sidenav">
 <li class="toctree-l1"><a class="reference internal" href="../easy_install.html">Installation Guide</a></li>
-<li class="toctree-l1 has-children"><a class="reference internal" href="index.html">A quick Example</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l1 current active has-children"><a class="reference internal" href="index.html">A quick Example</a><details open="open"><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul class="current">
 <li class="toctree-l2"><a class="reference internal" href="tutorial1_c_chain.html">Tutorial 1:  Quantum Transport in a One-Dimensional Chain</a></li>
+<li class="toctree-l2 current active"><a class="current reference internal" href="#">Tutorial 2:  Quantum Transport in 2D materials</a></li>
 </ul>
 </details></li>
 </ul>
@@ -335,6 +336,8 @@ document.write(`
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#negf-calculation-for-graphene">1.3 NEGF calculation for graphene</a></li>
 </ul>
 </li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#quantum-transport-in-hbn">2. Quantum Transport in hBN</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#quantum-transport-in-mos2">3. Quantum Transport in MoS<sub>2</sub></a></li>
 </ul>
             </nav>
         </div>
@@ -517,15 +520,16 @@ DPNEGF WARNING eig_solver is not set, using default &#39;torch&#39;.
 DPNEGF INFO    KPOINTS  klist: 300 kpoints
 DPNEGF INFO    The eigenvalues are already in data. will use them.
 DPNEGF INFO    Calculating Fermi energy in the case of spin-degeneracy.
-DPNEGF INFO    Fermi energy converged after 21 iterations.
-DPNEGF INFO    q_cal: 7.99999860016806, total_electrons: 8.0, diff q: 1.3998319401409276e-06
-DPNEGF INFO    Estimated E_fermi: -3.582991372133437 based on the valence electrons setting nel_atom : {&#39;C&#39;: 4} .
+DPNEGF WARNING Fermi level bisection did not converge under tolerance 1e-10 after 57 iterations.
+DPNEGF INFO    q_cal: 7.9999999708937874, total_electrons: 8.0, diff q: 2.910621255125534e-08
+DPNEGF INFO    Estimated E_fermi: -3.5829840898513794 based on the valence electrons setting nel_atom : {&#39;C&#39;: 4} .
 DPNEGF INFO    No Fermi energy provided, using estimated value: -3.5830 eV
 </pre></div>
 </div>
-<img alt="../_images/7c17888f190d92159013b2bf72de2e265cb0509a886c4715bc075b27b7d1af48.png" src="../_images/7c17888f190d92159013b2bf72de2e265cb0509a886c4715bc075b27b7d1af48.png" />
+<img alt="../_images/57cdd998a4ed69cefcbced409e6a57e7338e8681bf5af6706532f363bb95421b.png" src="../_images/57cdd998a4ed69cefcbced409e6a57e7338e8681bf5af6706532f363bb95421b.png" />
 </div>
 </div>
+<p>The DFT band structure demonstrates excellent agreement with the DeePTB model. Critically, the model accurately reproduces the hallmark electronic features of graphene. The Fermi level  is correctly positioned at the Dirac point, located at the K high-symmetry point of the Brillouin zone. The linear dispersion near this point, forming the characteristic Dirac cone, is clearly visible and matches the reference data precisely.</p>
 </section>
 <section id="principal-layers-in-leads">
 <h3>1.2 Principal layers in leads<a class="headerlink" href="#principal-layers-in-leads" title="Link to this heading">#</a></h3>
@@ -784,7 +788,7 @@ DPNEGF INFO    computing green&#39;s function at e = 8.045
 </div>
 </div>
 <div class="cell_output docutils container">
-<img alt="../_images/12edac668132fad9ce0cb5919be31aaa214cc68d7db45cd7714c6c2d574a8ec9.png" src="../_images/12edac668132fad9ce0cb5919be31aaa214cc68d7db45cd7714c6c2d574a8ec9.png" />
+<img alt="../_images/8aa34f3c146291d051655f13ffdd5b5a3ec44ea3cedc1942412e3b0652159454.png" src="../_images/8aa34f3c146291d051655f13ffdd5b5a3ec44ea3cedc1942412e3b0652159454.png" />
 </div>
 </div>
 <p>Furthermore, we increase the <span class="math notranslate nohighlight">\(k\)</span>-point mesh for transmission.</p>
@@ -1001,6 +1005,7 @@ DPNEGF INFO    computing green&#39;s function at e = 8.045
 <span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">negf_out</span><span class="p">[</span><span class="s1">&#39;uni_grid&#39;</span><span class="p">],</span> <span class="n">negf_out</span><span class="p">[</span><span class="s1">&#39;T_avg&#39;</span><span class="p">])</span>
 <span class="n">plt</span><span class="o">.</span><span class="n">xlabel</span><span class="p">(</span><span class="s1">&#39;Energy (eV)&#39;</span><span class="p">)</span>
 <span class="n">plt</span><span class="o">.</span><span class="n">title</span><span class="p">(</span><span class="s1">&#39;Total Transmission kmesh=[1,20,1]&#39;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">xlim</span><span class="p">(</span><span class="o">-</span><span class="mi">10</span><span class="p">,</span><span class="mi">10</span><span class="p">)</span>
 <span class="n">plt</span><span class="o">.</span><span class="n">grid</span><span class="p">()</span>
 <span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
 </pre></div>
@@ -1015,6 +1020,7 @@ DPNEGF INFO    computing green&#39;s function at e = 8.045
 <div class="cell_input docutils container">
 <div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">matplotlib.pyplot</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">plt</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">torch</span>
 <span class="n">output</span> <span class="o">=</span> <span class="s1">&#39;negf_output_k100&#39;</span>
 <span class="n">results_path</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">output</span><span class="p">,</span> <span class="s1">&#39;negf.out.pth&#39;</span><span class="p">)</span>
 <span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">results_path</span><span class="p">)</span> <span class="ow">is</span> <span class="kc">False</span><span class="p">:</span>
@@ -1041,16 +1047,1340 @@ DPNEGF INFO    computing green&#39;s function at e = 8.045
 <span class="n">plt</span><span class="o">.</span><span class="n">xlabel</span><span class="p">(</span><span class="s1">&#39;Energy (eV)&#39;</span><span class="p">)</span>
 <span class="n">plt</span><span class="o">.</span><span class="n">title</span><span class="p">(</span><span class="s1">&#39;Total Transmission&#39;</span><span class="p">)</span>
 <span class="n">plt</span><span class="o">.</span><span class="n">grid</span><span class="p">()</span>
-<span class="n">plt</span><span class="o">.</span><span class="n">legend</span><span class="p">()</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">legend</span><span class="p">(</span><span class="n">loc</span><span class="o">=</span><span class="s1">&#39;upper center&#39;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">xlim</span><span class="p">(</span><span class="o">-</span><span class="mi">10</span><span class="p">,</span><span class="mi">10</span><span class="p">)</span>
 <span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
 </pre></div>
 </div>
 </div>
 <div class="cell_output docutils container">
-<img alt="../_images/bdc6289b1d92111e31a804a950eb0384d118c28d9110918d6cb289a8af4702b9.png" src="../_images/bdc6289b1d92111e31a804a950eb0384d118c28d9110918d6cb289a8af4702b9.png" />
+<img alt="../_images/b6132c43702570d1ba836f51e00213a9617abeac39844faee49a3008935a7bbd.png" src="../_images/b6132c43702570d1ba836f51e00213a9617abeac39844faee49a3008935a7bbd.png" />
 </div>
 </div>
+<p>The transmission spectra further validate the model’s accuracy for transport simulations. The initial Gamma-point calculation shows integer plateaus in the transmission, which is characteristic of ballistic transport in one-dimensional channels. However, to capture the full picture of 2D transport, a summation over the transverse k-points is necessary. The final plot, which compares the total transmission from DeePTB-NEGF with that from a full DFT-NEGF calculation, shows remarkable consistency. Both methods produce the distinctive V-shaped transmission spectrum around the Fermi level, a direct consequence of graphene’s linear density of states.</p>
 </section>
+</section>
+<section id="quantum-transport-in-hbn">
+<h2>2. Quantum Transport in hBN<a class="headerlink" href="#quantum-transport-in-hbn" title="Link to this heading">#</a></h2>
+<p>Here we extend DPNEGF’s application to <strong>hBN</strong> illustrating its capability to various materials.</p>
+<p>For simpilicy, we have prepared a model in <code class="docutils literal notranslate"><span class="pre">example/hBN/train/</span></code>. Users can just run the same commands above to repeat the procedures.</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">dptb.nn.build</span><span class="w"> </span><span class="kn">import</span> <span class="n">build_model</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">ase.io</span><span class="w"> </span><span class="kn">import</span> <span class="n">read</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">dpnegf.utils.loggers</span><span class="w"> </span><span class="kn">import</span> <span class="n">set_log_handles</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">logging</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
+
+
+<span class="n">workdir</span><span class="o">=</span><span class="s1">&#39;../../examples/hBN&#39;</span>
+<span class="n">wd</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">workdir</span><span class="p">)</span>
+<span class="k">if</span> <span class="ow">not</span> <span class="n">wd</span><span class="o">.</span><span class="n">is_dir</span><span class="p">():</span>
+    <span class="k">raise</span> <span class="ne">FileNotFoundError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Workdir &#39;</span><span class="si">{</span><span class="n">wd</span><span class="si">}</span><span class="s2">&#39; not found. Please adjust &#39;workdir&#39;.&quot;</span><span class="p">)</span>
+<span class="n">os</span><span class="o">.</span><span class="n">chdir</span><span class="p">(</span><span class="n">wd</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\t</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="nb">sorted</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">listdir</span><span class="p">(</span><span class="s2">&quot;.&quot;</span><span class="p">))))</span>
+
+<span class="n">results_path</span> <span class="o">=</span> <span class="s1">&#39;band_plot_api&#39;</span>
+<span class="n">log_path</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">results_path</span><span class="p">,</span> <span class="s1">&#39;log&#39;</span><span class="p">)</span>
+<span class="n">log_level</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">INFO</span>
+<span class="n">set_log_handles</span><span class="p">(</span><span class="n">log_level</span><span class="p">,</span> <span class="n">Path</span><span class="p">(</span><span class="n">log_path</span><span class="p">)</span> <span class="k">if</span> <span class="n">log_path</span> <span class="k">else</span> <span class="kc">None</span><span class="p">)</span>
+
+
+<span class="n">model</span> <span class="o">=</span>  <span class="s2">&quot;./train/train_out/checkpoint/nnsk.best.pth&quot;</span> <span class="c1"># the model for demonstration</span>
+<span class="n">model</span> <span class="o">=</span> <span class="n">build_model</span><span class="p">(</span><span class="n">model</span><span class="p">)</span>
+
+<span class="c1"># read the structure</span>
+<span class="n">structure</span> <span class="o">=</span>  <span class="s2">&quot;./train/data/POSCAR&quot;</span> 
+<span class="n">atoms</span> <span class="o">=</span> <span class="n">read</span><span class="p">(</span><span class="n">structure</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">atoms</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="cell_output docutils container">
+<div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>DPNEGF INFO    ================================================================================
+DPNEGF INFO                                      Version Info                                  
+DPNEGF INFO    --------------------------------------------------------------------------------
+DPNEGF INFO    DPNEGF               : 0.1.1.dev148+0e0863a
+DPNEGF INFO    DeePTB               : 2.2.1.dev17+024a5fe
+DPNEGF INFO    ================================================================================
+
+DPNEGF INFO    The [&#39;overlap_param&#39;] are frozen!
+DPNEGF INFO    The [&#39;overlap_param&#39;] are frozen!
+</pre></div>
+</div>
+<div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>band.json	band_plot_api	extra_baseline	negf.json	negf_output_k20	negf_output_k70	siesta.TBT.AVTRANS_Left-Right	siesta.TBT.nc	stru_negf.xyz	train
+Atoms(symbols=&#39;NB&#39;, pbc=True, cell=[[2.5039999485, 0.0, 0.0], [-1.2519999743, 2.1685275665, 0.0], [0.0, 0.0, 30.0]])
+</pre></div>
+</div>
+</div>
+</div>
+<p>The band predicted by the model is shown:</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">dptb.postprocess.bandstructure.band</span><span class="w"> </span><span class="kn">import</span> <span class="n">Band</span>
+
+
+<span class="n">task_options</span> <span class="o">=</span> <span class="p">{</span>
+        <span class="s2">&quot;task&quot;</span><span class="p">:</span> <span class="s2">&quot;band&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;kline_type&quot;</span><span class="p">:</span><span class="s2">&quot;abacus&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;kpath&quot;</span><span class="p">:[</span>
+                <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">110</span><span class="p">],</span>
+                <span class="p">[</span><span class="mf">0.5</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">62</span><span class="p">],</span>
+                <span class="p">[</span><span class="mf">0.3333333</span><span class="p">,</span> <span class="mf">0.3333333</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">127</span><span class="p">],</span>
+                <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">]</span>
+                <span class="p">],</span>
+        <span class="s2">&quot;klabels&quot;</span><span class="p">:[</span><span class="s2">&quot;G&quot;</span><span class="p">,</span> <span class="s2">&quot;M&quot;</span><span class="p">,</span> <span class="s2">&quot;K&quot;</span><span class="p">,</span> <span class="s2">&quot;G&quot;</span><span class="p">],</span>
+        <span class="s2">&quot;emin&quot;</span><span class="p">:</span><span class="o">-</span><span class="mi">20</span><span class="p">,</span>
+        <span class="s2">&quot;emax&quot;</span><span class="p">:</span> <span class="mi">15</span><span class="p">,</span>
+        <span class="s2">&quot;nel_atom&quot;</span><span class="p">:{</span><span class="s2">&quot;B&quot;</span><span class="p">:</span> <span class="mi">3</span><span class="p">,</span>
+                    <span class="s2">&quot;N&quot;</span><span class="p">:</span> <span class="mi">5</span><span class="p">},</span>
+        <span class="s2">&quot;ref_band&quot;</span><span class="p">:</span> <span class="s2">&quot;./train/data/kpath.0/eigenvalues.npy&quot;</span>
+
+       <span class="p">}</span>
+
+
+
+<span class="n">band</span> <span class="o">=</span> <span class="n">Band</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="n">results_path</span><span class="p">)</span>
+<span class="n">AtomicData_options</span> <span class="o">=</span> <span class="p">{</span> <span class="s2">&quot;pbc&quot;</span><span class="p">:</span> <span class="kc">True</span><span class="p">}</span>
+<span class="n">band</span><span class="o">.</span><span class="n">get_bands</span><span class="p">(</span><span class="n">data</span> <span class="o">=</span> <span class="n">atoms</span><span class="p">,</span> 
+               <span class="n">kpath_kwargs</span> <span class="o">=</span> <span class="n">task_options</span><span class="p">,</span>
+               <span class="n">AtomicData_options</span> <span class="o">=</span> <span class="n">AtomicData_options</span><span class="p">)</span>
+<span class="n">band</span><span class="o">.</span><span class="n">band_plot</span><span class="p">(</span><span class="n">emin</span> <span class="o">=</span> <span class="n">task_options</span><span class="p">[</span><span class="s1">&#39;emin&#39;</span><span class="p">],</span>
+               <span class="n">emax</span> <span class="o">=</span> <span class="n">task_options</span><span class="p">[</span><span class="s1">&#39;emax&#39;</span><span class="p">],</span>
+               <span class="n">ref_band</span> <span class="o">=</span> <span class="n">task_options</span><span class="p">[</span><span class="s1">&#39;ref_band&#39;</span><span class="p">],)</span>
+</pre></div>
+</div>
+</div>
+<div class="cell_output docutils container">
+<div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>DPNEGF ERROR   TBPLaS is not installed. Thus the TBPLaS is not available, Please install it first.
+/opt/mamba/envs/dpnegf-dev/lib/python3.10/site-packages/torch/nested/__init__.py:107: UserWarning: The PyTorch API of nested tensors is in prototype stage and will change in the near future. (Triggered internally at ../aten/src/ATen/NestedTensorImpl.cpp:178.)
+  return torch._nested_tensor_from_tensor_list(ts, dtype, None, device, None)
+DPNEGF WARNING eig_solver is not set, using default &#39;torch&#39;.
+DPNEGF INFO    KPOINTS  klist: 300 kpoints
+DPNEGF INFO    The eigenvalues are already in data. will use them.
+DPNEGF INFO    Calculating Fermi energy in the case of spin-degeneracy.
+DPNEGF INFO    Fermi energy converged after 3 iterations.
+DPNEGF INFO    q_cal: 7.999999999999999, total_electrons: 8.0, diff q: 8.881784197001252e-16
+DPNEGF INFO    Estimated E_fermi: -2.8933583906146634 based on the valence electrons setting nel_atom : {&#39;B&#39;: 3, &#39;N&#39;: 5} .
+DPNEGF INFO    No Fermi energy provided, using estimated value: -2.8934 eV
+</pre></div>
+</div>
+<img alt="../_images/f0daa857a19f90208ef7069ca35400db04439953f725f9d493de40ee115395b9.png" src="../_images/f0daa857a19f90208ef7069ca35400db04439953f725f9d493de40ee115395b9.png" />
+</div>
+</div>
+<p>The NEGF calculation on hBN can be done:</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="k">try</span><span class="p">:</span>
+    <span class="kn">from</span><span class="w"> </span><span class="nn">dpnegf.runner.NEGF</span><span class="w"> </span><span class="kn">import</span> <span class="n">NEGF</span>
+<span class="k">except</span> <span class="ne">ImportError</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+    <span class="k">raise</span> <span class="ne">ImportError</span><span class="p">(</span><span class="s2">&quot;dpnegf not found. Please install firstly.&quot;</span><span class="p">)</span> <span class="kn">from</span><span class="w"> </span><span class="nn">e</span>
+
+<span class="kn">import</span> <span class="n">json</span>
+<span class="n">negf_input_file</span> <span class="o">=</span>  <span class="s2">&quot;negf.json&quot;</span> 
+<span class="n">structure</span> <span class="o">=</span>  <span class="s2">&quot;stru_negf.xyz&quot;</span> 
+
+<span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">negf_input_file</span><span class="p">,</span> <span class="s2">&quot;r&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+    <span class="n">negf_json</span> <span class="o">=</span> <span class="n">json</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">f</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="cell_output docutils container">
+<div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>DPNEGF INFO    Numba is available and JIT functions are compiled.
+</pre></div>
+</div>
+</div>
+</div>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">AtomicData_options</span> <span class="o">=</span> <span class="n">NEGF</span><span class="o">.</span><span class="n">update_atomicdata_options</span><span class="p">(</span><span class="n">model</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="cell_output docutils container">
+<div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>DPNEGF INFO    The AtomicData_options is:
+               {
+                   &quot;r_max&quot;: {
+                       &quot;B-B&quot;: 4.82,
+                       &quot;B-N&quot;: 4.640000000000001,
+                       &quot;N-B&quot;: 4.640000000000001,
+                       &quot;N-N&quot;: 4.45
+                   },
+                   &quot;er_max&quot;: null,
+                   &quot;oer_max&quot;: 6.3
+               }
+</pre></div>
+</div>
+</div>
+</div>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">shutil</span>
+<span class="n">output</span> <span class="o">=</span> <span class="s2">&quot;./negf_output&quot;</span>  
+<span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">isdir</span><span class="p">(</span><span class="n">output</span><span class="p">):</span>
+    <span class="n">shutil</span><span class="o">.</span><span class="n">rmtree</span><span class="p">(</span><span class="n">output</span><span class="p">,</span> <span class="n">ignore_errors</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="n">os</span><span class="o">.</span><span class="n">makedirs</span><span class="p">(</span><span class="n">output</span><span class="p">,</span> <span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+<span class="n">negf</span> <span class="o">=</span> <span class="n">NEGF</span><span class="p">(</span>
+    <span class="n">model</span><span class="o">=</span><span class="n">model</span><span class="p">,</span>
+    <span class="n">structure</span><span class="o">=</span><span class="n">structure</span><span class="p">,</span>
+    <span class="n">results_path</span><span class="o">=</span><span class="n">output</span><span class="p">,</span>
+    <span class="n">use_saved_se</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="c1"># whether to use the saved self-energy  </span>
+    <span class="n">se_info_display</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+    <span class="o">**</span><span class="n">negf_json</span><span class="p">[</span><span class="s1">&#39;task_options&#39;</span><span class="p">]</span>
+<span class="p">)</span>
+   
+<span class="n">negf</span><span class="o">.</span><span class="n">compute</span><span class="p">()</span>
+</pre></div>
+</div>
+</div>
+<div class="cell_output docutils container">
+<div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>DPNEGF INFO    ------ k-point for NEGF -----
+DPNEGF INFO    Gamma Center: False
+</pre></div>
+</div>
+<div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>DPNEGF INFO    Time Reversal: True
+DPNEGF INFO    k-points Num: 1
+DPNEGF INFO    k-points: [[-0. -0. -0.]]
+DPNEGF INFO    k-points weights: [1.]
+DPNEGF INFO    --------------------------------
+DPNEGF INFO    The AtomicData_options is:
+               {
+                   &quot;r_max&quot;: {
+                       &quot;B-B&quot;: 4.82,
+                       &quot;B-N&quot;: 4.640000000000001,
+                       &quot;N-B&quot;: 4.640000000000001,
+                       &quot;N-N&quot;: 4.45
+                   },
+                   &quot;er_max&quot;: null,
+                   &quot;oer_max&quot;: 6.3
+               }
+DPNEGF INFO    The structure is sorted lexicographically in this version!
+DPNEGF INFO    Lead principal layers translational equivalence error (on average): 3.803219e-09 (threshold: 1.000000e-05)
+DPNEGF INFO    Lead principal layers translational equivalence error (on average): 2.120221e-09 (threshold: 1.000000e-05)
+DPNEGF INFO    The coupling width of lead_L is 54.
+DPNEGF WARNING WARNING, the lead&#39;s hamiltonian attained from diffferent methods have slight differences   RMSE = 0.0000001.
+DPNEGF INFO    The coupling width of lead_R is 54.
+DPNEGF WARNING WARNING, the lead&#39;s hamiltonian attained from diffferent methods have slight differences   RMSE = 0.0000003.
+DPNEGF INFO    The Hamiltonian is block tridiagonalized into 5 subblocks.
+DPNEGF INFO       the number of elements in subblocks: 43092
+DPNEGF INFO                   occupation of subblocks: 51.953125 %
+DPNEGF INFO    --------------------------------------------------------------------------------
+DPNEGF INFO    The Hamiltonian has been initialized by model.
+DPNEGF INFO    ================================================================================
+DPNEGF INFO    -------------Fermi level calculation-------------
+DPNEGF WARNING No doping detected in lead_L, fixed_charge = 0
+DPNEGF WARNING No doping detected in lead_R, fixed_charge = 0
+DPNEGF INFO    Number of electrons in lead_L: {&#39;B&#39;: 3, &#39;N&#39;: 5}
+DPNEGF INFO    Number of electrons in lead_R: {&#39;B&#39;: 3, &#39;N&#39;: 5}
+DPNEGF INFO    -----Calculating Fermi level for lead_L-----
+DPNEGF INFO    KPOINTS  kmesh sampling: 535 kpoints
+DPNEGF INFO    Getting eigenvalues from the model.
+DPNEGF INFO    Calculating Fermi energy in the case of spin-degeneracy.
+DPNEGF INFO    Fermi energy converged after 3 iterations.
+DPNEGF INFO    q_cal: 128.00000000000006, total_electrons: 128.0, diff q: 5.684341886080802e-14
+DPNEGF INFO    Estimated E_fermi: -2.870708359971734 based on the valence electrons setting nel_atom : {&#39;B&#39;: 3, &#39;N&#39;: 5} .
+DPNEGF INFO    -----Calculating Fermi level for lead_R-----
+DPNEGF INFO    KPOINTS  kmesh sampling: 535 kpoints
+DPNEGF INFO    Getting eigenvalues from the model.
+DPNEGF INFO    Calculating Fermi energy in the case of spin-degeneracy.
+DPNEGF INFO    Fermi energy converged after 3 iterations.
+DPNEGF INFO    q_cal: 128.00000000000006, total_electrons: 128.0, diff q: 5.684341886080802e-14
+DPNEGF INFO    Estimated E_fermi: -2.870710982576104 based on the valence electrons setting nel_atom : {&#39;B&#39;: 3, &#39;N&#39;: 5} .
+DPNEGF INFO    -------------------------------------------------
+DPNEGF INFO    Zero bias case detected.
+DPNEGF INFO    Fermi level for lead_L: -2.870708359971734
+DPNEGF INFO    Fermi level for lead_R: -2.870710982576104
+DPNEGF INFO    Electrochemical potential for lead_L: -2.870708359971734
+DPNEGF INFO    Electrochemical potential for lead_R: -2.870710982576104
+DPNEGF INFO    Reference energy E_ref: -2.870708359971734
+DPNEGF INFO    =================================================
+
+DPNEGF INFO    ------Self-energy calculation------
+DPNEGF INFO    Calculating self-energy and saving to ./negf_output/self_energy
+DPNEGF INFO    Merging 400 tmp self energy files into ./negf_output/self_energy/self_energy_leadL.h5
+DPNEGF INFO    Merge complete.
+DPNEGF INFO    Merging 400 tmp self energy files into ./negf_output/self_energy/self_energy_leadR.h5
+DPNEGF INFO    Merge complete.
+DPNEGF INFO    -----------------------------------
+
+DPNEGF INFO    Properties computation at k = [-0.0000,-0.0000,-0.0000]
+DPNEGF INFO    computing green&#39;s function at e = -10.000
+DPNEGF INFO    computing green&#39;s function at e = -7.995
+DPNEGF INFO    computing green&#39;s function at e = -5.990
+DPNEGF INFO    computing green&#39;s function at e = -3.985
+DPNEGF INFO    computing green&#39;s function at e = -1.980
+DPNEGF INFO    computing green&#39;s function at e = 0.025
+DPNEGF INFO    computing green&#39;s function at e = 2.030
+DPNEGF INFO    computing green&#39;s function at e = 4.035
+DPNEGF INFO    computing green&#39;s function at e = 6.040
+DPNEGF INFO    computing green&#39;s function at e = 8.045
+</pre></div>
+</div>
+<img alt="../_images/107286b7272afb84819b047fe25337b8e3b38eee94aefe9874d139de645234fd.png" src="../_images/107286b7272afb84819b047fe25337b8e3b38eee94aefe9874d139de645234fd.png" />
+</div>
+</div>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">torch</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">matplotlib.pyplot</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">plt</span>
+
+<span class="n">output</span> <span class="o">=</span> <span class="s2">&quot;./negf_output&quot;</span>
+<span class="n">results_path</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">output</span><span class="p">,</span> <span class="s1">&#39;negf.out.pth&#39;</span><span class="p">)</span>
+<span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">results_path</span><span class="p">)</span> <span class="ow">is</span> <span class="kc">False</span><span class="p">:</span>
+    <span class="k">raise</span> <span class="ne">FileNotFoundError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Results file </span><span class="si">{</span><span class="n">results_path</span><span class="si">}</span><span class="s2"> not found. Please check if the NEGF calculation was successful.&quot;</span><span class="p">)</span>
+<span class="n">negf_out</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">results_path</span><span class="p">,</span><span class="n">weights_only</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+
+<span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">negf_out</span><span class="p">[</span><span class="s1">&#39;uni_grid&#39;</span><span class="p">],</span> <span class="n">negf_out</span><span class="p">[</span><span class="s1">&#39;T_avg&#39;</span><span class="p">])</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">xlabel</span><span class="p">(</span><span class="s1">&#39;Energy (eV)&#39;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">title</span><span class="p">(</span><span class="s1">&#39;Total Transmission kmesh=[1,1,1]&#39;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">xlim</span><span class="p">(</span><span class="o">-</span><span class="mi">10</span><span class="p">,</span><span class="mi">10</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">grid</span><span class="p">()</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+</pre></div>
+</div>
+</div>
+<div class="cell_output docutils container">
+<img alt="../_images/48d96b37b307131878caff113511b4cfe75d72036107c554ce0f86ba83ca0cc1.png" src="../_images/48d96b37b307131878caff113511b4cfe75d72036107c554ce0f86ba83ca0cc1.png" />
+</div>
+</div>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># Increase k-point sampling for better accuracy</span>
+<span class="n">negf_json</span><span class="p">[</span><span class="s1">&#39;task_options&#39;</span><span class="p">][</span><span class="s2">&quot;stru_options&quot;</span><span class="p">][</span><span class="s1">&#39;kmesh&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span><span class="mi">20</span><span class="p">,</span><span class="mi">1</span><span class="p">]</span>
+</pre></div>
+</div>
+</div>
+</div>
+<p>As well, it takes 23 mins in a 8-core CPU.</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">output</span> <span class="o">=</span> <span class="s2">&quot;./negf_output_k20&quot;</span>  
+<span class="n">os</span><span class="o">.</span><span class="n">makedirs</span><span class="p">(</span><span class="n">output</span><span class="p">,</span> <span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+<span class="n">negf</span> <span class="o">=</span> <span class="n">NEGF</span><span class="p">(</span>
+    <span class="n">model</span><span class="o">=</span><span class="n">model</span><span class="p">,</span>
+    <span class="n">structure</span><span class="o">=</span><span class="n">structure</span><span class="p">,</span>
+    <span class="n">results_path</span><span class="o">=</span><span class="n">output</span><span class="p">,</span>
+    <span class="n">use_saved_se</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="c1"># whether to use the saved self-energy  </span>
+    <span class="n">se_info_display</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+    <span class="o">**</span><span class="n">negf_json</span><span class="p">[</span><span class="s1">&#39;task_options&#39;</span><span class="p">]</span>
+<span class="p">)</span>
+   
+<span class="n">negf</span><span class="o">.</span><span class="n">compute</span><span class="p">()</span>
+</pre></div>
+</div>
+</div>
+<div class="cell_output docutils container">
+<div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>DPNEGF INFO    ------ k-point for NEGF -----
+DPNEGF INFO    Gamma Center: False
+DPNEGF INFO    Time Reversal: True
+DPNEGF INFO    k-points Num: 10
+DPNEGF INFO    --------------------------------
+DPNEGF INFO    The AtomicData_options is:
+               {
+                   &quot;r_max&quot;: {
+                       &quot;B-B&quot;: 4.82,
+                       &quot;B-N&quot;: 4.640000000000001,
+                       &quot;N-B&quot;: 4.640000000000001,
+                       &quot;N-N&quot;: 4.45
+                   },
+                   &quot;er_max&quot;: null,
+                   &quot;oer_max&quot;: 6.3
+               }
+DPNEGF INFO    The structure is sorted lexicographically in this version!
+DPNEGF INFO    Lead principal layers translational equivalence error (on average): 3.803219e-09 (threshold: 1.000000e-05)
+DPNEGF INFO    Lead principal layers translational equivalence error (on average): 2.120221e-09 (threshold: 1.000000e-05)
+DPNEGF INFO    The coupling width of lead_L is 54.
+DPNEGF WARNING WARNING, the lead&#39;s hamiltonian attained from diffferent methods have slight differences   RMSE = 0.0000001.
+DPNEGF INFO    The coupling width of lead_R is 54.
+DPNEGF WARNING WARNING, the lead&#39;s hamiltonian attained from diffferent methods have slight differences   RMSE = 0.0000003.
+DPNEGF INFO    The Hamiltonian is block tridiagonalized into 5 subblocks.
+DPNEGF INFO       the number of elements in subblocks: 43092
+DPNEGF INFO                   occupation of subblocks: 51.953125 %
+DPNEGF INFO    --------------------------------------------------------------------------------
+DPNEGF INFO    The Hamiltonian has been initialized by model.
+DPNEGF INFO    ================================================================================
+DPNEGF INFO    -------------Fermi level calculation-------------
+DPNEGF WARNING No doping detected in lead_L, fixed_charge = 0
+DPNEGF WARNING No doping detected in lead_R, fixed_charge = 0
+DPNEGF INFO    Number of electrons in lead_L: {&#39;B&#39;: 3, &#39;N&#39;: 5}
+DPNEGF INFO    Number of electrons in lead_R: {&#39;B&#39;: 3, &#39;N&#39;: 5}
+DPNEGF INFO    -----Calculating Fermi level for lead_L-----
+DPNEGF INFO    KPOINTS  kmesh sampling: 535 kpoints
+DPNEGF INFO    Getting eigenvalues from the model.
+DPNEGF INFO    Calculating Fermi energy in the case of spin-degeneracy.
+DPNEGF INFO    Fermi energy converged after 3 iterations.
+DPNEGF INFO    q_cal: 128.00000000000006, total_electrons: 128.0, diff q: 5.684341886080802e-14
+DPNEGF INFO    Estimated E_fermi: -2.870708359971734 based on the valence electrons setting nel_atom : {&#39;B&#39;: 3, &#39;N&#39;: 5} .
+DPNEGF INFO    -----Calculating Fermi level for lead_R-----
+DPNEGF INFO    KPOINTS  kmesh sampling: 535 kpoints
+DPNEGF INFO    Getting eigenvalues from the model.
+DPNEGF INFO    Calculating Fermi energy in the case of spin-degeneracy.
+DPNEGF INFO    Fermi energy converged after 3 iterations.
+DPNEGF INFO    q_cal: 128.00000000000006, total_electrons: 128.0, diff q: 5.684341886080802e-14
+DPNEGF INFO    Estimated E_fermi: -2.870710982576104 based on the valence electrons setting nel_atom : {&#39;B&#39;: 3, &#39;N&#39;: 5} .
+DPNEGF INFO    -------------------------------------------------
+DPNEGF INFO    Zero bias case detected.
+DPNEGF INFO    Fermi level for lead_L: -2.870708359971734
+DPNEGF INFO    Fermi level for lead_R: -2.870710982576104
+DPNEGF INFO    Electrochemical potential for lead_L: -2.870708359971734
+DPNEGF INFO    Electrochemical potential for lead_R: -2.870710982576104
+DPNEGF INFO    Reference energy E_ref: -2.870708359971734
+DPNEGF INFO    =================================================
+
+DPNEGF INFO    ------Self-energy calculation------
+DPNEGF INFO    Calculating self-energy and saving to ./negf_output_k20/self_energy
+/opt/mamba/envs/dpnegf-dev/lib/python3.10/site-packages/joblib/externals/loky/process_executor.py:782: UserWarning: A worker stopped while some jobs were given to the executor. This can be caused by a too short worker timeout or by a memory leak.
+  warnings.warn(
+Lopez-scheme not-so-well converged at E = -1.0913 eV: 1.0707542578228952e-08
+DPNEGF INFO    Merging 4000 tmp self energy files into ./negf_output_k20/self_energy/self_energy_leadL.h5
+DPNEGF INFO    Merge complete.
+DPNEGF INFO    Merging 4000 tmp self energy files into ./negf_output_k20/self_energy/self_energy_leadR.h5
+DPNEGF INFO    Merge complete.
+DPNEGF INFO    -----------------------------------
+
+DPNEGF INFO    Properties computation at k = [-0.0000,0.0250,-0.0000]
+DPNEGF INFO    computing green&#39;s function at e = -10.000
+DPNEGF INFO    computing green&#39;s function at e = -7.995
+DPNEGF INFO    computing green&#39;s function at e = -5.990
+DPNEGF INFO    computing green&#39;s function at e = -3.985
+DPNEGF INFO    computing green&#39;s function at e = -1.980
+DPNEGF INFO    computing green&#39;s function at e = 0.025
+DPNEGF INFO    computing green&#39;s function at e = 2.030
+DPNEGF INFO    computing green&#39;s function at e = 4.035
+DPNEGF INFO    computing green&#39;s function at e = 6.040
+DPNEGF INFO    computing green&#39;s function at e = 8.045
+DPNEGF INFO    Properties computation at k = [-0.0000,0.0750,-0.0000]
+DPNEGF INFO    computing green&#39;s function at e = -10.000
+DPNEGF INFO    computing green&#39;s function at e = -7.995
+DPNEGF INFO    computing green&#39;s function at e = -5.990
+DPNEGF INFO    computing green&#39;s function at e = -3.985
+DPNEGF INFO    computing green&#39;s function at e = -1.980
+DPNEGF INFO    computing green&#39;s function at e = 0.025
+DPNEGF INFO    computing green&#39;s function at e = 2.030
+DPNEGF INFO    computing green&#39;s function at e = 4.035
+DPNEGF INFO    computing green&#39;s function at e = 6.040
+DPNEGF INFO    computing green&#39;s function at e = 8.045
+DPNEGF INFO    Properties computation at k = [-0.0000,0.1250,-0.0000]
+DPNEGF INFO    computing green&#39;s function at e = -10.000
+DPNEGF INFO    computing green&#39;s function at e = -7.995
+DPNEGF INFO    computing green&#39;s function at e = -5.990
+DPNEGF INFO    computing green&#39;s function at e = -3.985
+DPNEGF INFO    computing green&#39;s function at e = -1.980
+DPNEGF INFO    computing green&#39;s function at e = 0.025
+DPNEGF INFO    computing green&#39;s function at e = 2.030
+DPNEGF INFO    computing green&#39;s function at e = 4.035
+DPNEGF INFO    computing green&#39;s function at e = 6.040
+DPNEGF INFO    computing green&#39;s function at e = 8.045
+DPNEGF INFO    Properties computation at k = [-0.0000,0.1750,-0.0000]
+DPNEGF INFO    computing green&#39;s function at e = -10.000
+DPNEGF INFO    computing green&#39;s function at e = -7.995
+DPNEGF INFO    computing green&#39;s function at e = -5.990
+DPNEGF INFO    computing green&#39;s function at e = -3.985
+DPNEGF INFO    computing green&#39;s function at e = -1.980
+DPNEGF INFO    computing green&#39;s function at e = 0.025
+DPNEGF INFO    computing green&#39;s function at e = 2.030
+DPNEGF INFO    computing green&#39;s function at e = 4.035
+DPNEGF INFO    computing green&#39;s function at e = 6.040
+DPNEGF INFO    computing green&#39;s function at e = 8.045
+DPNEGF INFO    Properties computation at k = [-0.0000,0.2250,-0.0000]
+DPNEGF INFO    computing green&#39;s function at e = -10.000
+DPNEGF INFO    computing green&#39;s function at e = -7.995
+DPNEGF INFO    computing green&#39;s function at e = -5.990
+DPNEGF INFO    computing green&#39;s function at e = -3.985
+DPNEGF INFO    computing green&#39;s function at e = -1.980
+DPNEGF INFO    computing green&#39;s function at e = 0.025
+DPNEGF INFO    computing green&#39;s function at e = 2.030
+DPNEGF INFO    computing green&#39;s function at e = 4.035
+DPNEGF INFO    computing green&#39;s function at e = 6.040
+DPNEGF INFO    computing green&#39;s function at e = 8.045
+DPNEGF INFO    Properties computation at k = [-0.0000,0.2750,-0.0000]
+DPNEGF INFO    computing green&#39;s function at e = -10.000
+DPNEGF INFO    computing green&#39;s function at e = -7.995
+DPNEGF INFO    computing green&#39;s function at e = -5.990
+DPNEGF INFO    computing green&#39;s function at e = -3.985
+DPNEGF INFO    computing green&#39;s function at e = -1.980
+DPNEGF INFO    computing green&#39;s function at e = 0.025
+DPNEGF INFO    computing green&#39;s function at e = 2.030
+DPNEGF INFO    computing green&#39;s function at e = 4.035
+DPNEGF INFO    computing green&#39;s function at e = 6.040
+DPNEGF INFO    computing green&#39;s function at e = 8.045
+DPNEGF INFO    Properties computation at k = [-0.0000,0.3250,-0.0000]
+DPNEGF INFO    computing green&#39;s function at e = -10.000
+DPNEGF INFO    computing green&#39;s function at e = -7.995
+DPNEGF INFO    computing green&#39;s function at e = -5.990
+DPNEGF INFO    computing green&#39;s function at e = -3.985
+DPNEGF INFO    computing green&#39;s function at e = -1.980
+DPNEGF INFO    computing green&#39;s function at e = 0.025
+DPNEGF INFO    computing green&#39;s function at e = 2.030
+DPNEGF INFO    computing green&#39;s function at e = 4.035
+DPNEGF INFO    computing green&#39;s function at e = 6.040
+DPNEGF INFO    computing green&#39;s function at e = 8.045
+DPNEGF INFO    Properties computation at k = [-0.0000,0.3750,-0.0000]
+DPNEGF INFO    computing green&#39;s function at e = -10.000
+DPNEGF INFO    computing green&#39;s function at e = -7.995
+DPNEGF INFO    computing green&#39;s function at e = -5.990
+DPNEGF INFO    computing green&#39;s function at e = -3.985
+DPNEGF INFO    computing green&#39;s function at e = -1.980
+DPNEGF INFO    computing green&#39;s function at e = 0.025
+DPNEGF INFO    computing green&#39;s function at e = 2.030
+DPNEGF INFO    computing green&#39;s function at e = 4.035
+DPNEGF INFO    computing green&#39;s function at e = 6.040
+DPNEGF INFO    computing green&#39;s function at e = 8.045
+DPNEGF INFO    Properties computation at k = [-0.0000,0.4250,-0.0000]
+DPNEGF INFO    computing green&#39;s function at e = -10.000
+DPNEGF INFO    computing green&#39;s function at e = -7.995
+DPNEGF INFO    computing green&#39;s function at e = -5.990
+DPNEGF INFO    computing green&#39;s function at e = -3.985
+DPNEGF INFO    computing green&#39;s function at e = -1.980
+DPNEGF INFO    computing green&#39;s function at e = 0.025
+DPNEGF INFO    computing green&#39;s function at e = 2.030
+DPNEGF INFO    computing green&#39;s function at e = 4.035
+DPNEGF INFO    computing green&#39;s function at e = 6.040
+DPNEGF INFO    computing green&#39;s function at e = 8.045
+DPNEGF INFO    Properties computation at k = [-0.0000,0.4750,-0.0000]
+DPNEGF INFO    computing green&#39;s function at e = -10.000
+DPNEGF INFO    computing green&#39;s function at e = -7.995
+DPNEGF INFO    computing green&#39;s function at e = -5.990
+DPNEGF INFO    computing green&#39;s function at e = -3.985
+DPNEGF INFO    computing green&#39;s function at e = -1.980
+DPNEGF INFO    computing green&#39;s function at e = 0.025
+DPNEGF INFO    computing green&#39;s function at e = 2.030
+DPNEGF INFO    computing green&#39;s function at e = 4.035
+DPNEGF INFO    computing green&#39;s function at e = 6.040
+DPNEGF INFO    computing green&#39;s function at e = 8.045
+</pre></div>
+</div>
+<img alt="../_images/872457125b3414247c6d31ed6853585dff306a87de61818359a556e83df2acd8.png" src="../_images/872457125b3414247c6d31ed6853585dff306a87de61818359a556e83df2acd8.png" />
+</div>
+</div>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">torch</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">matplotlib.pyplot</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">plt</span>
+
+<span class="n">output</span> <span class="o">=</span> <span class="s2">&quot;./negf_output_k20&quot;</span>
+<span class="n">results_path</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">output</span><span class="p">,</span> <span class="s1">&#39;negf.out.pth&#39;</span><span class="p">)</span>
+<span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">results_path</span><span class="p">)</span> <span class="ow">is</span> <span class="kc">False</span><span class="p">:</span>
+    <span class="k">raise</span> <span class="ne">FileNotFoundError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Results file </span><span class="si">{</span><span class="n">results_path</span><span class="si">}</span><span class="s2"> not found. Please check if the NEGF calculation was successful.&quot;</span><span class="p">)</span>
+<span class="n">negf_out</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">results_path</span><span class="p">,</span><span class="n">weights_only</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+
+<span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">negf_out</span><span class="p">[</span><span class="s1">&#39;uni_grid&#39;</span><span class="p">],</span> <span class="n">negf_out</span><span class="p">[</span><span class="s1">&#39;T_avg&#39;</span><span class="p">])</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">xlabel</span><span class="p">(</span><span class="s1">&#39;Energy (eV)&#39;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">title</span><span class="p">(</span><span class="s1">&#39;Total Transmission kmesh=[1,20,1]&#39;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">xlim</span><span class="p">(</span><span class="o">-</span><span class="mi">10</span><span class="p">,</span><span class="mi">10</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">grid</span><span class="p">()</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+</pre></div>
+</div>
+</div>
+<div class="cell_output docutils container">
+<img alt="../_images/f48c7ae1132683edafb6eeb45db58cf84d93dcd2ae7c501904bab75954fcd7e7.png" src="../_images/f48c7ae1132683edafb6eeb45db58cf84d93dcd2ae7c501904bab75954fcd7e7.png" />
+</div>
+</div>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># Increase k-point sampling for better accuracy</span>
+<span class="n">negf_json</span><span class="p">[</span><span class="s1">&#39;task_options&#39;</span><span class="p">][</span><span class="s2">&quot;stru_options&quot;</span><span class="p">][</span><span class="s1">&#39;kmesh&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span><span class="mi">70</span><span class="p">,</span><span class="mi">1</span><span class="p">]</span>
+</pre></div>
+</div>
+</div>
+</div>
+<p>Considering the computing cost, we don’t recommend you to run the cell from scratch(more than 40 mins in a 32-core CPU). We have prepared the self-energies files and you can directly load it with <code class="docutils literal notranslate"><span class="pre">use_saved_se</span></code>=True. However, it also takes ~20 mins in a 32-core CPU.</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">output</span> <span class="o">=</span> <span class="s2">&quot;./negf_output_k70&quot;</span>  
+<span class="n">os</span><span class="o">.</span><span class="n">makedirs</span><span class="p">(</span><span class="n">output</span><span class="p">,</span> <span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+<span class="n">negf</span> <span class="o">=</span> <span class="n">NEGF</span><span class="p">(</span>
+    <span class="n">model</span><span class="o">=</span><span class="n">model</span><span class="p">,</span>
+    <span class="n">structure</span><span class="o">=</span><span class="n">structure</span><span class="p">,</span>
+    <span class="n">results_path</span><span class="o">=</span><span class="n">output</span><span class="p">,</span>
+    <span class="n">use_saved_se</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="c1"># whether to use the saved self-energy  </span>
+    <span class="n">se_info_display</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+    <span class="o">**</span><span class="n">negf_json</span><span class="p">[</span><span class="s1">&#39;task_options&#39;</span><span class="p">]</span>
+<span class="p">)</span>
+   
+<span class="n">negf</span><span class="o">.</span><span class="n">compute</span><span class="p">()</span>
+</pre></div>
+</div>
+</div>
+<div class="cell_output docutils container">
+<div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>DPNEGF INFO    ------ k-point for NEGF -----
+DPNEGF INFO    Gamma Center: False
+DPNEGF INFO    Time Reversal: True
+DPNEGF INFO    k-points Num: 35
+DPNEGF INFO    --------------------------------
+DPNEGF INFO    The AtomicData_options is:
+               {
+                   &quot;r_max&quot;: {
+                       &quot;B-B&quot;: 4.82,
+                       &quot;B-N&quot;: 4.640000000000001,
+                       &quot;N-B&quot;: 4.640000000000001,
+                       &quot;N-N&quot;: 4.45
+                   },
+                   &quot;er_max&quot;: null,
+                   &quot;oer_max&quot;: 6.3
+               }
+DPNEGF INFO    The structure is sorted lexicographically in this version!
+DPNEGF INFO    Lead principal layers translational equivalence error (on average): 3.803219e-09 (threshold: 1.000000e-05)
+DPNEGF INFO    Lead principal layers translational equivalence error (on average): 2.120221e-09 (threshold: 1.000000e-05)
+DPNEGF INFO    The coupling width of lead_L is 54.
+DPNEGF WARNING WARNING, the lead&#39;s hamiltonian attained from diffferent methods have slight differences   RMSE = 0.0000001.
+DPNEGF INFO    The coupling width of lead_R is 54.
+DPNEGF WARNING WARNING, the lead&#39;s hamiltonian attained from diffferent methods have slight differences   RMSE = 0.0000003.
+DPNEGF INFO    The Hamiltonian is block tridiagonalized into 5 subblocks.
+DPNEGF INFO       the number of elements in subblocks: 43092
+DPNEGF INFO                   occupation of subblocks: 51.953125 %
+DPNEGF INFO    --------------------------------------------------------------------------------
+DPNEGF INFO    The Hamiltonian has been initialized by model.
+DPNEGF INFO    ================================================================================
+DPNEGF INFO    -------------Fermi level calculation-------------
+DPNEGF WARNING No doping detected in lead_L, fixed_charge = 0
+DPNEGF WARNING No doping detected in lead_R, fixed_charge = 0
+DPNEGF INFO    Number of electrons in lead_L: {&#39;B&#39;: 3, &#39;N&#39;: 5}
+DPNEGF INFO    Number of electrons in lead_R: {&#39;B&#39;: 3, &#39;N&#39;: 5}
+DPNEGF INFO    -----Calculating Fermi level for lead_L-----
+DPNEGF INFO    KPOINTS  kmesh sampling: 535 kpoints
+DPNEGF INFO    Getting eigenvalues from the model.
+DPNEGF INFO    Calculating Fermi energy in the case of spin-degeneracy.
+DPNEGF INFO    Fermi energy converged after 3 iterations.
+DPNEGF INFO    q_cal: 128.00000000000006, total_electrons: 128.0, diff q: 5.684341886080802e-14
+DPNEGF INFO    Estimated E_fermi: -2.8707102673203666 based on the valence electrons setting nel_atom : {&#39;B&#39;: 3, &#39;N&#39;: 5} .
+DPNEGF INFO    -----Calculating Fermi level for lead_R-----
+DPNEGF INFO    KPOINTS  kmesh sampling: 535 kpoints
+DPNEGF INFO    Getting eigenvalues from the model.
+DPNEGF INFO    Calculating Fermi energy in the case of spin-degeneracy.
+DPNEGF INFO    Fermi energy converged after 3 iterations.
+DPNEGF INFO    q_cal: 128.00000000000006, total_electrons: 128.0, diff q: 5.684341886080802e-14
+DPNEGF INFO    Estimated E_fermi: -2.870709075227471 based on the valence electrons setting nel_atom : {&#39;B&#39;: 3, &#39;N&#39;: 5} .
+DPNEGF INFO    -------------------------------------------------
+DPNEGF INFO    Zero bias case detected.
+DPNEGF INFO    Fermi level for lead_L: -2.8707102673203666
+DPNEGF INFO    Fermi level for lead_R: -2.870709075227471
+DPNEGF INFO    Electrochemical potential for lead_L: -2.8707102673203666
+DPNEGF INFO    Electrochemical potential for lead_R: -2.870709075227471
+DPNEGF INFO    Reference energy E_ref: -2.8707102673203666
+DPNEGF INFO    =================================================
+
+DPNEGF INFO    ------Self-energy calculation------
+DPNEGF INFO    Using saved self-energy from ./negf_output_k70/self_energy
+DPNEGF INFO    Ensure the saved self-energy is consistent with the current calculation setting!
+DPNEGF INFO    -----------------------------------
+
+DPNEGF INFO    Properties computation at k = [-0.0000,0.0071,-0.0000]
+DPNEGF INFO    computing green&#39;s function at e = -10.000
+DPNEGF INFO    computing green&#39;s function at e = -7.995
+DPNEGF INFO    computing green&#39;s function at e = -5.990
+DPNEGF INFO    computing green&#39;s function at e = -3.985
+DPNEGF INFO    computing green&#39;s function at e = -1.980
+DPNEGF INFO    computing green&#39;s function at e = 0.025
+DPNEGF INFO    computing green&#39;s function at e = 2.030
+DPNEGF INFO    computing green&#39;s function at e = 4.035
+DPNEGF INFO    computing green&#39;s function at e = 6.040
+DPNEGF INFO    computing green&#39;s function at e = 8.045
+DPNEGF INFO    Properties computation at k = [-0.0000,0.0214,-0.0000]
+DPNEGF INFO    computing green&#39;s function at e = -10.000
+DPNEGF INFO    computing green&#39;s function at e = -7.995
+DPNEGF INFO    computing green&#39;s function at e = -5.990
+DPNEGF INFO    computing green&#39;s function at e = -3.985
+DPNEGF INFO    computing green&#39;s function at e = -1.980
+DPNEGF INFO    computing green&#39;s function at e = 0.025
+DPNEGF INFO    computing green&#39;s function at e = 2.030
+DPNEGF INFO    computing green&#39;s function at e = 4.035
+DPNEGF INFO    computing green&#39;s function at e = 6.040
+DPNEGF INFO    computing green&#39;s function at e = 8.045
+DPNEGF INFO    Properties computation at k = [-0.0000,0.0357,-0.0000]
+DPNEGF INFO    computing green&#39;s function at e = -10.000
+DPNEGF INFO    computing green&#39;s function at e = -7.995
+DPNEGF INFO    computing green&#39;s function at e = -5.990
+DPNEGF INFO    computing green&#39;s function at e = -3.985
+DPNEGF INFO    computing green&#39;s function at e = -1.980
+DPNEGF INFO    computing green&#39;s function at e = 0.025
+DPNEGF INFO    computing green&#39;s function at e = 2.030
+DPNEGF INFO    computing green&#39;s function at e = 4.035
+DPNEGF INFO    computing green&#39;s function at e = 6.040
+DPNEGF INFO    computing green&#39;s function at e = 8.045
+DPNEGF INFO    Properties computation at k = [-0.0000,0.0500,-0.0000]
+DPNEGF INFO    computing green&#39;s function at e = -10.000
+DPNEGF INFO    computing green&#39;s function at e = -7.995
+DPNEGF INFO    computing green&#39;s function at e = -5.990
+DPNEGF INFO    computing green&#39;s function at e = -3.985
+DPNEGF INFO    computing green&#39;s function at e = -1.980
+DPNEGF INFO    computing green&#39;s function at e = 0.025
+DPNEGF INFO    computing green&#39;s function at e = 2.030
+DPNEGF INFO    computing green&#39;s function at e = 4.035
+DPNEGF INFO    computing green&#39;s function at e = 6.040
+DPNEGF INFO    computing green&#39;s function at e = 8.045
+DPNEGF INFO    Properties computation at k = [-0.0000,0.0643,-0.0000]
+DPNEGF INFO    computing green&#39;s function at e = -10.000
+DPNEGF INFO    computing green&#39;s function at e = -7.995
+DPNEGF INFO    computing green&#39;s function at e = -5.990
+DPNEGF INFO    computing green&#39;s function at e = -3.985
+DPNEGF INFO    computing green&#39;s function at e = -1.980
+DPNEGF INFO    computing green&#39;s function at e = 0.025
+DPNEGF INFO    computing green&#39;s function at e = 2.030
+DPNEGF INFO    computing green&#39;s function at e = 4.035
+DPNEGF INFO    computing green&#39;s function at e = 6.040
+DPNEGF INFO    computing green&#39;s function at e = 8.045
+DPNEGF INFO    Properties computation at k = [-0.0000,0.0786,-0.0000]
+DPNEGF INFO    computing green&#39;s function at e = -10.000
+DPNEGF INFO    computing green&#39;s function at e = -7.995
+DPNEGF INFO    computing green&#39;s function at e = -5.990
+DPNEGF INFO    computing green&#39;s function at e = -3.985
+DPNEGF INFO    computing green&#39;s function at e = -1.980
+DPNEGF INFO    computing green&#39;s function at e = 0.025
+DPNEGF INFO    computing green&#39;s function at e = 2.030
+DPNEGF INFO    computing green&#39;s function at e = 4.035
+DPNEGF INFO    computing green&#39;s function at e = 6.040
+DPNEGF INFO    computing green&#39;s function at e = 8.045
+DPNEGF INFO    Properties computation at k = [-0.0000,0.0929,-0.0000]
+DPNEGF INFO    computing green&#39;s function at e = -10.000
+DPNEGF INFO    computing green&#39;s function at e = -7.995
+DPNEGF INFO    computing green&#39;s function at e = -5.990
+DPNEGF INFO    computing green&#39;s function at e = -3.985
+DPNEGF INFO    computing green&#39;s function at e = -1.980
+DPNEGF INFO    computing green&#39;s function at e = 0.025
+DPNEGF INFO    computing green&#39;s function at e = 2.030
+DPNEGF INFO    computing green&#39;s function at e = 4.035
+DPNEGF INFO    computing green&#39;s function at e = 6.040
+DPNEGF INFO    computing green&#39;s function at e = 8.045
+DPNEGF INFO    Properties computation at k = [-0.0000,0.1071,-0.0000]
+DPNEGF INFO    computing green&#39;s function at e = -10.000
+DPNEGF INFO    computing green&#39;s function at e = -7.995
+DPNEGF INFO    computing green&#39;s function at e = -5.990
+DPNEGF INFO    computing green&#39;s function at e = -3.985
+DPNEGF INFO    computing green&#39;s function at e = -1.980
+DPNEGF INFO    computing green&#39;s function at e = 0.025
+DPNEGF INFO    computing green&#39;s function at e = 2.030
+DPNEGF INFO    computing green&#39;s function at e = 4.035
+DPNEGF INFO    computing green&#39;s function at e = 6.040
+DPNEGF INFO    computing green&#39;s function at e = 8.045
+DPNEGF INFO    Properties computation at k = [-0.0000,0.1214,-0.0000]
+DPNEGF INFO    computing green&#39;s function at e = -10.000
+DPNEGF INFO    computing green&#39;s function at e = -7.995
+DPNEGF INFO    computing green&#39;s function at e = -5.990
+DPNEGF INFO    computing green&#39;s function at e = -3.985
+DPNEGF INFO    computing green&#39;s function at e = -1.980
+DPNEGF INFO    computing green&#39;s function at e = 0.025
+DPNEGF INFO    computing green&#39;s function at e = 2.030
+DPNEGF INFO    computing green&#39;s function at e = 4.035
+DPNEGF INFO    computing green&#39;s function at e = 6.040
+DPNEGF INFO    computing green&#39;s function at e = 8.045
+DPNEGF INFO    Properties computation at k = [-0.0000,0.1357,-0.0000]
+DPNEGF INFO    computing green&#39;s function at e = -10.000
+DPNEGF INFO    computing green&#39;s function at e = -7.995
+DPNEGF INFO    computing green&#39;s function at e = -5.990
+DPNEGF INFO    computing green&#39;s function at e = -3.985
+DPNEGF INFO    computing green&#39;s function at e = -1.980
+DPNEGF INFO    computing green&#39;s function at e = 0.025
+DPNEGF INFO    computing green&#39;s function at e = 2.030
+DPNEGF INFO    computing green&#39;s function at e = 4.035
+DPNEGF INFO    computing green&#39;s function at e = 6.040
+DPNEGF INFO    computing green&#39;s function at e = 8.045
+DPNEGF INFO    Properties computation at k = [-0.0000,0.1500,-0.0000]
+DPNEGF INFO    computing green&#39;s function at e = -10.000
+DPNEGF INFO    computing green&#39;s function at e = -7.995
+DPNEGF INFO    computing green&#39;s function at e = -5.990
+DPNEGF INFO    computing green&#39;s function at e = -3.985
+DPNEGF INFO    computing green&#39;s function at e = -1.980
+DPNEGF INFO    computing green&#39;s function at e = 0.025
+DPNEGF INFO    computing green&#39;s function at e = 2.030
+DPNEGF INFO    computing green&#39;s function at e = 4.035
+DPNEGF INFO    computing green&#39;s function at e = 6.040
+DPNEGF INFO    computing green&#39;s function at e = 8.045
+DPNEGF INFO    Properties computation at k = [-0.0000,0.1643,-0.0000]
+DPNEGF INFO    computing green&#39;s function at e = -10.000
+DPNEGF INFO    computing green&#39;s function at e = -7.995
+DPNEGF INFO    computing green&#39;s function at e = -5.990
+DPNEGF INFO    computing green&#39;s function at e = -3.985
+DPNEGF INFO    computing green&#39;s function at e = -1.980
+DPNEGF INFO    computing green&#39;s function at e = 0.025
+DPNEGF INFO    computing green&#39;s function at e = 2.030
+DPNEGF INFO    computing green&#39;s function at e = 4.035
+DPNEGF INFO    computing green&#39;s function at e = 6.040
+DPNEGF INFO    computing green&#39;s function at e = 8.045
+DPNEGF INFO    Properties computation at k = [-0.0000,0.1786,-0.0000]
+DPNEGF INFO    computing green&#39;s function at e = -10.000
+DPNEGF INFO    computing green&#39;s function at e = -7.995
+DPNEGF INFO    computing green&#39;s function at e = -5.990
+DPNEGF INFO    computing green&#39;s function at e = -3.985
+DPNEGF INFO    computing green&#39;s function at e = -1.980
+DPNEGF INFO    computing green&#39;s function at e = 0.025
+DPNEGF INFO    computing green&#39;s function at e = 2.030
+DPNEGF INFO    computing green&#39;s function at e = 4.035
+DPNEGF INFO    computing green&#39;s function at e = 6.040
+DPNEGF INFO    computing green&#39;s function at e = 8.045
+DPNEGF INFO    Properties computation at k = [-0.0000,0.1929,-0.0000]
+DPNEGF INFO    computing green&#39;s function at e = -10.000
+DPNEGF INFO    computing green&#39;s function at e = -7.995
+DPNEGF INFO    computing green&#39;s function at e = -5.990
+DPNEGF INFO    computing green&#39;s function at e = -3.985
+DPNEGF INFO    computing green&#39;s function at e = -1.980
+DPNEGF INFO    computing green&#39;s function at e = 0.025
+DPNEGF INFO    computing green&#39;s function at e = 2.030
+DPNEGF INFO    computing green&#39;s function at e = 4.035
+DPNEGF INFO    computing green&#39;s function at e = 6.040
+DPNEGF INFO    computing green&#39;s function at e = 8.045
+DPNEGF INFO    Properties computation at k = [-0.0000,0.2071,-0.0000]
+DPNEGF INFO    computing green&#39;s function at e = -10.000
+DPNEGF INFO    computing green&#39;s function at e = -7.995
+DPNEGF INFO    computing green&#39;s function at e = -5.990
+DPNEGF INFO    computing green&#39;s function at e = -3.985
+DPNEGF INFO    computing green&#39;s function at e = -1.980
+DPNEGF INFO    computing green&#39;s function at e = 0.025
+DPNEGF INFO    computing green&#39;s function at e = 2.030
+DPNEGF INFO    computing green&#39;s function at e = 4.035
+DPNEGF INFO    computing green&#39;s function at e = 6.040
+DPNEGF INFO    computing green&#39;s function at e = 8.045
+DPNEGF INFO    Properties computation at k = [-0.0000,0.2214,-0.0000]
+DPNEGF INFO    computing green&#39;s function at e = -10.000
+DPNEGF INFO    computing green&#39;s function at e = -7.995
+DPNEGF INFO    computing green&#39;s function at e = -5.990
+DPNEGF INFO    computing green&#39;s function at e = -3.985
+DPNEGF INFO    computing green&#39;s function at e = -1.980
+DPNEGF INFO    computing green&#39;s function at e = 0.025
+DPNEGF INFO    computing green&#39;s function at e = 2.030
+DPNEGF INFO    computing green&#39;s function at e = 4.035
+DPNEGF INFO    computing green&#39;s function at e = 6.040
+DPNEGF INFO    computing green&#39;s function at e = 8.045
+DPNEGF INFO    Properties computation at k = [-0.0000,0.2357,-0.0000]
+DPNEGF INFO    computing green&#39;s function at e = -10.000
+DPNEGF INFO    computing green&#39;s function at e = -7.995
+DPNEGF INFO    computing green&#39;s function at e = -5.990
+DPNEGF INFO    computing green&#39;s function at e = -3.985
+DPNEGF INFO    computing green&#39;s function at e = -1.980
+DPNEGF INFO    computing green&#39;s function at e = 0.025
+DPNEGF INFO    computing green&#39;s function at e = 2.030
+DPNEGF INFO    computing green&#39;s function at e = 4.035
+DPNEGF INFO    computing green&#39;s function at e = 6.040
+DPNEGF INFO    computing green&#39;s function at e = 8.045
+DPNEGF INFO    Properties computation at k = [-0.0000,0.2500,-0.0000]
+DPNEGF INFO    computing green&#39;s function at e = -10.000
+DPNEGF INFO    computing green&#39;s function at e = -7.995
+DPNEGF INFO    computing green&#39;s function at e = -5.990
+DPNEGF INFO    computing green&#39;s function at e = -3.985
+DPNEGF INFO    computing green&#39;s function at e = -1.980
+DPNEGF INFO    computing green&#39;s function at e = 0.025
+DPNEGF INFO    computing green&#39;s function at e = 2.030
+DPNEGF INFO    computing green&#39;s function at e = 4.035
+DPNEGF INFO    computing green&#39;s function at e = 6.040
+DPNEGF INFO    computing green&#39;s function at e = 8.045
+DPNEGF INFO    Properties computation at k = [-0.0000,0.2643,-0.0000]
+DPNEGF INFO    computing green&#39;s function at e = -10.000
+DPNEGF INFO    computing green&#39;s function at e = -7.995
+DPNEGF INFO    computing green&#39;s function at e = -5.990
+DPNEGF INFO    computing green&#39;s function at e = -3.985
+DPNEGF INFO    computing green&#39;s function at e = -1.980
+DPNEGF INFO    computing green&#39;s function at e = 0.025
+DPNEGF INFO    computing green&#39;s function at e = 2.030
+DPNEGF INFO    computing green&#39;s function at e = 4.035
+DPNEGF INFO    computing green&#39;s function at e = 6.040
+DPNEGF INFO    computing green&#39;s function at e = 8.045
+DPNEGF INFO    Properties computation at k = [-0.0000,0.2786,-0.0000]
+DPNEGF INFO    computing green&#39;s function at e = -10.000
+DPNEGF INFO    computing green&#39;s function at e = -7.995
+DPNEGF INFO    computing green&#39;s function at e = -5.990
+DPNEGF INFO    computing green&#39;s function at e = -3.985
+DPNEGF INFO    computing green&#39;s function at e = -1.980
+DPNEGF INFO    computing green&#39;s function at e = 0.025
+DPNEGF INFO    computing green&#39;s function at e = 2.030
+DPNEGF INFO    computing green&#39;s function at e = 4.035
+DPNEGF INFO    computing green&#39;s function at e = 6.040
+DPNEGF INFO    computing green&#39;s function at e = 8.045
+DPNEGF INFO    Properties computation at k = [-0.0000,0.2929,-0.0000]
+DPNEGF INFO    computing green&#39;s function at e = -10.000
+DPNEGF INFO    computing green&#39;s function at e = -7.995
+DPNEGF INFO    computing green&#39;s function at e = -5.990
+DPNEGF INFO    computing green&#39;s function at e = -3.985
+DPNEGF INFO    computing green&#39;s function at e = -1.980
+DPNEGF INFO    computing green&#39;s function at e = 0.025
+DPNEGF INFO    computing green&#39;s function at e = 2.030
+DPNEGF INFO    computing green&#39;s function at e = 4.035
+DPNEGF INFO    computing green&#39;s function at e = 6.040
+DPNEGF INFO    computing green&#39;s function at e = 8.045
+DPNEGF INFO    Properties computation at k = [-0.0000,0.3071,-0.0000]
+DPNEGF INFO    computing green&#39;s function at e = -10.000
+DPNEGF INFO    computing green&#39;s function at e = -7.995
+DPNEGF INFO    computing green&#39;s function at e = -5.990
+DPNEGF INFO    computing green&#39;s function at e = -3.985
+DPNEGF INFO    computing green&#39;s function at e = -1.980
+DPNEGF INFO    computing green&#39;s function at e = 0.025
+DPNEGF INFO    computing green&#39;s function at e = 2.030
+DPNEGF INFO    computing green&#39;s function at e = 4.035
+DPNEGF INFO    computing green&#39;s function at e = 6.040
+DPNEGF INFO    computing green&#39;s function at e = 8.045
+DPNEGF INFO    Properties computation at k = [-0.0000,0.3214,-0.0000]
+DPNEGF INFO    computing green&#39;s function at e = -10.000
+DPNEGF INFO    computing green&#39;s function at e = -7.995
+DPNEGF INFO    computing green&#39;s function at e = -5.990
+DPNEGF INFO    computing green&#39;s function at e = -3.985
+DPNEGF INFO    computing green&#39;s function at e = -1.980
+DPNEGF INFO    computing green&#39;s function at e = 0.025
+DPNEGF INFO    computing green&#39;s function at e = 2.030
+DPNEGF INFO    computing green&#39;s function at e = 4.035
+DPNEGF INFO    computing green&#39;s function at e = 6.040
+DPNEGF INFO    computing green&#39;s function at e = 8.045
+DPNEGF INFO    Properties computation at k = [-0.0000,0.3357,-0.0000]
+DPNEGF INFO    computing green&#39;s function at e = -10.000
+DPNEGF INFO    computing green&#39;s function at e = -7.995
+DPNEGF INFO    computing green&#39;s function at e = -5.990
+DPNEGF INFO    computing green&#39;s function at e = -3.985
+DPNEGF INFO    computing green&#39;s function at e = -1.980
+DPNEGF INFO    computing green&#39;s function at e = 0.025
+DPNEGF INFO    computing green&#39;s function at e = 2.030
+DPNEGF INFO    computing green&#39;s function at e = 4.035
+DPNEGF INFO    computing green&#39;s function at e = 6.040
+DPNEGF INFO    computing green&#39;s function at e = 8.045
+DPNEGF INFO    Properties computation at k = [-0.0000,0.3500,-0.0000]
+DPNEGF INFO    computing green&#39;s function at e = -10.000
+DPNEGF INFO    computing green&#39;s function at e = -7.995
+DPNEGF INFO    computing green&#39;s function at e = -5.990
+DPNEGF INFO    computing green&#39;s function at e = -3.985
+DPNEGF INFO    computing green&#39;s function at e = -1.980
+DPNEGF INFO    computing green&#39;s function at e = 0.025
+DPNEGF INFO    computing green&#39;s function at e = 2.030
+DPNEGF INFO    computing green&#39;s function at e = 4.035
+DPNEGF INFO    computing green&#39;s function at e = 6.040
+DPNEGF INFO    computing green&#39;s function at e = 8.045
+DPNEGF INFO    Properties computation at k = [-0.0000,0.3643,-0.0000]
+DPNEGF INFO    computing green&#39;s function at e = -10.000
+DPNEGF INFO    computing green&#39;s function at e = -7.995
+DPNEGF INFO    computing green&#39;s function at e = -5.990
+DPNEGF INFO    computing green&#39;s function at e = -3.985
+DPNEGF INFO    computing green&#39;s function at e = -1.980
+DPNEGF INFO    computing green&#39;s function at e = 0.025
+DPNEGF INFO    computing green&#39;s function at e = 2.030
+DPNEGF INFO    computing green&#39;s function at e = 4.035
+DPNEGF INFO    computing green&#39;s function at e = 6.040
+DPNEGF INFO    computing green&#39;s function at e = 8.045
+DPNEGF INFO    Properties computation at k = [-0.0000,0.3786,-0.0000]
+DPNEGF INFO    computing green&#39;s function at e = -10.000
+DPNEGF INFO    computing green&#39;s function at e = -7.995
+DPNEGF INFO    computing green&#39;s function at e = -5.990
+DPNEGF INFO    computing green&#39;s function at e = -3.985
+DPNEGF INFO    computing green&#39;s function at e = -1.980
+DPNEGF INFO    computing green&#39;s function at e = 0.025
+DPNEGF INFO    computing green&#39;s function at e = 2.030
+DPNEGF INFO    computing green&#39;s function at e = 4.035
+DPNEGF INFO    computing green&#39;s function at e = 6.040
+DPNEGF INFO    computing green&#39;s function at e = 8.045
+DPNEGF INFO    Properties computation at k = [-0.0000,0.3929,-0.0000]
+DPNEGF INFO    computing green&#39;s function at e = -10.000
+DPNEGF INFO    computing green&#39;s function at e = -7.995
+DPNEGF INFO    computing green&#39;s function at e = -5.990
+DPNEGF INFO    computing green&#39;s function at e = -3.985
+DPNEGF INFO    computing green&#39;s function at e = -1.980
+DPNEGF INFO    computing green&#39;s function at e = 0.025
+DPNEGF INFO    computing green&#39;s function at e = 2.030
+DPNEGF INFO    computing green&#39;s function at e = 4.035
+DPNEGF INFO    computing green&#39;s function at e = 6.040
+DPNEGF INFO    computing green&#39;s function at e = 8.045
+DPNEGF INFO    Properties computation at k = [-0.0000,0.4071,-0.0000]
+DPNEGF INFO    computing green&#39;s function at e = -10.000
+DPNEGF INFO    computing green&#39;s function at e = -7.995
+DPNEGF INFO    computing green&#39;s function at e = -5.990
+DPNEGF INFO    computing green&#39;s function at e = -3.985
+DPNEGF INFO    computing green&#39;s function at e = -1.980
+DPNEGF INFO    computing green&#39;s function at e = 0.025
+DPNEGF INFO    computing green&#39;s function at e = 2.030
+DPNEGF INFO    computing green&#39;s function at e = 4.035
+DPNEGF INFO    computing green&#39;s function at e = 6.040
+DPNEGF INFO    computing green&#39;s function at e = 8.045
+DPNEGF INFO    Properties computation at k = [-0.0000,0.4214,-0.0000]
+DPNEGF INFO    computing green&#39;s function at e = -10.000
+DPNEGF INFO    computing green&#39;s function at e = -7.995
+DPNEGF INFO    computing green&#39;s function at e = -5.990
+DPNEGF INFO    computing green&#39;s function at e = -3.985
+DPNEGF INFO    computing green&#39;s function at e = -1.980
+DPNEGF INFO    computing green&#39;s function at e = 0.025
+DPNEGF INFO    computing green&#39;s function at e = 2.030
+DPNEGF INFO    computing green&#39;s function at e = 4.035
+DPNEGF INFO    computing green&#39;s function at e = 6.040
+DPNEGF INFO    computing green&#39;s function at e = 8.045
+DPNEGF INFO    Properties computation at k = [-0.0000,0.4357,-0.0000]
+DPNEGF INFO    computing green&#39;s function at e = -10.000
+DPNEGF INFO    computing green&#39;s function at e = -7.995
+DPNEGF INFO    computing green&#39;s function at e = -5.990
+DPNEGF INFO    computing green&#39;s function at e = -3.985
+DPNEGF INFO    computing green&#39;s function at e = -1.980
+DPNEGF INFO    computing green&#39;s function at e = 0.025
+DPNEGF INFO    computing green&#39;s function at e = 2.030
+DPNEGF INFO    computing green&#39;s function at e = 4.035
+DPNEGF INFO    computing green&#39;s function at e = 6.040
+DPNEGF INFO    computing green&#39;s function at e = 8.045
+DPNEGF INFO    Properties computation at k = [-0.0000,0.4500,-0.0000]
+DPNEGF INFO    computing green&#39;s function at e = -10.000
+DPNEGF INFO    computing green&#39;s function at e = -7.995
+DPNEGF INFO    computing green&#39;s function at e = -5.990
+DPNEGF INFO    computing green&#39;s function at e = -3.985
+DPNEGF INFO    computing green&#39;s function at e = -1.980
+DPNEGF INFO    computing green&#39;s function at e = 0.025
+DPNEGF INFO    computing green&#39;s function at e = 2.030
+DPNEGF INFO    computing green&#39;s function at e = 4.035
+DPNEGF INFO    computing green&#39;s function at e = 6.040
+DPNEGF INFO    computing green&#39;s function at e = 8.045
+DPNEGF INFO    Properties computation at k = [-0.0000,0.4643,-0.0000]
+DPNEGF INFO    computing green&#39;s function at e = -10.000
+DPNEGF INFO    computing green&#39;s function at e = -7.995
+DPNEGF INFO    computing green&#39;s function at e = -5.990
+DPNEGF INFO    computing green&#39;s function at e = -3.985
+DPNEGF INFO    computing green&#39;s function at e = -1.980
+DPNEGF INFO    computing green&#39;s function at e = 0.025
+DPNEGF INFO    computing green&#39;s function at e = 2.030
+DPNEGF INFO    computing green&#39;s function at e = 4.035
+DPNEGF INFO    computing green&#39;s function at e = 6.040
+DPNEGF INFO    computing green&#39;s function at e = 8.045
+DPNEGF INFO    Properties computation at k = [-0.0000,0.4786,-0.0000]
+DPNEGF INFO    computing green&#39;s function at e = -10.000
+DPNEGF INFO    computing green&#39;s function at e = -7.995
+DPNEGF INFO    computing green&#39;s function at e = -5.990
+DPNEGF INFO    computing green&#39;s function at e = -3.985
+DPNEGF INFO    computing green&#39;s function at e = -1.980
+DPNEGF INFO    computing green&#39;s function at e = 0.025
+DPNEGF INFO    computing green&#39;s function at e = 2.030
+DPNEGF INFO    computing green&#39;s function at e = 4.035
+DPNEGF INFO    computing green&#39;s function at e = 6.040
+DPNEGF INFO    computing green&#39;s function at e = 8.045
+DPNEGF INFO    Properties computation at k = [-0.0000,0.4929,-0.0000]
+DPNEGF INFO    computing green&#39;s function at e = -10.000
+DPNEGF INFO    computing green&#39;s function at e = -7.995
+DPNEGF INFO    computing green&#39;s function at e = -5.990
+DPNEGF INFO    computing green&#39;s function at e = -3.985
+DPNEGF INFO    computing green&#39;s function at e = -1.980
+DPNEGF INFO    computing green&#39;s function at e = 0.025
+DPNEGF INFO    computing green&#39;s function at e = 2.030
+DPNEGF INFO    computing green&#39;s function at e = 4.035
+DPNEGF INFO    computing green&#39;s function at e = 6.040
+DPNEGF INFO    computing green&#39;s function at e = 8.045
+</pre></div>
+</div>
+<img alt="../_images/e4e75e2c09074b065474ae0964e0ad999d644f67a4df52363d6a09843276768b.png" src="../_images/e4e75e2c09074b065474ae0964e0ad999d644f67a4df52363d6a09843276768b.png" />
+</div>
+</div>
+<p>The transmissions resulted from DFT-NEGF and DPNEGF match very well.</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">torch</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">matplotlib.pyplot</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">plt</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+
+<span class="n">output</span> <span class="o">=</span> <span class="s2">&quot;./negf_output_k70&quot;</span>
+<span class="n">results_path</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">output</span><span class="p">,</span> <span class="s1">&#39;negf.out.pth&#39;</span><span class="p">)</span>
+<span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">results_path</span><span class="p">)</span> <span class="ow">is</span> <span class="kc">False</span><span class="p">:</span>
+    <span class="k">raise</span> <span class="ne">FileNotFoundError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Results file </span><span class="si">{</span><span class="n">results_path</span><span class="si">}</span><span class="s2"> not found. Please check if the NEGF calculation was successful.&quot;</span><span class="p">)</span>
+<span class="n">negf_out</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">results_path</span><span class="p">,</span><span class="n">weights_only</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+
+
+<span class="n">data</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">loadtxt</span><span class="p">(</span><span class="s1">&#39;./siesta.TBT.AVTRANS_Left-Right&#39;</span><span class="p">,</span> <span class="n">comments</span><span class="o">=</span><span class="s2">&quot;#&quot;</span><span class="p">)</span>
+<span class="n">E_tbt</span> <span class="o">=</span> <span class="n">data</span><span class="p">[:,</span> <span class="mi">0</span><span class="p">]</span>   <span class="c1"># eV</span>
+<span class="n">T_tbt</span> <span class="o">=</span> <span class="n">data</span><span class="p">[:,</span> <span class="mi">1</span><span class="p">]</span>   <span class="c1"># G0</span>
+
+<span class="n">energy_shift</span> <span class="o">=</span> <span class="mf">0.65</span> <span class="c1"># arising from the different Fermi level algorithm; for semiconductor, the Fermi level is arbitrary in the gap.</span>
+
+<span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">negf_out</span><span class="p">[</span><span class="s1">&#39;uni_grid&#39;</span><span class="p">]</span> <span class="p">,</span> <span class="n">negf_out</span><span class="p">[</span><span class="s1">&#39;T_avg&#39;</span><span class="p">],</span><span class="n">label</span><span class="o">=</span><span class="s1">&#39;DPNEGF&#39;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">E_tbt</span> <span class="o">+</span> <span class="n">energy_shift</span><span class="p">,</span> <span class="n">T_tbt</span><span class="p">,</span><span class="s1">&#39;--&#39;</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="sa">r</span><span class="s1">&#39;DFT-NEGF&#39;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">xlabel</span><span class="p">(</span><span class="s1">&#39;Energy (eV)&#39;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">title</span><span class="p">(</span><span class="s1">&#39;Total Transmission kmesh=[1,70,1]&#39;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">xlim</span><span class="p">(</span><span class="o">-</span><span class="mi">10</span><span class="p">,</span><span class="mi">10</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">ylim</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span><span class="mi">4</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">grid</span><span class="p">()</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">legend</span><span class="p">(</span><span class="n">loc</span><span class="o">=</span><span class="s1">&#39;upper center&#39;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+</pre></div>
+</div>
+</div>
+<div class="cell_output docutils container">
+<img alt="../_images/b6e415feeb9c6222a81b73b6f76c44a0353a405a9f0098afe306ae8ddd5f1c1c.png" src="../_images/b6e415feeb9c6222a81b73b6f76c44a0353a405a9f0098afe306ae8ddd5f1c1c.png" />
+</div>
+</div>
+<p>The transmission spectrum of hBN clearly shows a wide plateau of zero transmission around the Fermi level. This feature directly corresponds to the band gap observed in the previously calculated electronic band structure.</p>
+</section>
+<section id="quantum-transport-in-mos2">
+<h2>3. Quantum Transport in MoS<sub>2</sub><a class="headerlink" href="#quantum-transport-in-mos2" title="Link to this heading">#</a></h2>
+<p>DPNEGF can perform NEGF calculations using electronic structures from any DFT software. For codes without NEGF support (e.g., plane-wave DFT such as VASP), DeePTB extracts the electronic outputs and converts them into NEGF-ready Hamiltonians. Compared with Wannierization, DeePTB offers a faster and more transferable way to construct Hamiltonians.</p>
+<p>Here, we use the MoS<sub>2</sub> band structure from ABACUS and compute the corresponding transmission spectrum, demonstrating how DPNEGF enables NEGF analysis even when the original DFT code does not provide it.</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">dptb.nn.build</span><span class="w"> </span><span class="kn">import</span> <span class="n">build_model</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">ase.io</span><span class="w"> </span><span class="kn">import</span> <span class="n">read</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">dpnegf.utils.loggers</span><span class="w"> </span><span class="kn">import</span> <span class="n">set_log_handles</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">logging</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
+
+
+<span class="n">workdir</span><span class="o">=</span><span class="s1">&#39;../../examples/MoS2&#39;</span>
+<span class="n">wd</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">workdir</span><span class="p">)</span>
+<span class="k">if</span> <span class="ow">not</span> <span class="n">wd</span><span class="o">.</span><span class="n">is_dir</span><span class="p">():</span>
+    <span class="k">raise</span> <span class="ne">FileNotFoundError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Workdir &#39;</span><span class="si">{</span><span class="n">wd</span><span class="si">}</span><span class="s2">&#39; not found. Please adjust &#39;workdir&#39;.&quot;</span><span class="p">)</span>
+<span class="n">os</span><span class="o">.</span><span class="n">chdir</span><span class="p">(</span><span class="n">wd</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\t</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="nb">sorted</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">listdir</span><span class="p">(</span><span class="s2">&quot;.&quot;</span><span class="p">))))</span>
+
+<span class="n">results_path</span> <span class="o">=</span> <span class="s1">&#39;band_plot_api&#39;</span>
+<span class="n">log_path</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">results_path</span><span class="p">,</span> <span class="s1">&#39;log&#39;</span><span class="p">)</span>
+<span class="n">log_level</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">INFO</span>
+<span class="n">set_log_handles</span><span class="p">(</span><span class="n">log_level</span><span class="p">,</span> <span class="n">Path</span><span class="p">(</span><span class="n">log_path</span><span class="p">)</span> <span class="k">if</span> <span class="n">log_path</span> <span class="k">else</span> <span class="kc">None</span><span class="p">)</span>
+
+
+<span class="n">model</span> <span class="o">=</span>  <span class="s2">&quot;./train/train_out/checkpoint/nnsk.best.pth&quot;</span> <span class="c1"># the model for demonstration</span>
+<span class="n">model</span> <span class="o">=</span> <span class="n">build_model</span><span class="p">(</span><span class="n">model</span><span class="p">)</span>
+
+<span class="c1"># read the structure</span>
+<span class="n">structure</span> <span class="o">=</span>  <span class="s2">&quot;./train/data/POSCAR&quot;</span> 
+<span class="n">atoms</span> <span class="o">=</span> <span class="n">read</span><span class="p">(</span><span class="n">structure</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">atoms</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="cell_output docutils container">
+<div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>DPNEGF INFO    ================================================================================
+DPNEGF INFO                                      Version Info                                  
+DPNEGF INFO    --------------------------------------------------------------------------------
+DPNEGF INFO    DPNEGF               : 0.1.1.dev148+0e0863a
+DPNEGF INFO    DeePTB               : 2.2.1.dev17+024a5fe
+DPNEGF INFO    ================================================================================
+
+DPNEGF INFO    The [&#39;overlap_param&#39;] are frozen!
+DPNEGF INFO    The [&#39;overlap_param&#39;] are frozen!
+</pre></div>
+</div>
+<div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>MoS2_orth.vasp	MoS2_unit_rlx.vasp	POSCAR	band_plot_api	extra_baseline	negf.json	negf_output	orth_ckpt_r_max_5.3_sk.json	stru_negf.xyz	train
+Atoms(symbols=&#39;MoS2&#39;, pbc=True, cell=[[3.1911949999999996, 0.0, 0.0], [-1.595598, 2.763656, 0.0], [-0.0, -0.0, 18.12711]], momenta=...)
+</pre></div>
+</div>
+</div>
+</div>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">dptb.postprocess.bandstructure.band</span><span class="w"> </span><span class="kn">import</span> <span class="n">Band</span>
+
+
+<span class="n">task_options</span> <span class="o">=</span> <span class="p">{</span>
+        <span class="s2">&quot;task&quot;</span><span class="p">:</span> <span class="s2">&quot;band&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;kline_type&quot;</span><span class="p">:</span><span class="s2">&quot;abacus&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;kpath&quot;</span><span class="p">:[</span>
+            <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">30</span><span class="p">],</span>
+            <span class="p">[</span><span class="mf">0.5</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">30</span><span class="p">],</span>
+            <span class="p">[</span><span class="mf">0.3333333</span><span class="p">,</span> <span class="mf">0.3333333</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">30</span><span class="p">],</span>
+            <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">]</span>
+        <span class="p">],</span>
+        <span class="s2">&quot;klabels&quot;</span><span class="p">:[</span><span class="s2">&quot;G&quot;</span><span class="p">,</span> <span class="s2">&quot;M&quot;</span><span class="p">,</span> <span class="s2">&quot;K&quot;</span><span class="p">,</span> <span class="s2">&quot;G&quot;</span><span class="p">],</span>
+        <span class="s2">&quot;emin&quot;</span><span class="p">:</span><span class="o">-</span><span class="mi">15</span><span class="p">,</span>
+        <span class="s2">&quot;emax&quot;</span><span class="p">:</span><span class="mi">5</span><span class="p">,</span>
+        <span class="s2">&quot;nel_atom&quot;</span><span class="p">:{</span><span class="s2">&quot;Mo&quot;</span><span class="p">:</span><span class="mi">6</span><span class="p">,</span><span class="s2">&quot;S&quot;</span><span class="p">:</span><span class="mi">6</span><span class="p">},</span>
+        <span class="s2">&quot;ref_band&quot;</span><span class="p">:</span> <span class="s2">&quot;./train/data/kpath.0/eigenvalues.npy&quot;</span>
+
+       <span class="p">}</span>
+
+
+
+<span class="n">band</span> <span class="o">=</span> <span class="n">Band</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="n">results_path</span><span class="p">)</span>
+<span class="n">AtomicData_options</span> <span class="o">=</span> <span class="p">{</span> <span class="s2">&quot;pbc&quot;</span><span class="p">:</span> <span class="kc">True</span><span class="p">}</span>
+<span class="n">band</span><span class="o">.</span><span class="n">get_bands</span><span class="p">(</span><span class="n">data</span> <span class="o">=</span> <span class="n">atoms</span><span class="p">,</span> 
+               <span class="n">kpath_kwargs</span> <span class="o">=</span> <span class="n">task_options</span><span class="p">,</span>
+               <span class="n">AtomicData_options</span> <span class="o">=</span> <span class="n">AtomicData_options</span><span class="p">)</span>
+<span class="n">band</span><span class="o">.</span><span class="n">band_plot</span><span class="p">(</span><span class="n">emin</span> <span class="o">=</span> <span class="n">task_options</span><span class="p">[</span><span class="s1">&#39;emin&#39;</span><span class="p">],</span>
+               <span class="n">emax</span> <span class="o">=</span> <span class="n">task_options</span><span class="p">[</span><span class="s1">&#39;emax&#39;</span><span class="p">],</span>
+               <span class="n">ref_band</span> <span class="o">=</span> <span class="n">task_options</span><span class="p">[</span><span class="s1">&#39;ref_band&#39;</span><span class="p">],)</span>
+</pre></div>
+</div>
+</div>
+<div class="cell_output docutils container">
+<div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>DPNEGF WARNING eig_solver is not set, using default &#39;torch&#39;.
+DPNEGF INFO    KPOINTS  klist: 91 kpoints
+DPNEGF INFO    The eigenvalues are already in data. will use them.
+DPNEGF INFO    Calculating Fermi energy in the case of spin-degeneracy.
+DPNEGF INFO    Fermi energy converged after 3 iterations.
+DPNEGF INFO    q_cal: 18.0, total_electrons: 18.0, diff q: 0.0
+DPNEGF INFO    Estimated E_fermi: -3.256112973973428 based on the valence electrons setting nel_atom : {&#39;Mo&#39;: 6, &#39;S&#39;: 6} .
+DPNEGF INFO    No Fermi energy provided, using estimated value: -3.2561 eV
+</pre></div>
+</div>
+<img alt="../_images/2d9f05b3c96e9f5431c92c79b93427472a00ae675f85350e77ef97c9f2de8a7c.png" src="../_images/2d9f05b3c96e9f5431c92c79b93427472a00ae675f85350e77ef97c9f2de8a7c.png" />
+</div>
+</div>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="k">try</span><span class="p">:</span>
+    <span class="kn">from</span><span class="w"> </span><span class="nn">dpnegf.runner.NEGF</span><span class="w"> </span><span class="kn">import</span> <span class="n">NEGF</span>
+<span class="k">except</span> <span class="ne">ImportError</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+    <span class="k">raise</span> <span class="ne">ImportError</span><span class="p">(</span><span class="s2">&quot;dpnegf not found. Please install firstly.&quot;</span><span class="p">)</span> <span class="kn">from</span><span class="w"> </span><span class="nn">e</span>
+
+<span class="kn">import</span> <span class="n">json</span>
+<span class="n">negf_input_file</span> <span class="o">=</span>  <span class="s2">&quot;negf.json&quot;</span> 
+<span class="n">structure</span> <span class="o">=</span>  <span class="s2">&quot;stru_negf.xyz&quot;</span> 
+
+<span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">negf_input_file</span><span class="p">,</span> <span class="s2">&quot;r&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+    <span class="n">negf_json</span> <span class="o">=</span> <span class="n">json</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">f</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+</div>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">AtomicData_options</span> <span class="o">=</span> <span class="n">NEGF</span><span class="o">.</span><span class="n">update_atomicdata_options</span><span class="p">(</span><span class="n">model</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="cell_output docutils container">
+<div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>DPNEGF INFO    The AtomicData_options is:
+               {
+                   &quot;r_max&quot;: {
+                       &quot;S-S&quot;: 6.26,
+                       &quot;S-Mo&quot;: 6.449999999999999,
+                       &quot;Mo-S&quot;: 6.449999999999999,
+                       &quot;Mo-Mo&quot;: 6.630000000000001
+                   },
+                   &quot;er_max&quot;: null,
+                   &quot;oer_max&quot;: 6.3
+               }
+</pre></div>
+</div>
+</div>
+</div>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># Increase k-point sampling for better accuracy</span>
+<span class="n">negf_json</span><span class="p">[</span><span class="s1">&#39;task_options&#39;</span><span class="p">][</span><span class="s2">&quot;stru_options&quot;</span><span class="p">][</span><span class="s1">&#39;kmesh&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span><span class="mi">1</span><span class="p">,</span><span class="mi">1</span><span class="p">]</span>
+</pre></div>
+</div>
+</div>
+</div>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">shutil</span>
+<span class="n">output</span> <span class="o">=</span> <span class="s2">&quot;./negf_output&quot;</span>  
+<span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">isdir</span><span class="p">(</span><span class="n">output</span><span class="p">):</span>
+    <span class="n">shutil</span><span class="o">.</span><span class="n">rmtree</span><span class="p">(</span><span class="n">output</span><span class="p">,</span> <span class="n">ignore_errors</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="n">os</span><span class="o">.</span><span class="n">makedirs</span><span class="p">(</span><span class="n">output</span><span class="p">,</span> <span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+<span class="n">negf</span> <span class="o">=</span> <span class="n">NEGF</span><span class="p">(</span>
+    <span class="n">model</span><span class="o">=</span><span class="n">model</span><span class="p">,</span>
+    <span class="n">structure</span><span class="o">=</span><span class="n">structure</span><span class="p">,</span>
+    <span class="n">results_path</span><span class="o">=</span><span class="n">output</span><span class="p">,</span>
+    <span class="n">use_saved_se</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="c1"># whether to use the saved self-energy  </span>
+    <span class="n">se_info_display</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+    <span class="o">**</span><span class="n">negf_json</span><span class="p">[</span><span class="s1">&#39;task_options&#39;</span><span class="p">]</span>
+<span class="p">)</span>
+   
+<span class="n">negf</span><span class="o">.</span><span class="n">compute</span><span class="p">()</span>
+</pre></div>
+</div>
+</div>
+<div class="cell_output docutils container">
+<div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>DPNEGF INFO    ------ k-point for NEGF -----
+DPNEGF INFO    Gamma Center: False
+DPNEGF INFO    Time Reversal: True
+DPNEGF INFO    k-points Num: 1
+DPNEGF INFO    k-points: [[-0. -0. -0.]]
+DPNEGF INFO    k-points weights: [1.]
+DPNEGF INFO    --------------------------------
+DPNEGF INFO    The AtomicData_options is:
+               {
+                   &quot;r_max&quot;: {
+                       &quot;S-S&quot;: 6.26,
+                       &quot;S-Mo&quot;: 6.449999999999999,
+                       &quot;Mo-S&quot;: 6.449999999999999,
+                       &quot;Mo-Mo&quot;: 6.630000000000001
+                   },
+                   &quot;er_max&quot;: null,
+                   &quot;oer_max&quot;: 6.3
+               }
+DPNEGF INFO    The structure is sorted lexicographically in this version!
+DPNEGF INFO    Lead principal layers translational equivalence error (on average): 2.849356e-09 (threshold: 1.000000e-05)
+</pre></div>
+</div>
+<div class="output stderr highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>DPNEGF INFO    Lead principal layers translational equivalence error (on average): 4.413665e-09 (threshold: 1.000000e-05)
+DPNEGF INFO    The coupling width of lead_L is 54.
+DPNEGF WARNING WARNING, the lead&#39;s hamiltonian attained from diffferent methods have slight differences   RMSE = 0.0000001.
+DPNEGF INFO    The coupling width of lead_R is 54.
+DPNEGF INFO    The Hamiltonian is block tridiagonalized into 3 subblocks.
+DPNEGF INFO       the number of elements in subblocks: 34992
+DPNEGF INFO                   occupation of subblocks: 75.0 %
+DPNEGF INFO    --------------------------------------------------------------------------------
+DPNEGF INFO    The Hamiltonian has been initialized by model.
+DPNEGF INFO    ================================================================================
+DPNEGF INFO    -------------Fermi level calculation-------------
+DPNEGF WARNING No doping detected in lead_L, fixed_charge = 0
+DPNEGF WARNING No doping detected in lead_R, fixed_charge = 0
+DPNEGF INFO    Number of electrons in lead_L: {&#39;Mo&#39;: 6, &#39;S&#39;: 6}
+DPNEGF INFO    Number of electrons in lead_R: {&#39;Mo&#39;: 6, &#39;S&#39;: 6}
+DPNEGF INFO    -----Calculating Fermi level for lead_L-----
+DPNEGF INFO    KPOINTS  kmesh sampling: 535 kpoints
+DPNEGF INFO    Getting eigenvalues from the model.
+DPNEGF INFO    Calculating Fermi energy in the case of spin-degeneracy.
+DPNEGF INFO    Fermi energy converged after 3 iterations.
+DPNEGF INFO    q_cal: 144.00000000000003, total_electrons: 144.0, diff q: 2.842170943040401e-14
+DPNEGF INFO    Estimated E_fermi: -3.2348815338761527 based on the valence electrons setting nel_atom : {&#39;Mo&#39;: 6, &#39;S&#39;: 6} .
+DPNEGF INFO    -----Calculating Fermi level for lead_R-----
+DPNEGF INFO    KPOINTS  kmesh sampling: 535 kpoints
+DPNEGF INFO    Getting eigenvalues from the model.
+DPNEGF INFO    Calculating Fermi energy in the case of spin-degeneracy.
+DPNEGF INFO    Fermi energy converged after 3 iterations.
+DPNEGF INFO    q_cal: 144.00000000000003, total_electrons: 144.0, diff q: 2.842170943040401e-14
+DPNEGF INFO    Estimated E_fermi: -3.234879864946099 based on the valence electrons setting nel_atom : {&#39;Mo&#39;: 6, &#39;S&#39;: 6} .
+DPNEGF INFO    -------------------------------------------------
+DPNEGF INFO    Zero bias case detected.
+DPNEGF INFO    Fermi level for lead_L: -3.2348815338761527
+DPNEGF INFO    Fermi level for lead_R: -3.234879864946099
+DPNEGF INFO    Electrochemical potential for lead_L: -3.2348815338761527
+DPNEGF INFO    Electrochemical potential for lead_R: -3.234879864946099
+DPNEGF INFO    Reference energy E_ref: -3.2348815338761527
+DPNEGF INFO    =================================================
+
+DPNEGF INFO    ------Self-energy calculation------
+DPNEGF INFO    Calculating self-energy and saving to ./negf_output/self_energy
+DPNEGF INFO    Merging 400 tmp self energy files into ./negf_output/self_energy/self_energy_leadL.h5
+DPNEGF INFO    Merge complete.
+DPNEGF INFO    Merging 400 tmp self energy files into ./negf_output/self_energy/self_energy_leadR.h5
+DPNEGF INFO    Merge complete.
+DPNEGF INFO    -----------------------------------
+
+DPNEGF INFO    Properties computation at k = [-0.0000,-0.0000,-0.0000]
+DPNEGF INFO    computing green&#39;s function at e = -10.000
+DPNEGF INFO    computing green&#39;s function at e = -7.995
+DPNEGF INFO    computing green&#39;s function at e = -5.990
+DPNEGF INFO    computing green&#39;s function at e = -3.985
+DPNEGF INFO    computing green&#39;s function at e = -1.980
+DPNEGF INFO    computing green&#39;s function at e = 0.025
+DPNEGF INFO    computing green&#39;s function at e = 2.030
+DPNEGF INFO    computing green&#39;s function at e = 4.035
+DPNEGF INFO    computing green&#39;s function at e = 6.040
+DPNEGF INFO    computing green&#39;s function at e = 8.045
+</pre></div>
+</div>
+<img alt="../_images/be836fe9528de47dcdc1c178e10e7b98f51a940340765db44a4f49aa18d0f18b.png" src="../_images/be836fe9528de47dcdc1c178e10e7b98f51a940340765db44a4f49aa18d0f18b.png" />
+</div>
+</div>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">torch</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">matplotlib.pyplot</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">plt</span>
+
+<span class="n">output</span> <span class="o">=</span> <span class="s2">&quot;./negf_output&quot;</span>
+<span class="n">results_path</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">output</span><span class="p">,</span> <span class="s1">&#39;negf.out.pth&#39;</span><span class="p">)</span>
+<span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">results_path</span><span class="p">)</span> <span class="ow">is</span> <span class="kc">False</span><span class="p">:</span>
+    <span class="k">raise</span> <span class="ne">FileNotFoundError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Results file </span><span class="si">{</span><span class="n">results_path</span><span class="si">}</span><span class="s2"> not found. Please check if the NEGF calculation was successful.&quot;</span><span class="p">)</span>
+<span class="n">negf_out</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">results_path</span><span class="p">,</span><span class="n">weights_only</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+
+<span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">negf_out</span><span class="p">[</span><span class="s1">&#39;uni_grid&#39;</span><span class="p">],</span> <span class="n">negf_out</span><span class="p">[</span><span class="s1">&#39;T_avg&#39;</span><span class="p">])</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">xlabel</span><span class="p">(</span><span class="s1">&#39;Energy (eV)&#39;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">title</span><span class="p">(</span><span class="s1">&#39;Total Transmission kmesh=[1,1,1]&#39;</span><span class="p">)</span>
+<span class="c1"># plt.xlim(-5,5)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">grid</span><span class="p">()</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+</pre></div>
+</div>
+</div>
+<div class="cell_output docutils container">
+<img alt="../_images/42145efca035c3408760dd30db4eb78bce313e63a92e34a533a7c1a4e453d210.png" src="../_images/42145efca035c3408760dd30db4eb78bce313e63a92e34a533a7c1a4e453d210.png" />
+</div>
+</div>
 </section>
 </section>
 
@@ -1065,6 +2395,24 @@ DPNEGF INFO    computing green&#39;s function at e = 8.045
                 <footer class="prev-next-footer d-print-none">
                   
 <div class="prev-next-area">
+    <a class="left-prev"
+       href="tutorial1_c_chain.html"
+       title="previous page">
+      <i class="fa-solid fa-angle-left"></i>
+      <div class="prev-next-info">
+        <p class="prev-next-subtitle">previous</p>
+        <p class="prev-next-title">Tutorial 1:  Quantum Transport in a One-Dimensional Chain</p>
+      </div>
+    </a>
+    <a class="right-next"
+       href="../CITATIONS.html"
+       title="next page">
+      <div class="prev-next-info">
+        <p class="prev-next-subtitle">next</p>
+        <p class="prev-next-title">How to Cite</p>
+      </div>
+      <i class="fa-solid fa-angle-right"></i>
+    </a>
 </div>
                 </footer>
               
@@ -1092,6 +2440,8 @@ DPNEGF INFO    computing green&#39;s function at e = 8.045
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#negf-calculation-for-graphene">1.3 NEGF calculation for graphene</a></li>
 </ul>
 </li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#quantum-transport-in-hbn">2. Quantum Transport in hBN</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#quantum-transport-in-mos2">3. Quantum Transport in MoS<sub>2</sub></a></li>
 </ul>
   </nav></div>
 
