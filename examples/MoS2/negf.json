@@ -10,24 +10,23 @@
             "stru_options":{
                 "gamma_center": false,
                 "time_reversal_symmetry": true,
-                "nel_atom": {"B": 3,
-                             "N": 5},
+                "nel_atom": {"Mo":6,"S":6},
                 "kmesh":[1,1,1],
-                "pbc":[false, true, false],
+                "pbc":[true, false, false],
                 "device":{
-                    "id":"32-64",
+                    "id":"24-48",
                     "sort": true
                 },
                 "lead_L":{
-                    "id":"0-32",
+                    "id":"0-24",
                     "voltage":0.0,
-                    "kmesh_lead_Ef":[1,50,20],
+                    "kmesh_lead_Ef":[50,1,20],
                     "useBloch": false
                 },
                 "lead_R":{
-                    "id":"64-96",
+                    "id":"48-72",
                     "voltage":0.0,
-                    "kmesh_lead_Ef":[1,50,20],
+                    "kmesh_lead_Ef":[50,1,20],
                     "useBloch": false
                 }
             },
