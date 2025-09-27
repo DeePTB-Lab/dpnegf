@@ -432,7 +432,7 @@ The training input file <code class="docutils literal notranslate"><span class="
 <p>After switching to the <code class="docutils literal notranslate"><span class="pre">train</span></code> directory  and copying the input file here as <code class="docutils literal notranslate"><span class="pre">input.json</span></code> ,the training process can be started with:
 <code class="docutils literal notranslate"><span class="pre">dptb</span> <span class="pre">train</span> <span class="pre">input.json</span> <span class="pre">-i</span> <span class="pre">../extra_baseline/grap_spd_model/sktb.json</span> <span class="pre">-o</span> <span class="pre">train_out</span></code>.</p>
 <p>We recommend that users carefully examine the <code class="docutils literal notranslate"><span class="pre">input.json</span></code> file to understand the meaning of each parameter.
-For 2D materials, the onsite mode should be set to <code class="docutils literal notranslate"><span class="pre">strain</span></code>, which removes the degeneracy of onsite energies for orbitals with the same angular momentum. It is an essential adjustment for 2D systems. For example, the onsite energies for  <span class="math notranslate nohighlight">\(p_x,p_y,p_z\)</span> in graphene should not be identical considering the geometry. Once training has converged, the resulting model can be loaded to plot and analyze the band structure.</p>
+For 2D materials, the onsite mode should be set to <code class="docutils literal notranslate"><span class="pre">strain</span></code>, which removes the degeneracy of onsite energies for orbitals with the same angular momentum. It is an essential adjustment for 2D systems. For example, the onsite energies for  <span class="math notranslate nohighlight">\(p_x,p_y,p_z\)</span> in graphene should not be identical considering the geometry.</p>
 <p><strong>SUMMARY:</strong></p>
 <p>In <code class="docutils literal notranslate"><span class="pre">./extra_baseline</span></code>:</p>
 <ul class="simple">
@@ -443,6 +443,7 @@ For 2D materials, the onsite mode should be set to <code class="docutils literal
 <ul class="simple">
 <li><p><code class="docutils literal notranslate"><span class="pre">dptb</span> <span class="pre">train</span> <span class="pre">input.json</span> <span class="pre">-i</span> <span class="pre">../extra_baseline/grap_spd_model/sktb.json</span> <span class="pre">-o</span> <span class="pre">train_out</span></code></p></li>
 </ul>
+<p>Once training has converged, the resulting model can be loaded to plot and analyze the band structure.</p>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
 <div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">dptb.nn.build</span><span class="w"> </span><span class="kn">import</span> <span class="n">build_model</span>
@@ -589,7 +590,7 @@ by <code class="docutils literal notranslate"><span class="pre">NEGF.update_atom
 <p>Additionally, the algorithm requires that:</p>
 <ol class="arabic simple">
 <li><p>The PLs within the same lead be <strong>identical, differing only by a translation</strong> along the transport direction.</p></li>
-<li><p>In the input structure file, the atomic coordinates of the <strong>left lead</strong> should be ordered with the 1st PL first, followed by the 2nd PL. See <code class="docutils literal notranslate"><span class="pre">stru_negf.xyz</span></code> for reference.</p></li>
+<li><p>In the input structure file, the atomic coordinates of the <strong>left lead</strong> should be ordered with the <strong>1st PL</strong> first, followed by the <strong>2nd PL</strong>. See <code class="docutils literal notranslate"><span class="pre">/examples/graphene/stru_negf.xyz</span></code> for reference.</p></li>
 </ol>
 <p>The following figure illustrates the device/lead region and principal layers in the lead:</p>
 <div style="text-align: center;">
@@ -748,7 +749,8 @@ DPNEGF INFO    computing green&#39;s function at e = 8.045
 <img alt="../_images/e772dd7ba101b0fdb58745698d3b495c0dad803b76963d90b5bc96dd178a79ff.png" src="../_images/e772dd7ba101b0fdb58745698d3b495c0dad803b76963d90b5bc96dd178a79ff.png" />
 </div>
 </div>
-<p>Read the results through the dict <code class="docutils literal notranslate"><span class="pre">negf_out</span></code>:</p>
+<p>If <code class="docutils literal notranslate"><span class="pre">block_tridiagonal</span></code> is set to true in the input file, the block-tridiagonal Hamiltonian is used in the recursive Green’s function algorithm, as shown in this figure. This significantly accelerates the NEGF calculation, and we strongly recommend enabling this option whenever possible.</p>
+<p>Here we can read the results through the dict <code class="docutils literal notranslate"><span class="pre">negf_out</span></code>:</p>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
 <div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">torch</span>
@@ -1176,7 +1178,7 @@ DPNEGF INFO    computing green&#39;s function at e = 8.045
 </div>
 </div>
 </div>
-<p>As well, it takes 23 mins in a 8-core CPU.</p>
+<p>It also takes about 23 minutes on an 8-core CPU.</p>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
 <div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">output</span> <span class="o">=</span> <span class="s2">&quot;./negf_output_k20&quot;</span>  
@@ -1228,7 +1230,7 @@ DPNEGF INFO    computing green&#39;s function at e = 8.045
 </div>
 </div>
 </div>
-<p>Considering the computing cost, we don’t recommend you to run the cell from scratch(more than 40 mins in a 32-core CPU). We have prepared the self-energies files and you can directly load it with <code class="docutils literal notranslate"><span class="pre">use_saved_se</span></code>=True. However, it also takes ~20 mins in a 32-core CPU.</p>
+<p>Given the computational cost, we do not recommend running this cell from scratch (it takes more than 40 minutes on a 32-core CPU). Instead, we provide precomputed self-energy files that can be loaded directly by setting <code class="docutils literal notranslate"><span class="pre">use_saved_se</span></code> as True. Even with this option, the process still requires about 20 minutes on a 32-core CPU.</p>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
 <div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">output</span> <span class="o">=</span> <span class="s2">&quot;./negf_output_k70&quot;</span>  
@@ -1248,7 +1250,7 @@ DPNEGF INFO    computing green&#39;s function at e = 8.045
 </div>
 </div>
 </div>
-<p>The transmissions resulted from DFT-NEGF and DPNEGF match very well.</p>
+<p>The transmission spectra obtained from DFT-NEGF and DPNEGF show excellent agreement.</p>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
 <div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">torch</span>
