@@ -36,8 +36,7 @@ examples/hBN/negf_output_k20/self_energy/self_energy_leadR.h5
 examples/hBN/negf_output_k50/self_energy/*
 examples/hBN/negf_output_k100/self_energy/*
 examples/hBN/negf_output_k70/self_energy/*
-examples/MoS2/negf_output_k60/self_energy/*
-examples/MoS2/negf_output_k100/self_energy/*
+
 
 
 
