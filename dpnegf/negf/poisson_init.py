@@ -1,3 +1,6 @@
+import time
+import logging
+
 import numpy as np 
 # import pyamg #TODO: later add it to optional dependencies,like sisl
 # from pyamg.gallery import poisson
@@ -6,11 +9,10 @@ from dpnegf.utils.constants import Boltzmann, eV2J
 from scipy.constants import epsilon_0 as eps0  #TODO:later add to untils.constants.py
 from scipy.sparse import csr_matrix
 from scipy.sparse.linalg import spsolve
-import logging
+
 #eps0 = 8.854187817e-12 # in the unit of F/m
 # As length in deeptb is in the unit of Angstrom, the unit of eps0 is F/Angstrom
 eps0 = eps0*1e-10 # in the unit of F/Angstrom
-
 log = logging.getLogger(__name__)
 
 class Grid(object):
@@ -84,7 +86,8 @@ class Grid(object):
         assert self.Np == len(xmesh)
         assert self.grid_coord.shape[0] == self.Np
         
-        log.info(msg="Number of grid points: {:.1f}   Number of atoms: {:.1f}".format(float(self.Np),self.Na))
+        log.info(f"Number of grid points: {self.Np}")
+        log.info(f"Number of atoms: {self.Na}")
         # print('Number of grid points: ',self.Np,' grid shape: ',self.grid_coord.shape,' Number of atoms: ',self.Na)
 
         # find the index of the atoms in the grid
@@ -160,7 +163,6 @@ class Grid(object):
             xd[i] = (abs(x[i]-x[i-1])+abs(x[i]-x[i+1]))/2
         return xd
 
-
 class region(object):
     """
     A class representing a 3D rectangular region defined by ranges along the x, y, and z axes.
@@ -212,7 +214,6 @@ class Dirichlet(region):
         # Fermi_level of gate (in unit eV)
         self.Ef = 0.0        
 
-
 class Dielectric(region):
     """
     Represents a dielectric region with a specified permittivity.
@@ -238,9 +239,6 @@ class Dielectric(region):
         super().__init__(x_range,y_range,z_range)
         # dielectric permittivity
         self.eps = 1.0
-
-
-
 
 class Interface3D(object):
     """
@@ -434,7 +432,7 @@ class Interface3D(object):
             else:
                 raise ValueError('Unknown region type: ',region_list[i].__class__.__name__)
         
-        log.info(msg="Number of Dirichlet points: {:.1f}".format(float(Dirichlet_point)))
+        log.info(f"Number of Dirichlet points: {Dirichlet_point}")
         
         
     def to_pyamg_Jac_B(self,dtype=np.float64):
@@ -459,9 +457,9 @@ class Interface3D(object):
         B = np.zeros(Jacobian.shape[0],dtype=Jacobian.dtype)
 
         Jacobian_lil = Jacobian.tolil()
-        self.NR_construct_Jac_B(Jacobian_lil,B)
+        self.NR_construct_Jac_B(Jacobian_lil, B)
         Jacobian = Jacobian_lil.tocsr() 
-        return Jacobian,B
+        return Jacobian, B
     
     
     def to_scipy_Jac_B(self,dtype=np.float64):
@@ -486,14 +484,15 @@ class Interface3D(object):
         B = np.zeros(Jacobian.shape[0],dtype=Jacobian.dtype)
 
         Jacobian_lil = Jacobian.tolil()
-        self.NR_construct_Jac_B(Jacobian_lil,B)
+        self.NR_construct_Jac_B(Jacobian_lil, B)
         Jacobian = Jacobian_lil.tocsr() 
         # self.construct_poisson(A,b)
-        return Jacobian,B
-    
+        return Jacobian, B
 
-
-    def solve_poisson_NRcycle(self,method='pyamg',tolerance=1e-7,dtype:str='float64'):
+    def solve_poisson_NRcycle(self,
+                              method='pyamg',
+                              tolerance=1e-7,
+                              dtype:str='float64'):
         """
         Solve the Poisson equation using the Newton-Raphson (NR) iterative method.
         This NR method is inspired by NanoTCAD ViDES (http://vides.nanotcad.com/vides/),iteratively solving 
@@ -531,56 +530,79 @@ class Interface3D(object):
         # solve the Poisson equation with Newton-Raphson method
         # delta_phi: the correction on the potential
         # It has been tested that dtype='float64' is a more stable SCF choice.
-      
-        
         norm_delta_phi = 1.0 #  Euclidean norm of delta_phi in each step
         NR_cycle_step = 0
+        
+        # initialize the precision
+        try:
+            dtype = {'float64': np.float64, 'float32': np.float32}[dtype]
+        except KeyError:
+            raise ValueError(f"Unknown data type: {dtype}. Use 'float64' or 'float32'.")
 
-        if dtype == 'float64':
-            dtype = np.float64
-        elif dtype == 'float32':
-            dtype = np.float32
-        else:
-            raise ValueError('Unknown data type: ',dtype)
+        # initialize the solver
+        assert method in ['scipy', 'pyamg']
+        log.info(f'Solve Poisson equation by {method}')
+        solve = lambda jac, b: spsolve(jac, b) if method == 'scipy' \
+            else self.solver_pyamg(jac, b, tolerance=1e-5) # hard-coded
 
+        # print iteration header
+        log.info("Start solving Poisson equation (Newton-Raphson)")
+        log.info("-"*(8+1+15+1+15+1+6))
+        log.info(f"{'ITERSTEP':>8s} {'|| DPHI ||':>15s} {'MAX(DPHI)':>15s} {'TIME/s':>6s}")
+        log.info("-"*(8+1+15+1+15+1+6))
+
+        # start iteration
         while norm_delta_phi > 1e-3 and NR_cycle_step < 100:
+            # start / refresh the timer
+            t = time.time()
+            t0 = t # for timing the whole step
+
             # obtain the Jacobian and B for the Poisson equation
-            Jacobian,B = self.to_scipy_Jac_B(dtype=dtype)
+            Jacobian, B = self.to_scipy_Jac_B(dtype=dtype)
+            log.info(f'  matrix construction time: {time.time()-t:.2f} s')
+            t = time.time()
             norm_B = np.linalg.norm(B)
-           
-            if method == 'scipy':   #TODO: rename to 'Direct
-                if NR_cycle_step == 0:
-                    log.info(msg="Solve Poisson equation by scipy")
-                delta_phi = spsolve(Jacobian,B)
-            elif method == 'pyamg': #TODO: rename to 'AMG'
-                if NR_cycle_step == 0:
-                    log.info(msg="Solve Poisson equation by pyamg")
-                delta_phi = self.solver_pyamg(Jacobian,B,tolerance=1e-5)
-            else:
-                raise ValueError('Unknown Poisson solver: ',method)
-                        
-            max_delta_phi = np.max(abs(delta_phi))
+            
+            # solve
+            delta_phi = solve(Jacobian, B)
+            log.info(f'  sparse matrix solve time: {time.time()-t:.2f} s')
+            t = time.time()
+            
+            max_delta_phi = np.max(np.abs(delta_phi))
             norm_delta_phi = np.linalg.norm(delta_phi)
             self.phi += delta_phi
 
             if norm_delta_phi > 1e-3:
-                _,B = self.to_scipy_Jac_B()
+                _, B = self.to_scipy_Jac_B()
                 norm_B_new = np.linalg.norm(B)
                 control_count = 1
                 # control the norm of B to avoid larger norm_B after one NR cycle
                 while norm_B_new > norm_B and control_count < 2:
-                    if control_count==1: 
-                        log.warning(msg="norm_B increase after this  NR cycle, contorler starts!")
-                    self.phi -= delta_phi/np.power(2,control_count)
-                    _,B = self.to_scipy_Jac_B()
+                    if control_count == 1: 
+                        log.warning("norm_B increase after this cycle, controller starts!")
+                    # reduce the correction on the potential
+                    self.phi -= delta_phi/np.power(2, control_count)
+                    
+                    # re-construct the Jacobian and B
+                    _, B = self.to_scipy_Jac_B()
+                    
+                    # re-calculate the norm of B
                     norm_B_new = np.linalg.norm(B)
                     control_count += 1
-                    log.info(msg="    control_count: {:.1f}   norm_B_new: {:.5f}".format(float(control_count),norm_B_new))    
-                               
+                    
+                    log.info(f"    ic = {control_count}"            # control_count
+                             f"    || B_new || = {norm_B_new:.5e}") # norm_B_new
+                
+                # print
+                log.info(f'  RHS-vector regulation time: {time.time()-t:.2f} s')
+                t = time.time()
+                
             NR_cycle_step += 1
-            log.info(msg="  NR cycle step: {:d}   norm_delta_phi: {:.8f}   max_delta_phi: {:.8f}".format(int(NR_cycle_step),norm_delta_phi,max_delta_phi))
+            # print
+            log.info(f"{NR_cycle_step:>8} {norm_delta_phi:>15.8e} "
+                     f"{max_delta_phi:>15.8e} {time.time()-t0:>6.2f}")
         
-        max_diff = np.max(abs(self.phi-self.phi_old))
+        max_diff = np.max(np.abs(self.phi - self.phi_old))
         return max_diff
 
     def solver_pyamg(self,A,b,tolerance=1e-7,accel=None):
@@ -625,12 +647,14 @@ class Interface3D(object):
         For boundary points, the method applies appropriate boundary conditions (Dirichlet or Neumann) by 
         modifying J and B accordingly, based on the type of boundary (xmin, xmax, ymin, ymax, zmin, zmax, or Dirichlet).
         After assembling the contributions, the sign of B is flipped for nonzero entries for the Newton-Raphson iteration.
+        
         Parameters
         ----------
         J : numpy.ndarray
             The Jacobian matrix to be constructed/updated (shape: [Np, Np], where Np is the number of grid points).
         B : numpy.ndarray
             The right-hand side vector to be constructed/updated (shape: [Np]).
+            
         Notes
         -----
         - Assumes that self.grid, self.eps, self.phi, self.phi_old, self.free_charge, self.fixed_charge, 
@@ -638,80 +662,106 @@ class Interface3D(object):
         - Uses constants such as eps0 and elementary_charge, which must be defined in the scope.
         - The method modifies J and B in place.
         """
+        from dpnegf.negf.newton_raphson_speed_up import calculate as construct
+        nx, ny, nz = self.grid.shape[:3]
+        # https://manual.gromacs.org/documentation/current/reference-manual/topologies/parameter-files.html#nbpar
+        feps = {'harmonic'  : lambda eps1, eps2: 2.0 * eps1 * eps2 / (eps1 + eps2),
+                'arithmetic': lambda eps1, eps2: 0.5 * (eps1 + eps2),
+                'geometric' : lambda eps1, eps2: np.sqrt(eps1 * eps2), # gromacs comb-rule 2
+                }[self.average_mode]
+
+        construct(jinout=J, 
+                  binout=B, 
+                  grid_dim=(nx, ny, nz),
+                  gridpoint_coords=self.grid.grid_coord,
+                  gridpoint_typ=self.boudnary_points,
+                  gridpoint_surfarea=self.grid.surface_grid,
+                  eps=self.eps,
+                  phi=self.phi,
+                  phi_=self.phi_old,
+                  free_chr=self.free_charge,
+                  fixed_chr=self.fixed_charge,
+                  dirichlet_pot=self.lead_gate_potential,
+                  eps0=eps0,
+                  beta=1.0/self.kBT,
+                  feps=feps)
+
+        # ===================================== OLD IMPLEMENTATION =========================================
         # construct the Jacobian and B for the Poisson equation
-        def average_eps(eps1, eps2, mode:str='harmonic'):
-            if mode == 'arithmetic':
-                return 0.5 * (eps1 + eps2)
-            elif mode == 'harmonic':
-                return 2.0 * eps1 * eps2 / (eps1 + eps2)
-        average_mode = self.average_mode
-        Nx = self.grid.shape[0];Ny = self.grid.shape[1];Nz = self.grid.shape[2]
-        for gp_index in range(self.grid.Np):
-            if self.boudnary_points[gp_index] == "in":
-                flux_xm_J = self.grid.surface_grid[gp_index,0]*eps0*average_eps(self.eps[gp_index-1],self.eps[gp_index],mode = average_mode)\
-                /abs(self.grid.grid_coord[gp_index,0]-self.grid.grid_coord[gp_index-1,0])
-                flux_xm_B = flux_xm_J*(self.phi[gp_index-1]-self.phi[gp_index])
+        # def average_eps(eps1, eps2, mode:str='harmonic'):
+        #     if mode == 'arithmetic':
+        #         return 0.5 * (eps1 + eps2)
+        #     elif mode == 'harmonic':
+        #         return 2.0 * eps1 * eps2 / (eps1 + eps2)
+        # average_mode = self.average_mode
+        # Nx = self.grid.shape[0];Ny = self.grid.shape[1];Nz = self.grid.shape[2]
+        # for gp_index in range(self.grid.Np):
+        #     if self.boudnary_points[gp_index] == "in":
+        #         flux_xm_J = self.grid.surface_grid[gp_index,0]*eps0*average_eps(self.eps[gp_index-1],self.eps[gp_index],mode = average_mode)\
+        #         /abs(self.grid.grid_coord[gp_index,0]-self.grid.grid_coord[gp_index-1,0])
+        #         flux_xm_B = flux_xm_J*(self.phi[gp_index-1]-self.phi[gp_index])
 
-                flux_xp_J = self.grid.surface_grid[gp_index,0]*eps0*average_eps(self.eps[gp_index+1],self.eps[gp_index],mode = average_mode)\
-                /abs(self.grid.grid_coord[gp_index+1,0]-self.grid.grid_coord[gp_index,0])
-                flux_xp_B = flux_xp_J*(self.phi[gp_index+1]-self.phi[gp_index])
+        #         flux_xp_J = self.grid.surface_grid[gp_index,0]*eps0*average_eps(self.eps[gp_index+1],self.eps[gp_index],mode = average_mode)\
+        #         /abs(self.grid.grid_coord[gp_index+1,0]-self.grid.grid_coord[gp_index,0])
+        #         flux_xp_B = flux_xp_J*(self.phi[gp_index+1]-self.phi[gp_index])
                 
-                flux_ym_J = self.grid.surface_grid[gp_index,1]*eps0*average_eps(self.eps[gp_index-Nx],self.eps[gp_index],mode = average_mode)\
-                /abs(self.grid.grid_coord[gp_index-Nx,1]-self.grid.grid_coord[gp_index,1])
-                flux_ym_B = flux_ym_J*(self.phi[gp_index-Nx]-self.phi[gp_index])
+        #         flux_ym_J = self.grid.surface_grid[gp_index,1]*eps0*average_eps(self.eps[gp_index-Nx],self.eps[gp_index],mode = average_mode)\
+        #         /abs(self.grid.grid_coord[gp_index-Nx,1]-self.grid.grid_coord[gp_index,1])
+        #         flux_ym_B = flux_ym_J*(self.phi[gp_index-Nx]-self.phi[gp_index])
 
-                flux_yp_J = self.grid.surface_grid[gp_index,1]*eps0*average_eps(self.eps[gp_index+Nx],self.eps[gp_index],mode = average_mode)\
-                /abs(self.grid.grid_coord[gp_index+Nx,1]-self.grid.grid_coord[gp_index,1])
-                flux_yp_B = flux_yp_J*(self.phi[gp_index+Nx]-self.phi[gp_index])
+        #         flux_yp_J = self.grid.surface_grid[gp_index,1]*eps0*average_eps(self.eps[gp_index+Nx],self.eps[gp_index],mode = average_mode)\
+        #         /abs(self.grid.grid_coord[gp_index+Nx,1]-self.grid.grid_coord[gp_index,1])
+        #         flux_yp_B = flux_yp_J*(self.phi[gp_index+Nx]-self.phi[gp_index])
 
-                flux_zm_J = self.grid.surface_grid[gp_index,2]*eps0*average_eps(self.eps[gp_index-Nx*Ny],self.eps[gp_index],mode = average_mode)\
-                /abs(self.grid.grid_coord[gp_index-Nx*Ny,2]-self.grid.grid_coord[gp_index,2])
-                flux_zm_B = flux_zm_J*(self.phi[gp_index-Nx*Ny]-self.phi[gp_index])
+        #         flux_zm_J = self.grid.surface_grid[gp_index,2]*eps0*average_eps(self.eps[gp_index-Nx*Ny],self.eps[gp_index],mode = average_mode)\
+        #         /abs(self.grid.grid_coord[gp_index-Nx*Ny,2]-self.grid.grid_coord[gp_index,2])
+        #         flux_zm_B = flux_zm_J*(self.phi[gp_index-Nx*Ny]-self.phi[gp_index])
 
-                flux_zp_J = self.grid.surface_grid[gp_index,2]*eps0*average_eps(self.eps[gp_index+Nx*Ny],self.eps[gp_index],mode = average_mode)\
-                /abs(self.grid.grid_coord[gp_index+Nx*Ny,2]-self.grid.grid_coord[gp_index,2])
-                flux_zp_B = flux_zp_J*(self.phi[gp_index+Nx*Ny]-self.phi[gp_index])
+        #         flux_zp_J = self.grid.surface_grid[gp_index,2]*eps0*average_eps(self.eps[gp_index+Nx*Ny],self.eps[gp_index],mode = average_mode)\
+        #         /abs(self.grid.grid_coord[gp_index+Nx*Ny,2]-self.grid.grid_coord[gp_index,2])
+        #         flux_zp_B = flux_zp_J*(self.phi[gp_index+Nx*Ny]-self.phi[gp_index])
 
-                # add flux term to matrix J
-                J[gp_index,gp_index] = -(flux_xm_J+flux_xp_J+flux_ym_J+flux_yp_J+flux_zm_J+flux_zp_J)\
-                    +elementary_charge*self.free_charge[gp_index]*(-np.sign(self.free_charge[gp_index]))/self.kBT*\
-                    np.exp(-np.sign(self.free_charge[gp_index])*(self.phi[gp_index]-self.phi_old[gp_index])/self.kBT)
-                J[gp_index,gp_index-1] = flux_xm_J
-                J[gp_index,gp_index+1] = flux_xp_J
-                J[gp_index,gp_index-Nx] = flux_ym_J
-                J[gp_index,gp_index+Nx] = flux_yp_J
-                J[gp_index,gp_index-Nx*Ny] = flux_zm_J
-                J[gp_index,gp_index+Nx*Ny] = flux_zp_J
+        #         # add flux term to matrix J
+        #         J[gp_index,gp_index] = -(flux_xm_J+flux_xp_J+flux_ym_J+flux_yp_J+flux_zm_J+flux_zp_J)\
+        #             +elementary_charge*self.free_charge[gp_index]*(-np.sign(self.free_charge[gp_index]))/self.kBT*\
+        #             np.exp(-np.sign(self.free_charge[gp_index])*(self.phi[gp_index]-self.phi_old[gp_index])/self.kBT)
+        #         J[gp_index,gp_index-1] = flux_xm_J
+        #         J[gp_index,gp_index+1] = flux_xp_J
+        #         J[gp_index,gp_index-Nx] = flux_ym_J
+        #         J[gp_index,gp_index+Nx] = flux_yp_J
+        #         J[gp_index,gp_index-Nx*Ny] = flux_zm_J
+        #         J[gp_index,gp_index+Nx*Ny] = flux_zp_J
 
 
-                # add flux term to matrix B
-                B[gp_index] = (flux_xm_B+flux_xp_B+flux_ym_B+flux_yp_B+flux_zm_B+flux_zp_B)
-                B[gp_index] += elementary_charge*self.free_charge[gp_index]*np.exp(-np.sign(self.free_charge[gp_index])\
-                    *(self.phi[gp_index]-self.phi_old[gp_index])/self.kBT)+elementary_charge*self.fixed_charge[gp_index]
+        #         # add flux term to matrix B
+        #         B[gp_index] = (flux_xm_B+flux_xp_B+flux_ym_B+flux_yp_B+flux_zm_B+flux_zp_B)
+        #         B[gp_index] += elementary_charge*self.free_charge[gp_index]*np.exp(-np.sign(self.free_charge[gp_index])\
+        #             *(self.phi[gp_index]-self.phi_old[gp_index])/self.kBT)+elementary_charge*self.fixed_charge[gp_index]
 
-            else:# boundary points
-                J[gp_index,gp_index] = 1.0 # correct for both Dirichlet and Neumann boundary condition
+        #     else:# boundary points
+        #         J[gp_index,gp_index] = 1.0 # correct for both Dirichlet and Neumann boundary condition
                 
-                if self.boudnary_points[gp_index] == "xmin":   
-                    J[gp_index,gp_index+1] = -1.0
-                    B[gp_index] = (self.phi[gp_index]-self.phi[gp_index+1])
-                elif self.boudnary_points[gp_index] == "xmax":
-                    J[gp_index,gp_index-1] = -1.0
-                    B[gp_index] = (self.phi[gp_index]-self.phi[gp_index-1])
-                elif self.boudnary_points[gp_index] == "ymin":
-                    J[gp_index,gp_index+Nx] = -1.0
-                    B[gp_index] = (self.phi[gp_index]-self.phi[gp_index+Nx])
-                elif self.boudnary_points[gp_index] == "ymax":
-                    J[gp_index,gp_index-Nx] = -1.0
-                    B[gp_index] = (self.phi[gp_index]-self.phi[gp_index-Nx])
-                elif self.boudnary_points[gp_index] == "zmin":
-                    J[gp_index,gp_index+Nx*Ny] = -1.0
-                    B[gp_index] = (self.phi[gp_index]-self.phi[gp_index+Nx*Ny])
-                elif self.boudnary_points[gp_index] == "zmax":
-                    J[gp_index,gp_index-Nx*Ny] = -1.0
-                    B[gp_index] = (self.phi[gp_index]-self.phi[gp_index-Nx*Ny])
-                elif self.boudnary_points[gp_index] == "Dirichlet":
-                    B[gp_index] = (self.phi[gp_index]-self.lead_gate_potential[gp_index])
+        #         if self.boudnary_points[gp_index] == "xmin":   
+        #             J[gp_index,gp_index+1] = -1.0
+        #             B[gp_index] = (self.phi[gp_index]-self.phi[gp_index+1])
+        #         elif self.boudnary_points[gp_index] == "xmax":
+        #             J[gp_index,gp_index-1] = -1.0
+        #             B[gp_index] = (self.phi[gp_index]-self.phi[gp_index-1])
+        #         elif self.boudnary_points[gp_index] == "ymin":
+        #             J[gp_index,gp_index+Nx] = -1.0
+        #             B[gp_index] = (self.phi[gp_index]-self.phi[gp_index+Nx])
+        #         elif self.boudnary_points[gp_index] == "ymax":
+        #             J[gp_index,gp_index-Nx] = -1.0
+        #             B[gp_index] = (self.phi[gp_index]-self.phi[gp_index-Nx])
+        #         elif self.boudnary_points[gp_index] == "zmin":
+        #             J[gp_index,gp_index+Nx*Ny] = -1.0
+        #             B[gp_index] = (self.phi[gp_index]-self.phi[gp_index+Nx*Ny])
+        #         elif self.boudnary_points[gp_index] == "zmax":
+        #             J[gp_index,gp_index-Nx*Ny] = -1.0
+        #             B[gp_index] = (self.phi[gp_index]-self.phi[gp_index-Nx*Ny])
+        #         elif self.boudnary_points[gp_index] == "Dirichlet":
+        #             B[gp_index] = (self.phi[gp_index]-self.lead_gate_potential[gp_index])
 
-            if B[gp_index]!=0: # for convenience change the sign of B in later NR iteration
-                B[gp_index] = -B[gp_index]           
+        #     if B[gp_index]!=0: # for convenience change the sign of B in later NR iteration
+        #         B[gp_index] = -B[gp_index]
+    
