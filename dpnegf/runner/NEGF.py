@@ -178,11 +178,12 @@ class NEGF(object):
             for lead_tag in ["lead_L", "lead_R"]:
                 log.info(msg="-----Calculating Fermi level for {0}-----".format(lead_tag))
                 _, e_fermi[lead_tag]  = elec_cal.get_fermi_level(data=struct_leads[lead_tag], 
-                                nel_atom = nel_atom_lead[lead_tag],
-                                meshgrid=self.stru_options[lead_tag]["kmesh_lead_Ef"],
-                                AtomicData_options=AtomicData_options,
-                                smearing_method=self.stru_options.get("e_fermi_smearing", "FD"),
-                                temp=100.0)
+                                                                nel_atom = nel_atom_lead[lead_tag],
+                                                                meshgrid=self.stru_options[lead_tag]["kmesh_lead_Ef"],
+                                                                AtomicData_options=AtomicData_options,
+                                                                smearing_method=self.stru_options.get("e_fermi_smearing", "FD"),
+                                                                temp=100.0,
+                                                                eig_solver=self.stru_options.get("eig_solver", "torch"),)
         else:
             e_fermi["lead_L"] = self.e_fermi
             e_fermi["lead_R"] = self.e_fermi

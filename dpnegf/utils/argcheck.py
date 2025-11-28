@@ -1076,6 +1076,7 @@ def stru_options():
     doc_gamma_center=""
     doc_time_reversal_symmetry=""
     doc_e_fermi_smearing="The smearing method for Fermi level."
+    doc_eig_solver="The eigenvalue solver to use."
     doc_nel_atom = "The number of electrons in each element."
     return [
         Argument("device", dict, optional=False, sub_fields=device(), doc=doc_device),
@@ -1086,6 +1087,7 @@ def stru_options():
         Argument("gamma_center", list, optional=True, default=True, doc=doc_gamma_center),
         Argument("time_reversal_symmetry", list, optional=True, default=True, doc=doc_time_reversal_symmetry),
         Argument("e_fermi_smearing", str, optional=True, default="FD", doc=doc_e_fermi_smearing),
+        Argument("eig_solver", str, optional=True, default="torch", doc=doc_eig_solver),
         Argument("nel_atom", [dict,None], optional=True, default=None, doc=doc_nel_atom)
     ]
 

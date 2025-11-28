@@ -19,6 +19,7 @@
             "time_reversal_symmetry": true,
             "nel_atom": {"C": 1.0},
             "kmesh":[1,1,1],
+            "eig_solver":"numpy",
             "pbc":[false, false, false],
             "device":{
                 "id":"4-8",
