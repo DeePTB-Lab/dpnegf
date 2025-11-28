@@ -1,5 +1,5 @@
 {   
-    "structure":"./struct_negf.xyz",
+    "structure":"./stru_negf.xyz",
 	"task_options":
         {
             "task": "negf",
