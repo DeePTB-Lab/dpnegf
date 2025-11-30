@@ -505,14 +505,11 @@ def _estimate_worker_memory(lead_L, lead_R, kpoint=None, temp_allocation_factor=
                     elif hasattr(tensor, 'nbytes'):  # NumPy array
                         matrix_bytes += tensor.nbytes
         except Exception as e:
-            log.debug(f"Could not estimate memory from {lead.tab}: {e}")
-            # Fallback: check cached matrices on the lead object
-            for attr in ['HLk', 'HLLk', 'HDLk', 'SLk', 'SLLk', 'SDLk']:
-                if hasattr(lead, attr):
-                    tensor = getattr(lead, attr)
-                    if tensor is not None and hasattr(tensor, 'numel'):
-                        matrix_bytes += tensor.numel() * 16
-
+            log.warning(f"Could not estimate matrix memory from {lead.tab}: {e}"
+                        " Using fallback matrix estimate: 100 MB this lead.")
+            # Fallback: assume 100 MB per lead
+            matrix_bytes += 100 * 1024 * 1024
+            
     # Total estimate: base overhead + scaled computation memory
     computation_memory = matrix_bytes * temp_allocation_factor
     total_estimate = base_overhead + int(computation_memory)
