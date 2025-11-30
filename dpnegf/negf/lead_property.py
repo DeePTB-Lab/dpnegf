@@ -560,34 +560,34 @@ def _get_safe_n_jobs(lead_L, lead_R, requested_n_jobs=-1, max_memory_fraction=0.
     # Cap by CPU count
     max_workers = min(max_workers_by_memory, cpu_count)
 
-    final_worker = 0
+    safe_n_worker = 0
     # check requested_n_jobs is a number
     if not isinstance(requested_n_jobs, int):
         log.warning(f"Requested n_jobs={requested_n_jobs} is not an integer. \n"
                     f"Using min_workers={min_workers}.")
-        final_worker = min_workers
+        safe_n_worker = min_workers
 
     if requested_n_jobs == -1:
-        final_worker = max_workers
+        safe_n_worker = max_workers
     elif requested_n_jobs == 0:
         log.warning(f"Requested n_jobs=0 is invalid. Using min_workers={min_workers}.")
-        final_worker = min_workers
+        safe_n_worker = min_workers
     elif requested_n_jobs > 0:
         if requested_n_jobs > max_workers:
             log.warning(f"Requested n_jobs={requested_n_jobs} may exceed available memory. "
                        f"Limiting to {max_workers} workers "
                        f"(available: {available_memory / 1e9:.1f} GB, "
                        f"est. per worker: {memory_per_worker / 1e9:.1f} GB)")
-            final_worker = max_workers
+            safe_n_worker = max_workers
         else:
-            final_worker = requested_n_jobs
+            safe_n_worker = requested_n_jobs
     else:
         # Negative values other than -1: joblib interprets as (cpu_count + 1 + n_jobs)
         effective_n_jobs = max(cpu_count + 1 + requested_n_jobs, min_workers)
-        final_worker = min(effective_n_jobs, max_workers)
+        safe_n_worker = min(effective_n_jobs, max_workers)
 
-    log.info(f"Using n_jobs={final_worker} for parallel self-energy calculations.")
-    return final_worker
+    log.info(f"Estimated safe n_jobs={safe_n_worker} based on available memory.")
+    return safe_n_worker
         
 
 
