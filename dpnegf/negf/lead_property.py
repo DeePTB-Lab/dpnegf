@@ -551,6 +551,12 @@ def _get_safe_n_jobs(lead_L, lead_R, requested_n_jobs=-1, max_memory_fraction=0.
     memory_per_worker = _estimate_worker_memory(lead_L, lead_R, kpoint=kpoint)
 
     # Calculate max workers that fit in available memory
+    if memory_per_worker <= 0:
+        log.warning(f"Memory estimation returned non-positive value. Using min_workers={min_workers}.")
+        return min_workers
+
+    # Calculate max workers that fit in available memory
+    max_workers_by_memory = int((available_memory * max_memory_fraction) / memory_per_worker)
     max_workers_by_memory = int((available_memory * max_memory_fraction) / memory_per_worker)
     max_workers_by_memory = max(max_workers_by_memory, min_workers)
 
