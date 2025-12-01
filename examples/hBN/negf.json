@@ -1,5 +1,5 @@
 {   
-    "structure":"./struct_negf.xyz",
+    "structure":"./stru_negf.xyz",
 	"task_options":
         {
             "task": "negf",
@@ -12,7 +12,7 @@
                 "time_reversal_symmetry": true,
                 "nel_atom": {"B": 3,
                              "N": 5},
-                "kmesh":[1,1,1],
+                "kmesh":[1,100,1],
                 "pbc":[false, true, false],
                 "device":{
                     "id":"32-64",
@@ -40,9 +40,9 @@
             "err": 1e-5
             },
             "sgf_solver": "Sancho-Rubio",
-            "espacing": 0.05,
-            "emin": -10,
-            "emax": 10,
+            "espacing": 0.025,
+            "emin": -2.5,
+            "emax": 2.5,
             "eta_lead":1e-5,
             "eta_device":0.0,
             "out_dos": true,
