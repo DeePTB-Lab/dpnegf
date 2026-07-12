@@ -2,7 +2,6 @@
 
 > ⚠️ **IMPORTANT NOTICE**
 > 
-> **[English]** 
 > This repository is no longer actively maintained. `dpnegf` has officially joined the **Deepmodeling** open-source community! All future development, updates, and maintenance (including GPU support and performance optimizations) will take place in our new repository.
 > 👉 **Please visit our new home: [deepmodeling/dpnegf](https://github.com/deepmodeling/dpnegf)**
 > 
